@@ -1,0 +1,17 @@
+# Local configuration and credentials
+/.env
+/.env.*
+!/.env.example
+/settings.txt
+
+# Runtime logs and backups
+error_log
+*.log
+/backup/
+/well-known.zip
+
+# Database dumps may contain application data
+/db/*.sql
+
+# User-uploaded product images
+/img/uploads/
