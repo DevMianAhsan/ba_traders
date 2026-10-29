@@ -137,21 +137,13 @@ echo "<div class='alert alert-".$sts."'>".$msg."</div>";
   // $id = base64_decode($id);
 
 if (mysqli_query($dbc,"DELETE FROM $table WHERE $fld='$id'")) {
-
-# code...
-
-$msg =  "Deleted ....";
-
-$sts="warning";
-
-  // redirect('index.php?nav='.$_REQUEST['nav'],1500);
-
+    $msg = "Deleted ....";
+    $sts = "warning";
+    return true;
 }else{
-
-$msg= mysqli_error($dbc);
-
-$sts="danger";
-
+    $msg = mysqli_error($dbc);
+    $sts = "danger";
+    return false;
 }
 
   }
@@ -2395,5 +2387,76 @@ function getOrders($dbc,$value,$type)
   }else{
     return 0;
   }
+}
+
+function number_to_words_pkr($number) {
+    $number = floatval($number);
+    $decimal = round($number - ($no = floor($number)), 2) * 100;
+    $decimal_val = intval(round($decimal));
+    
+    $words = [
+        0 => '', 1 => 'ONE', 2 => 'TWO', 3 => 'THREE', 4 => 'FOUR', 5 => 'FIVE',
+        6 => 'SIX', 7 => 'SEVEN', 8 => 'EIGHT', 9 => 'NINE', 10 => 'TEN',
+        11 => 'ELEVEN', 12 => 'TWELVE', 13 => 'THIRTEEN', 14 => 'FOURTEEN', 15 => 'FIFTEEN',
+        16 => 'SIXTEEN', 17 => 'SEVENTEEN', 18 => 'EIGHTEEN', 19 => 'NINETEEN',
+        20 => 'TWENTY', 30 => 'THIRTY', 40 => 'FORTY', 50 => 'FIFTY',
+        60 => 'SIXTY', 70 => 'SEVENTY', 80 => 'EIGHTY', 90 => 'NINETY'
+    ];
+
+    $digits = ['', 'HUNDRED', 'THOUSAND', 'LAKH', 'CRORE'];
+    // Pakistani / International format handler
+    $convert_below_thousand = function($num) use ($words) {
+        $str = '';
+        if ($num >= 100) {
+            $hundreds = intval(floor($num / 100));
+            $str .= $words[$hundreds] . ' HUNDRED ';
+            $num %= 100;
+        }
+        if ($num > 0) {
+            if ($num < 20) {
+                $str .= $words[$num] . ' ';
+            } else {
+                $tens = intval(floor($num / 10)) * 10;
+                $units = $num % 10;
+                $str .= $words[$tens] . ($units > 0 ? '-' . $words[$units] : '') . ' ';
+            }
+        }
+        return trim($str);
+    };
+
+    if ($no == 0) {
+        $result = 'ZERO';
+    } else {
+        $chunks = [];
+        // Standard million/thousand or lakh/crore:
+        // In the PDF: "NINE HUNDRED SIXTY-SEVEN THOUSAND FOUR HUNDRED SEVENTY-NINE"
+        // This is 3-digit grouping (thousand, million, billion)
+        $num_units = ['', 'THOUSAND', 'MILLION', 'BILLION'];
+        $unit_idx = 0;
+        $temp_no = $no;
+        while ($temp_no > 0) {
+            $three = $temp_no % 1000;
+            if ($three > 0) {
+                $chunk_str = $convert_below_thousand($three);
+                if ($unit_idx > 0 && !empty($num_units[$unit_idx])) {
+                    $chunk_str .= ' ' . $num_units[$unit_idx];
+                }
+                array_unshift($chunks, $chunk_str);
+            }
+            $temp_no = intval(floor($temp_no / 100));
+            $temp_no = intval(floor($temp_no / 10)); // divide by 1000
+            $unit_idx++;
+        }
+        $result = trim(implode(' ', $chunks));
+    }
+
+    $out = "RUPEES: " . $result;
+    if ($decimal_val > 0) {
+        $paisa = sprintf("%02d", $decimal_val);
+        $out .= " AND " . $paisa . " / 100 ONLY.";
+    } else {
+        $out .= " ONLY.";
+    }
+    return $out;
 }
 ?>

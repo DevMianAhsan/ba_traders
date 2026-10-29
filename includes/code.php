@@ -21,7 +21,10 @@ include_once 'functions.php';
 		 			'personal_phone'=> $_POST['personal_phone'],
 		 			'email' => $_POST['email'],
 		 			'stock_manage' => $_POST['stock_manage'],
-		 			'sale_interface' => $_POST['sale_interface']
+		 			'sale_interface' => $_POST['sale_interface'],
+					's_tax_no' => @$_POST['s_tax_no'],
+					'ntn_no' => @$_POST['ntn_no'],
+					'cnic_no' => @$_POST['cnic_no']
 			 		];
 		 		}else{
 		 			$data=[
@@ -31,7 +34,10 @@ include_once 'functions.php';
 		 			'personal_phone'=> $_POST['personal_phone'],
 		 			'email' => $_POST['email'],
 		 			'stock_manage' => $_POST['stock_manage'],
-		 			'sale_interface' => $_POST['sale_interface']
+		 			'sale_interface' => $_POST['sale_interface'],
+					's_tax_no' => @$_POST['s_tax_no'],
+					'ntn_no' => @$_POST['ntn_no'],
+					'cnic_no' => @$_POST['cnic_no']
 			 		];
 		 		}
 
@@ -63,7 +69,10 @@ include_once 'functions.php';
 		 			'personal_phone'=> $_POST['personal_phone'],
 		 			'email' => $_POST['email'],
 		 			'stock_manage' => $_POST['stock_manage'],
-		 			'sale_interface' => $_POST['sale_interface']
+		 			'sale_interface' => $_POST['sale_interface'],
+					's_tax_no' => @$_POST['s_tax_no'],
+					'ntn_no' => @$_POST['ntn_no'],
+					'cnic_no' => @$_POST['cnic_no']
 			 		];
 		 		}else{
 		 			$data=[
@@ -73,7 +82,10 @@ include_once 'functions.php';
 		 			'personal_phone'=> $_POST['personal_phone'],
 		 			'email' => $_POST['email'],
 		 			'stock_manage' => $_POST['stock_manage'],
-		 			'sale_interface' => $_POST['sale_interface']
+		 			'sale_interface' => $_POST['sale_interface'],
+					's_tax_no' => @$_POST['s_tax_no'],
+					'ntn_no' => @$_POST['ntn_no'],
+					'cnic_no' => @$_POST['cnic_no']
 			 		];
 		 		}
 		 		

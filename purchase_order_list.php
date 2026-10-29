@@ -11,7 +11,7 @@
 
             <div class="row">
               <div class="col-12 mx-auto h4">
-                <b class="text-center card-text"> Order List</b>
+                <b class="text-center card-text"> PO List</b>
            
              
               </div>
@@ -19,23 +19,22 @@
   
           </div>
            <div class="card-body">
-                            <table class="table  dataTableAsc" id="view_orders_tb">
+                            <table class="table" id="view_orders_tb">
                   <thead>
                     <tr>
                       <th>PO ID</th>
                       <th> Date</th>
-                       <th>STM / PO</th>
+                       <th>PO</th>
                       <th>Customer Name</th>
                       <th>Customer Contact</th>
-                 
-                      <th>Sold To </th>
+                      <th>Target Date</th>
                       <th>Amount</th>
                       
                       <th>Action</th>
                     </tr>
                   </thead>
                   <tbody> 
-                      <?php   $q=mysqli_query($dbc,"SELECT * FROM purchase_order ORDER by po_id DESC LIMIT 500 ");
+                      <?php   $q=mysqli_query($dbc,"SELECT * FROM purchase_order ORDER by po_id DESC");
                       $c=0;
                         while ($r=mysqli_fetch_assoc($q)) { $c++;
                           
@@ -47,10 +46,10 @@
                           
                            <td><?=$r['po_id']?></td>
                           <td><?=$r['po_date']?></td>
-                          <td><?=$r['po_partystm']?> /  <?=$r['po_partypo']?></td>
+                          <td><?=$r['po_partypo']?></td>
                           <td><?=$r['po_customer_name']?></td>
                           <td><?=$r['po_customer_no']?></td>
-                          <td><?=$r['po_consumer']?></td>
+                          <td><?=$r['po_targetdate']?></td>
                           <td><?=$r['grand_total']?></td>
                          
                 

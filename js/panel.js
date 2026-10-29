@@ -154,6 +154,9 @@ function resetForm(id) {
 }
 
 function deleteAlert(id,table,row,reload_type){
+  if (window.event && window.event.preventDefault) {
+    window.event.preventDefault();
+  }
   Swal.fire({
   title: 'Are you sure?',
   text: "You won't be able to revert this!",
@@ -171,31 +174,82 @@ function deleteAlert(id,table,row,reload_type){
       data: {delete_bymanually:id,table:table,row:row},
       dataType: 'json',
       success:function(response) {
-        //console.log(response);
           if (response.sts=="success") {
              if (reload_type!="pg") {
-                $("#"+reload_type).load(location.href+" #"+reload_type+" > *");
-             }else{
-              location.reload();
-             }
-          }
-           
-             Swal.fire(
-      'Deleted!',
-      response.msg,
-      response.sts,
-    )   
-           
+                var $table = $("#" + reload_type);
+                var isDT = $.fn.DataTable && $.fn.DataTable.isDataTable("#" + reload_type);
 
-            }   
-                
-            
-        });//ajax 
+                // Find the row containing this delete action
+                var $targetRow = $table.find("tr").filter(function() {
+                  var btn = $(this).find('[onclick*="deleteAlert"]');
+                  if (btn.length > 0) {
+                    var onclickStr = btn.attr('onclick') || '';
+                    var regex = new RegExp("deleteAlert\\s*\\(\\s*['\"]?" + id + "['\"]?\\s*,");
+                    return regex.test(onclickStr);
+                  }
+                  return false;
+                });
+
+                if (isDT) {
+                  var dt = $table.DataTable();
+                  if ($targetRow.length) {
+                    dt.row($targetRow).remove().draw(false);
+                  } else {
+                    if (typeof reloadDataTable === 'function') {
+                      reloadDataTable(reload_type);
+                    }
+                  }
+                } else if ($targetRow.length) {
+                  $targetRow.remove();
+                } else {
+                  if (typeof reloadDataTable === 'function') {
+                    reloadDataTable(reload_type);
+                  }
+                }
+
+                // If currently editing the deleted item in form, clear the form
+                if ($('#brand_id').length && $('#brand_id').val() == id) {
+                  $('#add_brand_name').val('');
+                  $('#brand_id').val('');
+                  $('#formData_btn').text('Add').removeClass('btn-admin2').addClass('btn-admin');
+                  if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, typeof getCleanUrl === 'function' ? getCleanUrl() : window.location.pathname);
+                  }
+                }
+                if ($('#categories_id').length && $('#categories_id').val() == id) {
+                  $('#categories_name').val('');
+                  $('#categories_id').val('');
+                  $('#formData_btn').text('Add').removeClass('btn-admin2').addClass('btn-admin');
+                  if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, typeof getCleanUrl === 'function' ? getCleanUrl() : window.location.pathname);
+                  }
+                }
+             } else {
+                location.reload();
+             }
+
+             Swal.fire(
+               'Deleted!',
+               response.msg,
+               'success'
+             );
+          } else {
+             Swal.fire(
+               'Cannot Delete!',
+               response.msg || 'Could not delete item',
+               'warning'
+             );
+          }
+        },
+        error: function(xhr, status, err) {
+          Swal.fire('Error!', 'Request failed: ' + err, 'error');
+        }
+      });
     console.log("Deleted");
-   
   }
-})
+});
 }
+
 function reload_page() {
   location.reload();
 }

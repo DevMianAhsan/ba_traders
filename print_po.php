@@ -28,9 +28,8 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
     }
 
     .top-sec {
-      display: flex;
-      margin-top: 2rem;
-      justify-content: space-between;
+      text-align: center;
+      margin-top: 0;
     }
 
     table {
@@ -56,7 +55,7 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
     .order-det {
       display: flex;
       justify-content: space-between;
-      margin-top: 4rem;
+      margin-top: 1.5rem;
     }
 
     .order-data {
@@ -70,6 +69,13 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
       text-align: right;
       margin-top: 8px;
       font-weight: bold;
+    }
+
+    .order-n-d .com-det p {
+      border: none;
+      font-weight: normal;
+      margin-top: 0;
+      text-align: right;
     }
 
     .order-n-d h4 {
@@ -108,9 +114,10 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
     }
 
     .sign-sec {
-      gap: 8rem;
       display: flex;
-      margin-top: 1rem;
+      justify-content: flex-end;
+      margin-top: 60px;
+      padding: 0 1rem;
     }
 
     .sign-sec h4 {
@@ -136,35 +143,30 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
 <body>
   <div class="page-container">
     <div class="top-sec">
-      <div class="com-det">
-        <h2><?=$get_company['name']?></h2>
-      </div>
-      <div class="">
-        <?php
-         if(empty($po_order['po_consumer'])){
-        ?>
-        <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px">
-        <?php
-      }
-        ?>
-      </div>
-      <div class="com-det">
-        <h1>Sale Order</h1>
-        <p style="text-align: right;">Office Copy</p>
-      </div>
+      <?php
+       if(empty($po_order['po_consumer'])){
+      ?>
+      <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px">
+      <h5 style="margin-top: 5px; text-align: center;"><?=$get_company['address']?></h5>
+      <h5 style="margin-top: 5px; text-align: center;">Phone: <?=$get_company['company_phone']?></h5>
+      <?php
+    } 
+      ?>
     </div>
-    <div class="order-det" style="margin-top: -15px">
+    <div class="order-det">
       <div class="order-data">
         <h4>Customer: <span></span></h4>
         <h5>
         <?php
      $customer = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = '$po_order[po_customer]' ")) ;
-     echo strtoupper($customer['customer_name']);
-     echo "<br/>";
-     echo $customer['customer_phone'];
-
+     echo ucwords(strtolower($customer['customer_name'] ?? ''));
         ?>  
         </h5>
+        <?php if (!empty($customer['customer_address'])): ?>
+        <h5 style="margin-top: 8px;">
+          <?=nl2br(htmlspecialchars(ucwords(strtolower($customer['customer_address']))))?>
+        </h5>
+        <?php endif; ?>
         
       <?php
       if(!empty($po_order['po_consumer'])){
@@ -181,6 +183,10 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
         ?>
       </div>
       <div class="order-n-d">
+        <div class="com-det" style="text-align: right; margin-bottom: 10px;">
+          <h1>Sale Order</h1>
+          <p style="text-align: right; border: none; font-weight: normal; margin-top: 0;">Office Copy</p>
+        </div>
         <h4>Sales Order No</h4>
         <p style="padding-right: 10px"><?=$po_order['po_id']?></p>
         <h4>Sales Order Date</h4>
@@ -189,15 +195,15 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
 
     </div>
     <div class="table-sec1">
-      <table style="width: 100%;">
+      <table style="width: 100%; table-layout: fixed;">
         <thead>
-          <tr >
-            <th style="width: 22%;">Payment Days : </th>
-            <th style="width: 18%;"><?=$po_order['po_paymentdays']?></th>
-            <th style="width: 22%;"> Target Days : </th>
-            <th style="width: 18%;"><?=$po_order['po_targetdate']?></th>
-            <th style="width: 20%;">Party PO :</th>
-            <th style="width: 20%;"><?=$po_order['po_partypo']?></th>
+          <tr>
+            <th style="width: 16.66%; font-size: 13px; padding: 6px 4px;">Payment Days :</th>
+            <th style="width: 16.66%; font-size: 13px; padding: 6px 4px;"><?=$po_order['po_paymentdays']?></th>
+            <th style="width: 16.66%; font-size: 13px; padding: 6px 4px;">Target Date :</th>
+            <th style="width: 16.66%; font-size: 13px; padding: 6px 4px;"><?=$po_order['po_targetdate']?></th>
+            <th style="width: 16.66%; font-size: 13px; padding: 6px 4px;">Party PO# :</th>
+            <th style="width: 16.66%; font-size: 13px; padding: 6px 4px;"><?=$po_order['po_partypo']?></th>
           </tr>
         </thead>
       </table>
@@ -209,7 +215,7 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
             <th>Sr #</th>
             <th>Item Description</th>
             <th>Quantity</th>
-            <th>Unit</th>
+            <th>UOM</th>
             <th>Rate</th>
             <th>Amount</th>
           </tr>
@@ -226,15 +232,15 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
           $totalQty = 0;
           $grandtotal = 0;
             while($r = mysqli_fetch_assoc($q1)): 
-
+ 
           ?>
           <tr>
             <th><?=$x?></th>
-            <th> <?=$r['product_name']?></th>
+            <th> <?=ucwords(strtolower($r['product_name'] ?? ''))?></th>
             <th><?=$r['quantity']?></th>
-            <th>PCS</th>
-            <th><?=$r['rate']?></th>
-            <th><?=$r['quantity']*$r['rate']?></th>
+            <th> <?=ucwords(strtolower($r['product_unit'] ?? ''))?></th>
+            <th><?=(floatval($r['rate']) == intval($r['rate'])) ? number_format($r['rate']) : number_format($r['rate'], 2)?></th>
+            <th><?=(floatval($r['quantity']*$r['rate']) == intval($r['quantity']*$r['rate'])) ? number_format($r['quantity']*$r['rate']) : number_format($r['quantity']*$r['rate'], 2)?> RS</th>
           </tr>
           <?php
           $totalQty += $r['quantity'];
@@ -248,33 +254,32 @@ $po_order =   $order=fetchRecord($dbc,"purchase_order","po_id",$_REQUEST['id']);
             <th colspan="2" style="font-size: 20px">Total  </th>
             <th><?=$totalQty?></th>
             <th colspan="2"></th>
-            <th><?=$grandtotal?></th>
+            <th><?=(floatval($grandtotal) == intval($grandtotal)) ? number_format($grandtotal) : number_format($grandtotal, 2)?> RS</th>
           </tr>
         </tfoot>
       </table>
     </div>
     <div class="total-text">
-      <div class="">
+      <div class="" style="text-align: right; padding-right: 10px;">
         <br/>
         <h4>Sub. Total :</h4>
         <h4>Sales Tax:</h4>
         <h4>Total Value :</h4>
       </div>
-      <div class="">
-        <h4><?=$grandtotal?></h4>
+      <div class="" style="text-align: right;">
+        <h4><?=(floatval($grandtotal) == intval($grandtotal)) ? number_format($grandtotal) : number_format($grandtotal, 2)?> RS</h4>
         <h4><?=$po_order['discount']?>%</h4>
-        <h4><?=$po_order['grand_total']?></h4>
+        <h4><?=(floatval($po_order['grand_total']) == intval($po_order['grand_total'])) ? number_format($po_order['grand_total']) : number_format($po_order['grand_total'], 2)?> RS</h4>
       </div>
 
     </div>
     <div class="sign-sec">
-      <h4>Prepared By</h4>
       <h4>Approved By</h4>
     </div>
-    <div class="address">
+    <!-- <div class="address">
       <h5><?=$get_company['address']?></h5>
       <h5>Phone : <span><?=$get_company['company_phone']?>,<?=$get_company['personal_phone']?></span> | Email <span><?=$get_company['email']?></span></h5>
-    </div>
+    </div> -->
   </div>
 </body>
 

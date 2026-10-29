@@ -235,24 +235,60 @@
             if($getDebit['TotalDebit']>=$creditSum   ){
 
             }else{
-              $invoice_id=filter_var($r['transaction_remarks'], FILTER_SANITIZE_NUMBER_INT);
-           $fetchinvoive = fetchRecord($dbc,"orders","order_id",$invoice_id);
-           $invoice_type=$fetchinvoive['credit_sale_type'];
-               $Date = date('Y-m-d');
-                $now = strtotime($Date); // or your date as well                        
-                if ($invoice_type=="15days" AND $fetchinvoive['payment_status']==0) {
-                  $next_date= date('Y-m-d', strtotime($fetchinvoive['order_date']. ' + 15 days'));
-                  $daytype = 15;
+              $invoice_id = filter_var($r['transaction_remarks'], FILTER_SANITIZE_NUMBER_INT);
+              $fetchinvoive = null;
+              $invoice_type = '';
+              $order_date = $r['transaction_date'] ?? date('Y-m-d');
+              $payment_status = 0;
+              if (strtolower($r['transaction_from']) == "invoice" || strtolower($r['transaction_from']) == "tax_sale") {
+                  $fetchTax = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT * FROM tax_sales WHERE invoice_no = '$invoice_id' OR tax_sale_id = '$invoice_id' LIMIT 1"));
+                  if (!empty($fetchTax)) {
+                      $fetchinvoive = $fetchTax;
+                      $order_date = !empty($fetchTax['invoice_date']) ? $fetchTax['invoice_date'] : $order_date;
+                      $invoice_type = !empty($fetchTax['payment_terms']) ? $fetchTax['payment_terms'] : '';
+                      if (!empty($fetchTax['po_no'])) {
+                          $po_q = mysqli_query($dbc, "SELECT po_paymentdays FROM purchase_order WHERE po_partypo = '" . mysqli_real_escape_string($dbc, $fetchTax['po_no']) . "' LIMIT 1");
+                          if ($po_r = mysqli_fetch_assoc($po_q)) {
+                              $days_num = intval(filter_var($po_r['po_paymentdays'], FILTER_SANITIZE_NUMBER_INT));
+                              if ($days_num > 0) $invoice_type = $days_num . 'days';
+                          }
+                      }
+                  } else {
+                      $fetchinvoive = fetchRecord($dbc, "invoices", "invoice_id", $invoice_id);
+                      if (!empty($fetchinvoive)) {
+                          $order_date = !empty($fetchinvoive['invoice_date']) ? $fetchinvoive['invoice_date'] : $order_date;
+                          $invoice_type = $fetchinvoive['credit_sale_type'] ?? '';
+                          if (empty($invoice_type) && !empty($fetchinvoive['party_po'])) {
+                              $po_q = mysqli_query($dbc, "SELECT po_paymentdays FROM purchase_order WHERE po_partypo = '" . mysqli_real_escape_string($dbc, $fetchinvoive['party_po']) . "' LIMIT 1");
+                              if ($po_r = mysqli_fetch_assoc($po_q)) {
+                                  $days_num = intval(filter_var($po_r['po_paymentdays'], FILTER_SANITIZE_NUMBER_INT));
+                                  if ($days_num > 0) $invoice_type = $days_num . 'days';
+                              }
+                          }
+                      }
+                  }
+              }
+              if (empty($fetchinvoive) || empty($invoice_type)) {
+                  $fetchOrder = fetchRecord($dbc, "orders", "order_id", $invoice_id);
+                  if (!empty($fetchOrder)) {
+                      $fetchinvoive = $fetchOrder;
+                      $invoice_type = $fetchOrder['credit_sale_type'] ?? '';
+                      $order_date = !empty($fetchOrder['order_date']) ? $fetchOrder['order_date'] : $order_date;
+                      $payment_status = $fetchOrder['payment_status'] ?? 0;
+                  }
+              }
+              $Date = date('Y-m-d');
+              $now = strtotime($Date);
+              $parsed_days = intval(filter_var($invoice_type, FILTER_SANITIZE_NUMBER_INT));
+              if ($parsed_days > 0 && $payment_status == 0) {
+                  $next_date = date('Y-m-d', strtotime($order_date . ' + ' . $parsed_days . ' days'));
+                  $daytype = $parsed_days;
                   $payemnt_date = $next_date;
-                }elseif($invoice_type=="30days" AND $fetchinvoive['payment_status']==0){
-                  $next_date= date('Y-m-d', strtotime($fetchinvoive['order_date']. ' + 30 days'));
-                   $daytype = 30;
+              } else {
+                  $next_date = date('Y-m-d', strtotime($order_date . ' + 30 days'));
+                  $daytype = 30;
                   $payemnt_date = $next_date;
-                }elseif($invoice_type=="5days" AND $fetchinvoive['payment_status']==0){
-                  $next_date= date('Y-m-d', strtotime($fetchinvoive['order_date']. ' + 5 days'));
-                   $daytype = 5;
-                  $payemnt_date = $next_date;
-                }
+              }
 
                 // else{
                 //   $next_date='special';
@@ -317,17 +353,14 @@
               }else{
            $Date = date('Y-m-d');
                 $now = strtotime($Date); // or your date as well                        
-                if ($invoice_type=="15days" AND $fetchinvoive['payment_status']==0) {
-                  $next_date= date('Y-m-d', strtotime($fetchinvoive['order_date']. ' + 15 days'));
-                   $daytype = 15;
+                $parsed_days = intval(filter_var($invoice_type, FILTER_SANITIZE_NUMBER_INT));
+                if ($parsed_days > 0 && ($fetchinvoive['payment_status'] ?? 0) == 0) {
+                  $next_date = date('Y-m-d', strtotime($order_date . ' + ' . $parsed_days . ' days'));
+                  $daytype = $parsed_days;
                   $payemnt_date = $next_date;
-                }elseif($invoice_type=="30days" AND $fetchinvoive['payment_status']==0){
-                  $next_date= date('Y-m-d', strtotime($fetchinvoive['order_date']. ' + 30 days'));
-                   $daytype = 30;
-                  $payemnt_date = $next_date;
-                }elseif($invoice_type=="5days" AND $fetchinvoive['payment_status']==0){
-                  $next_date= date('Y-m-d', strtotime($fetchinvoive['order_date']. ' + 5 days'));
-                   $daytype = 5;
+                } else {
+                  $next_date = date('Y-m-d', strtotime($order_date . ' + 30 days'));
+                  $daytype = 30;
                   $payemnt_date = $next_date;
                 }
                 // else{

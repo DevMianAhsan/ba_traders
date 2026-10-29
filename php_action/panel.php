@@ -120,9 +120,11 @@ if (isset($_REQUEST['add_brand_name'])) {
 	if ($_REQUEST['brand_id']=='') {
 		if (insert_data($dbc,"brands",$data_array)) {
 			# code...
+			$new_brand_id = mysqli_insert_id($dbc);
 			$response=[
 				"msg"=>"Brand Added successfully",
-				"sts"=>"success"
+				"sts"=>"success",
+				"id"=>$new_brand_id
 			];
 
 		}else{
@@ -150,18 +152,29 @@ if (isset($_REQUEST['add_brand_name'])) {
 
 	}
 if (isset($_REQUEST['add_category_name'])) {
+		$response=[
+			"msg"=>"No action performed",
+			"sts"=>"danger"
+		];
 		$data_array = [
 			'categories_name'=>$_REQUEST['add_category_name'],
 			'categories_status'=>$_REQUEST['categories_status'],
-			'category_price'=>$_REQUEST['category_price'],
-			'category_purchase'=>$_REQUEST['category_purchase'],
 		];
+		if (isset($_REQUEST['category_price'])) {
+			$data_array['category_price'] = $_REQUEST['category_price'];
+		}
+		if (isset($_REQUEST['category_purchase'])) {
+			$data_array['category_purchase'] = $_REQUEST['category_purchase'];
+		}
+
 	if ($_REQUEST['categories_id']=='') {
 		if (insert_data($dbc,"categories",$data_array)) {
 			# code...
+			$new_cat_id = mysqli_insert_id($dbc);
 			$response=[
-				"msg"=>"categories Added successfully",
-				"sts"=>"success"
+				"msg"=>"Category Added successfully",
+				"sts"=>"success",
+				"id"=>$new_cat_id
 			];
 
 		}else{
@@ -173,38 +186,39 @@ if (isset($_REQUEST['add_category_name'])) {
 	}else{
 		if (update_data($dbc,"categories",$data_array,"categories_id",$_REQUEST['categories_id'])) {
 			# code...
-			
-			$proQ=mysqli_query($dbc,"SELECT * FROM product WHERE category_id='".$_REQUEST['categories_id']."'");
-			if (mysqli_num_rows($proQ)>0) {
-				
-				while($product=mysqli_fetch_assoc($proQ)):
-					$current_rate=$fif_rate=$thir_rate=$total=0;
-					$total=(double)$product['product_mm']*(double)$product['product_inch']*(double)$product['product_meter'];
-					$current_rate=($total*(double)$_REQUEST['category_price'])/54;
-					$current_rate=round($current_rate);
-				
-					$purchase_rate=($total*(double)$_REQUEST['category_purchase'])/54;
-					$purchase_rate=round($purchase_rate);
-				
-					$fif_rate=($total*((double)$_REQUEST['category_price']+0.05))/54;
-					$fif_rate=round($fif_rate);
-				
-					$thir_rate=($total*((double)$_REQUEST['category_price']+0.10))/54;
-					$thir_rate=round($thir_rate);
-					$data_array = [
-						'current_rate'=>@$current_rate,
-						'f_days'=>@$fif_rate,
-						't_days'=>@$thir_rate,
-						'purchase_rate'=>$purchase_rate,
-					];
-					update_data($dbc,"product",$data_array,"product_id",$product['product_id']);
+			if (!empty($_REQUEST['category_price'])) {
+				$proQ=mysqli_query($dbc,"SELECT * FROM product WHERE category_id='".$_REQUEST['categories_id']."'");
+				if (mysqli_num_rows($proQ)>0) {
+					
+					while($product=mysqli_fetch_assoc($proQ)):
+						$current_rate=$fif_rate=$thir_rate=$total=0;
+						$total=(double)$product['product_mm']*(double)$product['product_inch']*(double)$product['product_meter'];
+						$current_rate=($total*(double)$_REQUEST['category_price'])/54;
+						$current_rate=round($current_rate);
+					
+						$purchase_rate=($total*(double)@$_REQUEST['category_purchase'])/54;
+						$purchase_rate=round($purchase_rate);
+					
+						$fif_rate=($total*((double)@$_REQUEST['category_price']+0.05))/54;
+						$fif_rate=round($fif_rate);
+					
+						$thir_rate=($total*((double)@$_REQUEST['category_price']+0.10))/54;
+						$thir_rate=round($thir_rate);
+						$product_data_array = [
+							'current_rate'=>@$current_rate,
+							'f_days'=>@$fif_rate,
+							't_days'=>@$thir_rate,
+							'purchase_rate'=>$purchase_rate,
+						];
+						update_data($dbc,"product",$product_data_array,"product_id",$product['product_id']);
 
-				endwhile;
-				$response=[
+					endwhile;
+				}
+			}
+			$response=[
 				"msg"=>"categories Updated successfully",
 				"sts"=>"success"
 			];
-			}
 
 		}else{
 			$response=[

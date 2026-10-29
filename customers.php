@@ -3,26 +3,32 @@
 <?php include_once 'includes/head.php';
 $getCustomer = @$_REQUEST['id'];
 if(@$getCustomer){
-
-$Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = '$getCustomer'"));
+    $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = '$getCustomer'"));
 }
 
- ?>
+if (empty($_REQUEST['type'])) {
+    if (!empty($Getdata['customer_type'])) {
+        $_REQUEST['type'] = $Getdata['customer_type'];
+    } else {
+        $_REQUEST['type'] = 'customer';
+    }
+}
+?>
   <body class="horizontal light  ">
     <div class="wrapper">
   <?php include_once 'includes/header.php'; ?>
       <main role="main" class="main-content">
-        <div class="container">
+        <div class="container-fluid">
         	<div class="row">
         		<div class="col-sm-12">
         			
 
 		<div class="card card-info">
-				<div class="card-header text-center h4  card-bg card-text"><?=ucfirst($_REQUEST['type'])?> Information</div>
+				<div class="card-header text-center h4  card-bg card-text" id="card_form_title"><?=isset($_REQUEST['id']) ? "Edit " : ""?><?=ucfirst($_REQUEST['type'])?> Information</div>
 				<div class=" card-body">
 					 <form action="php_action/custom_action.php" method="post" id="formData">
-					 	<input type="hidden" name="add_manually_user" value="<?=@$_REQUEST['type']?>">
-					 	<input type="hidden" name="customer_id" value="<?=@$_REQUEST['id']?>">
+					 	<input type="hidden" name="add_manually_user" id="add_manually_user" value="<?=@$_REQUEST['type']?>">
+					 	<input type="hidden" name="customer_id" id="customer_id" value="<?=@$_REQUEST['id']?>">
 					 <div class="form-group row">	
 					<div class="col-sm-6">
 						
@@ -43,7 +49,7 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
 						<div class="col-sm-6">
 						 
 				    <label for="email">Phone:</label>
-				    <input type="number" class="form-control" id="customer_phone" name="customer_phone" placeholder="Phone" value="<?=@$Getdata['customer_phone']?>" required>
+				    <input type="text" class="form-control" id="customer_phone" name="customer_phone" placeholder="Phone" value="<?=@$Getdata['customer_phone']?>" required>
 				  </div>
 				
 
@@ -52,13 +58,33 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
 				    
 
 				    <label for="active">Status:</label>
-				    <select name="customer_status" required class="form-control "> 
-				    	<option value="1">Active</option>
-				    	<option value="0">Deactive</option>
+				    <select name="customer_status" id="customer_status" required class="form-control "> 
+				    	<option <?=(@$Getdata['customer_status']=="1" || !isset($Getdata['customer_status']))?"selected":""?> value="1">Active</option>
+				    	<option <?=(@$Getdata['customer_status']=="0")?"selected":""?> value="0">Deactive</option>
 				    </select>
 				  
 				  </div>
 					</div>
+					<?php if ($_REQUEST['type'] == 'customer' || $_REQUEST['type'] == 'supplier'): ?>
+					<div class="form-group row">
+						<div class="col-sm-3">
+							<label for="customer_strn">S.Tax Reg No. (STRN):</label>
+							<input type="text" class="form-control" id="customer_strn" name="customer_strn" placeholder="e.g. 32-77-8761-660-49" value="<?=@$Getdata['customer_strn']?>">
+						</div>
+						<div class="col-sm-3">
+							<label for="customer_ntn">NTN No.:</label>
+							<input type="text" class="form-control" id="customer_ntn" name="customer_ntn" placeholder="e.g. 5368642-7" value="<?=@$Getdata['customer_ntn']?>">
+						</div>
+						<div class="col-sm-3">
+							<label for="customer_province">Province:</label>
+							<input type="text" class="form-control" id="customer_province" name="customer_province" placeholder="e.g. PUNJAB, SINDH" value="<?=@$Getdata['customer_province']?>">
+						</div>
+						<div class="col-sm-3">
+							<label for="customer_cnic">CNIC No.:</label>
+							<input type="text" class="form-control" id="customer_cnic" name="customer_cnic" placeholder="CNIC No." value="<?=@$Getdata['customer_cnic']?>">
+						</div>
+					</div>
+					<?php endif; ?>
 
 				  
 				  
@@ -74,10 +100,12 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
           if(isset($_REQUEST['id'])){
           	?>
           	 <button type="submit" id="formData_btn" class="btn btn-admin2" name="edit_customer">Update</button>
+             <button type="button" class="btn btn-secondary" id="cancel_btn" onclick="cancelCustomerEdit()">Cancel</button>
           	 <?php
           	}else{
 ?>
           <button type="submit" id="formData_btn" class="btn btn-admin" name="add_customer">ADD</button>
+          <button type="button" class="btn btn-secondary" id="cancel_btn" style="display:none;" onclick="cancelCustomerEdit()">Cancel</button>
           <?php
 }
           ?>
@@ -105,6 +133,10 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
 			<th>Name</th>
 			<th>Email</th>
 			<th>Phone</th>
+			<?php if($_REQUEST['type'] == 'customer' || $_REQUEST['type'] == 'supplier'): ?>
+			<th>STRN</th>
+			<th>NTN</th>
+			<?php endif; ?>
 			
 			<th>Created Date</th>
 			<?php if($_REQUEST['type'] == 'customer'): ?>
@@ -126,6 +158,10 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
 			<td class="text-capitalize"><?=$r['customer_name']?></td>
 			<td class="text-lowercase"><?=$r['customer_email']?></td>
 			<td><?=$r['customer_phone']?></td>
+			<?php if($_REQUEST['type'] == 'customer' || $_REQUEST['type'] == 'supplier'): ?>
+			<td><?=$r['customer_strn']?></td>
+			<td><?=$r['customer_ntn']?></td>
+			<?php endif; ?>
 			
 			<td><?=$r['customer_add_date']?></td>
 			<?php if($_REQUEST['type'] == 'customer'): ?>
@@ -134,10 +170,7 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
 			<td>
 				<button class="btn btn-admin btn-sm float-right" onclick="SetLimit(<?=$r['customer_id']?>,'<?=$r['customer_name']?>')" id="limit">Limit</button>
 			  <?php if (@$userPrivileges['nav_edit']==1 || $fetchedUserRole=="admin"): ?>
-                            <form action="customers.php?type=<?=$_REQUEST['type']?>" method="POST">
-                              <input type="hidden" name="id" value="<?=$r['customer_id']?>">
-                              <button type="submit" class="btn btn-admin btn-sm" >Edit</button>
-                            </form>
+                            <button type="button" class="btn btn-admin btn-sm" onclick="editCustomer(<?=$r['customer_id']?>)">Edit</button>
                <?php   endif ?>
 
               </td>            
@@ -167,6 +200,63 @@ $Getdata = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE c
 <script type="text/javascript">
 
 	 
+
+	function editCustomer(id) {
+		$.ajax({
+			type: 'POST',
+			url: 'php_action/custom_action.php',
+			data: { fetch_customer_details: id },
+			dataType: 'json',
+			success: function(response) {
+				if (response.sts == 'success') {
+					$('#customer_id').val(response.customer_id);
+					$('#customer_name').val(response.customer_name);
+					$('#customer_email').val(response.customer_email || '');
+					$('#customer_phone').val(response.customer_phone || '');
+					$('#customer_status').val(response.customer_status !== undefined ? response.customer_status : '1');
+					$('#customer_strn').val(response.customer_strn || '');
+					$('#customer_ntn').val(response.customer_ntn || '');
+					$('#customer_province').val(response.customer_province || '');
+					$('#customer_cnic').val(response.customer_cnic || '');
+					$('#customer_address').val(response.customer_address || '');
+
+					$('#formData_btn').text('Update').removeClass('btn-admin').addClass('btn-admin2');
+					$('#cancel_btn').show();
+
+					var currentType = $('#add_manually_user').val() || 'customer';
+					$('#card_form_title').text('Edit ' + currentType.charAt(0).toUpperCase() + currentType.slice(1) + ' Information');
+
+					$('html, body').animate({
+						scrollTop: $('#formData').offset().top - 80
+					}, 300);
+					$('#customer_name').focus();
+				} else {
+					sweeetalert(response.msg || 'Error loading details', 'error', 1500);
+				}
+			},
+			error: function() {
+				sweeetalert('Failed to fetch details', 'error', 1500);
+			}
+		});
+	}
+
+	function cancelCustomerEdit() {
+		var form = $('#formData');
+		form[0].reset();
+		form.find('input[type="text"], input[type="number"], input[type="email"], textarea').val('');
+		$('#customer_id').val('');
+		$('#customer_status').val('1');
+		$('#formData_btn').text('ADD').removeClass('btn-admin2').addClass('btn-admin');
+		$('#cancel_btn').hide();
+
+		var currentType = $('#add_manually_user').val() || 'customer';
+		$('#card_form_title').text(currentType.charAt(0).toUpperCase() + currentType.slice(1) + ' Information');
+
+		var cleanUrl = typeof getCleanUrl === 'function' ? getCleanUrl() : window.location.pathname + '?type=' + currentType;
+		if (window.history && window.history.replaceState) {
+			window.history.replaceState({}, document.title, cleanUrl);
+		}
+	}
 
 	function SetLimit(customer_id,customer_name){
 

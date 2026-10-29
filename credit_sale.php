@@ -31,6 +31,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
               <input type="hidden" name="product_order_id" value="<?=!isset($_REQUEST['edit_order_id'])?"":base64_decode($_REQUEST['edit_order_id'])?>">
             <div class="row form-group">
               <input type="hidden" name="payment_type" id="payment_type" value="credit_sale">
+              <input type="hidden" name="print_type" value="dc">
               <div class="col-md-1">
                 <label>Order ID#</label>
                 <?php $result = mysqli_query($dbc,"
@@ -77,7 +78,7 @@ $next_increment = $data['Auto_increment']; ?>
 
                       <div class="col-sm-2">
                        
-                     <label>Party PO</label>
+                     <label>Party PO#</label>
                       <div class="input-group">
                      <!--  <input type="text" id="voucher_no" value="<?=@$fetchOrder['voucher_no']?>" class="form-control" autocomplete="off" name="voucher_no" required> -->
                      
@@ -224,7 +225,7 @@ $next_increment = $data['Auto_increment']; ?>
                 <td>
                
             <button type="button" onclick="removeByid(`#product_idN_<?=$r['product_id']?>`)" class="fa fa-trash text-danger" href="#" ></button>
-                  <button type="button" onclick="editByid(<?=$r['product_id']?>,`<?=$r['product_code']?>`,<?=$r['rate']?>,<?=$r['quantity']?>,<?=$r['pckg']?>,<?=$r['p_pckg']?>)" class="fa fa-edit text-success ml-2 "  ></button>
+                  <button type="button" onclick="editByid(<?=$r['product_id']?>,`<?=$r['product_code']?>`,<?=$r['rate']?>,<?=$r['quantity']?>,`<?=$r['rate_mm']?>`,`<?=$r['pckg']?>`,`<?=$r['p_pckg']?>`)" class="fa fa-edit text-success ml-2 "  ></button>
                   
             </td>
                 </tr>

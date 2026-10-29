@@ -16,7 +16,7 @@ if($_REQUEST['type'] == 'dc'){
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Delivery Challan</title>
   <link rel="stylesheet" href="style.css">
   <style>
     .page-container {
@@ -28,13 +28,12 @@ if($_REQUEST['type'] == 'dc'){
     * {
       margin: 0;
       padding: 0;
-      font-family: tahoma;
+      font-family: Tahoma, Arial, sans-serif;
     }
 
     .top-sec {
-      display: flex;
-      margin-top: 1rem;
-      justify-content: space-between;
+      text-align: center;
+      margin-top: 0;
     }
 
     table {
@@ -76,7 +75,12 @@ if($_REQUEST['type'] == 'dc'){
     .order-det {
       display: flex;
       justify-content: space-between;
-      margin-top: 4rem;
+      margin-top: 1.5rem;
+    }
+
+    .order-data {
+      line-height: 1.5rem;
+      font-weight: bold;
     }
 
 
@@ -87,6 +91,13 @@ if($_REQUEST['type'] == 'dc'){
       text-align: right;
       margin-top: 8px;
       font-weight: bold;
+    }
+
+    .order-n-d .com-det p {
+      border: none;
+      font-weight: normal;
+      margin-top: 0;
+      text-align: right;
     }
 
     .order-n-d h4 {
@@ -125,10 +136,10 @@ if($_REQUEST['type'] == 'dc'){
     }
 
     .sign-sec {
-      justify-content: space-between;
+      justify-content: flex-end;
       padding: 0 20px;
       display: flex;
-      margin-top: 5rem;
+      margin-top: 60px;
     }
 
     .sign-sec h4 {
@@ -154,46 +165,33 @@ if($_REQUEST['type'] == 'dc'){
 <body>
   <div class="page-container">
     <div class="top-sec">
-      <div class="com-det">
-        <h2><?=strtoupper($customer['customer_name'])?></h2>
-        <p><?=$customer['customer_address']?></p>
-        <p>Phone : <?=$customer['customer_phone']?><span></span> | Email : <?=$customer['customer_email']?> <span></span></p>
-      </div>
-      <div>
-        <img style="width: 200px;"
-          src="img/logo/<?=$get_company['logo']?>"
-          alt="">
-      </div>
-      <div class="com-det">
-        <h1>DELIVERY CHALLAN</h1>
-        <p style="text-align: right;">Original</p>
-
-      </div>
+      <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px">
+      <h5 style="margin-top: 5px; text-align: center;"><?=$get_company['address']?></h5>
+      <h5 style="margin-top: 5px; text-align: center;">Phone: <?=$get_company['company_phone']?></h5>
     </div>
     <div class="order-det">
-      <div class="order-data" style="width: 70%;">
-        <div class="table-sec1">
-          <table style="width: 100%;">
-            <thead>
-              <tr>
-                <th style="white-space: nowrap; text-align: right ;padding: 20px 10px;">Order By:</th>
-                <th style="width: 100% ;"></th>
-              </tr>
-              <tr>
-                <th style="white-space: nowrap; text-align: right ;padding: 20px 10px;">Delivered to:</th>
-                <th style="width: 100% ; "></th>
-              </tr>
-            </thead>
-          </table>
-        </div>
-
+      <div class="order-data">
+        <h4>Customer: <span></span></h4>
+        <?php
+          $cust_name = !empty($customer['customer_name']) ? $customer['customer_name'] : ($order['client_name'] ?? '');
+          $cust_address = !empty($customer['customer_address']) ? $customer['customer_address'] : (!empty($order['address']) ? $order['address'] : '');
+        ?>
+        <h5><?=ucwords(strtolower($cust_name ?? ''))?></h5>
+        <?php if (!empty($cust_address)): ?>
+        <h5 style="margin-top: 8px;">
+          <?=nl2br(htmlspecialchars(ucwords(strtolower($cust_address))))?>
+        </h5>
+        <?php endif; ?>
       </div>
       <div class="order-n-d">
+        <div class="com-det" style="text-align: right; margin-bottom: 10px;">
+          <h1>Delivery Challan</h1>
+          <p style="text-align: right; border: none; font-weight: normal; margin-top: 0;">Original</p>
+        </div>
         <h4>Challan Number</h4>
-        <p style="padding-right: 15px"><?=$order['order_id']?></p>
+        <p style="padding-right: 10px"><?=$order['order_id']?></p>
         <h4>Challan Date</h4>
-        <p style="padding-right: 15px"><?=$order['order_date']?></p>
-        <h3 style="color: #424242;margin: 5px 10px 0;">CUSTOMER COPY</h3>
+        <p style="padding-right: 10px"><?=$order['order_date']?></p>
       </div>
 
     </div>
@@ -205,7 +203,7 @@ if($_REQUEST['type'] == 'dc'){
             <th style="width: 100% ;"><?=$order['order_narration']?></th>
           </tr>
           <tr>
-            <th style="white-space: nowrap;">Driver :</th>
+            <th style="white-space: nowrap;">Vehicle No :</th>
             <th style="width: 100% ;"><?=$order['vehicle_no']?></th>
           </tr>
         </thead>
@@ -235,12 +233,12 @@ if($_REQUEST['type'] == 'dc'){
           <tr>
            <th><?=$order['party_po']?></th>
             
-            <th><?=$d['product_name']?></th>
+            <th><?=ucwords(strtolower($d['product_name'] ?? ''))?></th>
            
             <th><?=$d['quantity']?></th>
-            <th>KG</th>
-            <th>.</th>
-            <th>.</th>
+            <th><?=ucwords(strtolower($d['product_unit'] ?? ''))?></th>
+            <th><?=$d['pckg']?></th>
+            <th><?=$d['p_pckg']?></th>
           </tr>
           <?php
           $totalQTY +=$d['quantity']; 
@@ -250,8 +248,6 @@ if($_REQUEST['type'] == 'dc'){
         <tfoot>
 
           <tr>
-          
-           
            
             <td colspan="2">TOTAL:</td>
             <td> <?=number_format($totalQTY)?></td>
@@ -260,7 +256,6 @@ if($_REQUEST['type'] == 'dc'){
       </table>
     </div>
     <div class="sign-sec">
-      <h4>Prepared By</h4>
       <h4>Approved By</h4>
     </div>
 
@@ -274,18 +269,25 @@ if($_REQUEST['type'] == 'dc'){
 ?>
 <!DOCTYPE html>
 <html>
-<style>
-        table,td,td,body {
-            font-family: Tahoma, Arial, sans-serif;
-        }
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sale Order</title>
+  <style>
+    table,td,td,body {
+        font-family: Tahoma, Arial, sans-serif;
+    }
 
-        h1, p,span {
-            font-family: Tahoma, Arial, sans-serif;
-        }
-    </style>
+    h1, p,span {
+        font-family: Tahoma, Arial, sans-serif;
+    }
 
+    * {
+      margin: 0;
+      padding: 0;
+      font-family: Tahoma, Arial, sans-serif;
+    }
 
-<style type="text/css">
     .container{
         height: 100% !important;
         background-color: #fff;
@@ -324,103 +326,123 @@ if($_REQUEST['type'] == 'dc'){
 
     }
     .tfoot_row tr td{
-            font-size: 17px;
+        font-size: 17px;
         font-weight: bolder;
         color: #000;
         text-align: center;
-
     }
-</style>
+
+    .top-sec {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .order-det {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1.5rem;
+    }
+
+    .order-data {
+      line-height: 1.5rem;
+      font-weight: bold;
+    }
+
+    .order-n-d p {
+      border: 1px solid #111111;
+      text-align: right;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .order-n-d .com-det p {
+      border: none;
+      font-weight: normal;
+      margin-top: 0;
+      text-align: right;
+    }
+
+    .order-n-d h4 {
+      font-weight: bold;
+      margin-top: 2px;
+    }
+  </style>
+</head>
 
 <body>
 <?php   for ($i=0; $i < 1; $i++) : 
     $totalQTY= 0;
-            if($i>0){
-           $margin = "margin-top:-270px !important";
-           $copy = "Company Copy";
-           
-       }else{
-         $margin = "";
-           $copy = "Customer Copy";
-       } 
-
-     if ($_REQUEST['type']=="purchase") {
-       $order=fetchRecord($dbc,"purchase","purchase_id",$_REQUEST['id']);
-        $table_row="390px";
-       $getDate=$order['purchase_date'];
-         if ($order['payment_type']=="credit_purchase") {
-        
-            $order_type="credit purchase";
-       
-            }else{
-                $order_type="cash purchase";
-            }
-    $order_item=mysqli_query($dbc,"SELECT purchase_item.*,product.* FROM purchase_item INNER JOIN product ON purchase_item.product_id=product.product_id WHERE purchase_item.purchase_id='".$_REQUEST['id']."'");
- }else{
-
-  $order=fetchRecord($dbc,"orders","order_id",$_REQUEST['id']);
-   $getDate=$order['order_date'];
-
-    $order_item=mysqli_query($dbc,"SELECT order_item.*,product.* FROM order_item INNER JOIN product ON order_item.product_id=product.product_id WHERE order_item.order_id='".$_REQUEST['id']."'");
-    if ($order['payment_type']=="credit_sale") {
-         $table_row="390px";
-        if ($order['payment_type']=="none") {
-            $order_type="credit sale";
-        }else{
-             $order_type=$order['credit_sale_type']." (Credit)";   
-        }
+    if($i>0){
+       $margin = "margin-top:-270px !important";
+       $copy = "Company Copy";
     }else{
-        $order_type="cash sale";
-        $table_row="450px";
-    }
+       $margin = "";
+       $copy = "Customer Copy";
+    } 
 
-}
-       ?>
+    if ($_REQUEST['type']=="purchase") {
+       $order=fetchRecord($dbc,"purchase","purchase_id",$_REQUEST['id']);
+       $customer = !empty($order['customer_account']) ? fetchRecord($dbc,"customers","customer_id",$order['customer_account']) : null;
+       $table_row="390px";
+       $getDate=$order['purchase_date'];
+       if ($order['payment_type']=="credit_purchase") {
+          $order_type="credit purchase";
+       }else{
+          $order_type="cash purchase";
+       }
+       $order_item=mysqli_query($dbc,"SELECT purchase_item.*,product.* FROM purchase_item INNER JOIN product ON purchase_item.product_id=product.product_id WHERE purchase_item.purchase_id='".$_REQUEST['id']."'");
+    }else{
+       $order=fetchRecord($dbc,"orders","order_id",$_REQUEST['id']);
+       $customer = !empty($order['customer_account']) ? fetchRecord($dbc,"customers","customer_id",$order['customer_account']) : null;
+       $getDate=$order['order_date'];
+
+       $order_item=mysqli_query($dbc,"SELECT order_item.*,product.* FROM order_item INNER JOIN product ON order_item.product_id=product.product_id WHERE order_item.order_id='".$_REQUEST['id']."'");
+       if ($order['payment_type']=="credit_sale") {
+            $table_row="390px";
+            if ($order['payment_type']=="none") {
+                $order_type="credit sale";
+            }else{
+                 $order_type=$order['credit_sale_type']." (Credit)";   
+            }
+       }else{
+            $order_type="cash sale";
+            $table_row="450px";
+       }
+    }
+?>
        
 <div class="container">
-
-                
-           
-            <header>
-                <div class="row">
-                     <div class="col-sm-9">
-                      <?php if ($order['payment_type']!="cash_in_hand"){ ?>
-                         <img src="img/logo/<?=$get_company['logo']?>" width="220"  class="img-fluid " style="margin-top: 10px">
-                         <p style="margin-left: -10px; font-weight: bolder;font-size: 15px">PH  No. :<?=$get_company['company_phone']?></p>
-                         <p style="margin-left: -10px;margin-top: -10px; font-weight: bolder;font-size: 15px">PH  No. :<?=$get_company['personal_phone']?></p>
-                          <?php }else{
-                            ?>
-                            <br/><br/><br/><br/><br/>
-                            <?php
-                          } ?>
-                          <h2>Sold To:</h2>
-                          <p><?=strtoupper($order['client_name'])?></p>
-
-                </div>
-        <div class="col-sm-3 mt-3 " style="text-align: right;">
-
-          <h2>INVOICE</h2>
-          <span><b>Orignal</b></span><br/>
-          <h4>Invoice No</h4>
-          <span><?=$_REQUEST['id']?></span>
-          <hr/>
-            <h4>Invoice Date</h4>
-          <span> <?php 
-               echo $date = date('D d-M-Y h:i A', strtotime($order['timestamp'] . " +10 hours"));
-               ?> </span>
-          <hr/>
-         
-          
-          
-  
-
-          
-        </div>
-        <center style="width: 100%;margin-top: -5px;"></center>
+    <div class="top-sec">
+      <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px">
+      <h5 style="margin-top: 5px; text-align: center;"><?=$get_company['address']?></h5>
+      <h5 style="margin-top: 5px; text-align: center;">Phone: <?=$get_company['company_phone']?></h5>
+    </div>
+    <div class="order-det">
+      <div class="order-data">
+        <h4>Customer: <span></span></h4>
+        <?php
+          $cust_name = !empty($customer['customer_name']) ? $customer['customer_name'] : ($order['client_name'] ?? '');
+          $cust_address = !empty($customer['customer_address']) ? $customer['customer_address'] : (!empty($order['address']) ? $order['address'] : '');
+        ?>
+        <h5><?=ucwords(strtolower($cust_name ?? ''))?></h5>
+        <?php if (!empty($cust_address)): ?>
+        <h5 style="margin-top: 8px;">
+          <?=nl2br(htmlspecialchars(ucwords(strtolower($cust_address))))?>
+        </h5>
+        <?php endif; ?>
       </div>
-            </header>
-            
-   
+      <div class="order-n-d">
+        <div class="com-det" style="text-align: right; margin-bottom: 10px;">
+          <h1><?=($_REQUEST['type'] == 'purchase') ? 'Purchase Order' : 'Sale Order'?></h1>
+          <p style="text-align: right; border: none; font-weight: normal; margin-top: 0;">Office Copy</p>
+        </div>
+        <h4><?=($_REQUEST['type'] == 'purchase') ? 'Purchase Order No' : 'Sales Order No'?></h4>
+        <p style="padding-right: 10px"><?=$_REQUEST['id']?></p>
+        <h4><?=($_REQUEST['type'] == 'purchase') ? 'Purchase Order Date' : 'Sales Order Date'?></h4>
+        <p style="padding-right: 10px"><?=empty($order['order_date']) ? (empty($order['purchase_date']) ? date('Y-m-d', strtotime($order['timestamp'])) : $order['purchase_date']) : $order['order_date']?></p>
+      </div>
+
+    </div>
 
     <div class="row table_row mt-4" style="min-height: <?=$table_row?>;">
         <div class="col-sm-12 p-0">

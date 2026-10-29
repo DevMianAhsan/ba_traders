@@ -98,7 +98,7 @@
                       </div>
                       <div class="col-sm-6">
                          <label for="">Product Category</label>
-                          <select class="form-control searchableSelect"   required name="category_id" id="tableData1" size="1"   >
+                          <select class="form-control searchableSelect"   required name="category_id" id="modal_category_id" size="1"   >
                           <option    value="">Select Category</option>
                           <?php
                              $result=mysqli_query($dbc,"select * from categories");
@@ -126,18 +126,17 @@
                 </div>
                  <div class="form-group row">
                   <div class="col-sm-4 mb-3 mb-sm-0">
-                      <label for=""> Rate</label>
-                      <input type="number" class="form-control" id="current_rate" placeholder=" Rate" name="current_rate"  required value="<?=@$fetchproduct['current_rate']?>">                       
-                      </div>
-                    <div class="col-sm-4 mb-3 mb-sm-0">
-                      <label for="">15 Days Sale Rate</label>
-                      <input type="number" class="form-control" id="f_days" placeholder="15 Days Sale Rate" name="f_days"   value="<?=@$fetchproduct['f_days']?>">                       
-                      </div>
-                      <div class="col-sm-4 mb-3 mb-sm-0">
-                      <label for="">30 Days Sale Rate</label>
-                      <input type="number" class="form-control" id="t_days" placeholder="30 Days Sale Rate" name="t_days"   value="<?=@$fetchproduct['t_days']?>">                       
-                      </div>
-                      
+                      <label for="modal_current_rate">Sale Price</label>
+                      <input type="number" step="any" class="form-control" id="modal_current_rate" placeholder="Sale Price" name="current_rate" required value="<?=@$fetchproduct['current_rate']?>">                       
+                  </div>
+                  <div class="col-sm-4 mb-3 mb-sm-0">
+                      <label for="modal_purchase_rate">Purchase Price</label>
+                      <input type="number" step="any" class="form-control" id="modal_purchase_rate" placeholder="Purchase Price" name="purchase_rate" value="<?=@$fetchproduct['purchase_rate']?>">                       
+                  </div>
+                  <div class="col-sm-4 mb-3 mb-sm-0">
+                      <label for="modal_hs_code">HS Code</label>
+                      <input type="text" class="form-control" id="modal_hs_code" placeholder="HS Code" name="hs_code" value="<?=@$fetchproduct['hs_code']?>">                       
+                  </div>
                 </div>
                       <div class="form-group row">
                        <div class="col-sm-6">
@@ -203,8 +202,8 @@
                                     <div class="col-sm-6">
                                     <label for="">Brand Status</label>
                                     <select class="form-control" id="brand_status" name="brand_status"> 
-                                                <option <?=@($brands['brand_status']==0)?"selected":""?> value="0">Inactive</option>
-                                        <option  <?=@($brands['brand_status']==1)?"selected":"selected"?> value="1">Active</option>
+                                                <option <?=(isset($brands['brand_status']) && $brands['brand_status']==0)?"selected":""?> value="0">Inactive</option>
+										<option <?=(!isset($brands['brand_status']) || $brands['brand_status']==1)?"selected":""?> value="1">Active</option>
                                         
                                     </select>
                                 </div>
@@ -243,26 +242,26 @@
                             <form action="php_action/panel.php" method="POST" role="form" id="formData1">
                                 <div class="msg"></div>
                                 <div class="form-group row">
-                  <div class="col-sm-3">
+                  <div class="col-sm-6">
                   <label for="">Name</label>
                   <input type="text" class="form-control" value="<?=@$categories['categories_name']?>" id="categories_name" name="add_category_name"> 
                   <input type="hidden" class="form-control " value="<?=@$categories['categories_id']?>" id="categories_id" name="categories_id">
 
                   </div>
-                  <div class="col-sm-3">
+                  <!-- <div class="col-sm-3">
                   <label for="">Sale Price</label>
                   <input type="text" class="form-control" value="<?=@$categories['category_price']?>" id="category_price" name="category_price" required min="1"> 
                 </div>
                  <div class="col-sm-3">
                   <label for="">Purchase Price</label>
                   <input type="text" class="form-control" value="<?=@$categories['category_purchase']?>" id="category_price" name="category_purchase" required min="1"> 
-                </div>
-                  <div class="col-sm-3">
+                </div> -->
+                  <div class="col-sm-6">
                   <label for=""> Status</label>
                   <select class="form-control" id="categories_status" name="categories_status"> 
                     
-                    <option  <?=@($categories['categories_status']==1)?"selected":"selected"?> value="1">Active</option>
-                    <option <?=@($categories['categories_status']==0)?"selected":""?> value="0">Inactive</option>
+                    <option <?=(isset($categories['categories_status']) && $categories['categories_status']==0)?"selected":""?> value="0">Inactive</option>
+										<option <?=(!isset($categories['categories_status']) || $categories['categories_status']==1)?"selected":""?> value="1">Active</option>
                   </select>
                 </div>
                 </div>
@@ -320,5 +319,5 @@
        <script src='js/jquery.dataTables.min.js'></script>
     <script src='js/dataTables.bootstrap4.min.js'></script>
     <script src="js/apps.js"></script>
-    <script src="js/custom.js"></script>
-      <script src="js/panel.js"></script>
+    <script src="js/custom.js?v=<?=(file_exists('js/custom.js')?filemtime('js/custom.js'):time())?>"></script>
+      <script src="js/panel.js?v=<?=(file_exists('js/panel.js')?filemtime('js/panel.js'):time())?>"></script>

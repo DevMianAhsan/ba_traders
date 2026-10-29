@@ -26,11 +26,11 @@ if (isset($_REQUEST['edit_product_id'])) {
                 <b class="text-center card-text">Product Management</b>
            
              
-             <a href="stock.php?type=simple" class="btn btn-admin float-right btn-sm mx-1">Print Stock</a>
-             <a href="stock.php?type=amount" class="btn btn-admin float-right btn-sm mx-1">Print Stock With Amount</a>
+             <!-- <a href="stock.php?type=simple" class="btn btn-admin float-right btn-sm mx-1">Print Stock</a> -->
+             <!-- <a href="stock.php?type=amount" class="btn btn-admin float-right btn-sm mx-1">Print Stock With Amount</a> -->
               
                  <a href="product.php?act=add" class="btn btn-admin float-right btn-sm mx-1">Add New</a>
-                 <a href="product.php?act=add&type=pvc" class="btn btn-admin float-right btn-sm mx-1">Add PVC prodcuts</a>
+                 <!-- <a href="product.php?act=add&type=pvc" class="btn btn-admin float-right btn-sm mx-1">Add PVC prodcuts</a> -->
               </div>
             </div>
   
@@ -50,7 +50,7 @@ if (isset($_REQUEST['edit_product_id'])) {
                       </div>
 
                     <div class="col-sm-2 mb-3 mb-sm-0">
-                      <label for="">Product Description</label>
+                      <label for="">Product Name</label>
                       <input type="text" class="form-control" id="product_name" placeholder="Product Name" name="product_name"  required value="<?=@$fetchproduct['product_name']?>">                       
                       </div>
 
@@ -59,11 +59,11 @@ if (isset($_REQUEST['edit_product_id'])) {
                         <select class="form-control searchableSelect tableData" required name="brand_id" id="tableData"    size="1" >
                           <option    value="">Select Brand</option>
                           <?php
-                            $result=mysqli_query($dbc,"select * from brands");
+                            $result=mysqli_query($dbc,"select * from brands Where brand_status=1");
                              while($row=mysqli_fetch_array($result)){ 
                           ?>
                     
-                      <option  <?=@($fetchproduct['brand_id']!=$row["brand_id"])?"":"selected"?>  value="<?=$row["brand_id"]?>"><?=$row["brand_name"]?></option>
+                      <option  <?=@($fetchproduct['brand_id']==$row["brand_id"] && !empty($fetchproduct['brand_id']))?"selected":""?>  value="<?=$row["brand_id"]?>"><?=$row["brand_name"]?></option>
 
                       <?php   } ?>
                          </select>
@@ -78,10 +78,10 @@ if (isset($_REQUEST['edit_product_id'])) {
                           <select class="form-control searchableSelect"   required name="category_id" id="tableData1" size="1"   >
                           <option    value="">Select Category</option>
                           <?php
-                             $result=mysqli_query($dbc,"select * from categories");
+                             $result=mysqli_query($dbc,"select * from categories Where categories_status=1");
                              while($row=mysqli_fetch_array($result)){ 
                           ?>
-                          <option data-price="<?=$row["category_price"]?>"  <?=@($fetchproduct['category_id']!=$row["categories_id"])?"":"selected"?>  value="<?=$row["categories_id"]?>"><?=$row["categories_name"]?>-<?=$row["category_price"]?></option>
+                          <option data-price="<?=$row["category_price"]?>" data-purchase="<?=$row["category_purchase"]?>"  <?=@($fetchproduct['category_id']==$row["categories_id"] && !empty($fetchproduct['category_id']))?"selected":""?>  value="<?=$row["categories_id"]?>"><?=$row["categories_name"]?></option>
                       <?php   } ?>
                          </select>
                     </div>
@@ -94,8 +94,6 @@ if (isset($_REQUEST['edit_product_id'])) {
                       <label class="">UOM</label>
                         <input type="text" name="product_unit" value="<?=@$fetchproduct['product_unit']?>" class="form-control">
                     </div>
-
-
 
                       <div class="col-sm-3 mb-3 mb-sm-0 d-none">
                       <label for="">Product Desc /  دوسرا نام </label>
@@ -131,51 +129,60 @@ if (isset($_REQUEST['edit_product_id'])) {
                 ?>
                  <div class="form-group row">
                   <div class="col-sm-2 mb-3 mb-sm-0">
-                      <label for=""> Rate</label>
-                      <input type="text" class="form-control" id="current_rate" placeholder=" Rate" name="current_rate"  required value="<?=@$fetchproduct['current_rate']?>">                       
-                      </div>
-
-                       <div class="col-sm-2">
-                         <label for="">Product Alert on Quantity</label>
-                        <input type="text" required class="form-control" value="<?=(empty($fetchproduct))?5:$fetchproduct['alert_at']?>" id="alert_at" placeholder="Product Stock Alert" name="alert_at" >
-                      </div>
-                      <div class="col-sm-2">
-                        <label>Product Image</label>
-
-                            <input type="file" class="form-control" id="product_image" name="product_image" accept="image/*">
-                      </div>
-
-                       <div class="col-sm-2 mb-3 mb-sm-0">
-                      <label for="">Product Description</label>
-                       
-                      <textarea class="form-control" name="product_description" placeholder="Product Description"><?=@$fetchproduct['product_description']?></textarea>               
-                      </div>
-                      <div class="col-sm-2 mb-3 mb-sm-0">
-                        
-                         <label for="">Status</label>
-                        <select class="form-control" required name="availability" id="availability">
-                          <option    value="1">Available</option>
-                          <option    value="0">Not Available</option>
-                         </select>
-                      
-                      </div>
-                        <div class="col-sm-2 mb-3 mb-sm-0">
-                          <label for="">.</label><br/>
-                  <button class="btn btn-admin " type="submit" id="add_product_btn">Save</button> 
+                      <label for="purchase_rate">Purchase Rate</label>
+                      <input type="number" step="any" class="form-control" id="purchase_rate" placeholder="Purchase Rate" name="purchase_rate" value="<?=@$fetchproduct['purchase_rate']?>">                       
+                  </div>
+                  
+                  <div class="col-sm-2 mb-3 mb-sm-0">
+                      <label for="current_rate">Sale Rate</label>
+                      <input type="number" step="any" class="form-control" id="current_rate" placeholder="Sale Rate" name="current_rate" required value="<?=@$fetchproduct['current_rate']?>">                       
                   </div>
 
-                    <div class="col-sm-4 mb-3 mb-sm-0 d-none">
-                      <label for="">15 Days Sale Rate</label>
-                      <input type="text" class="form-control" id="f_days" placeholder="15 Days Sale Rate" name="f_days"   value="<?=@$fetchproduct['f_days']?>">                       
-                      </div>
-                      <div class="col-sm-4 mb-3 mb-sm-0 d-none">
-                      <label for="">30 Days Sale Rate</label>
-                      <input type="text" class="form-control" id="t_days" placeholder="30 Days Sale Rate" name="t_days"   value="<?=@$fetchproduct['t_days']?>">                       
-                      </div>
-                      
-                </div>
-                     
+                  
+                  <div class="col-sm-2 mb-3 mb-sm-0">
+                      <label for="hs_code">HS Code</label>
+                      <input type="text" class="form-control" id="hs_code" placeholder="HS Code" name="hs_code" value="<?=@$fetchproduct['hs_code']?>">                       
+                  </div>
 
+                  <div class="col-sm-2 mb-3 mb-sm-0">
+                      <label for="alert_at">Product Stock Alert</label>
+                      <input type="text" required class="form-control" value="<?=(empty($fetchproduct))?5:$fetchproduct['alert_at']?>" id="alert_at" placeholder="Product Stock Alert" name="alert_at">
+                  </div>
+
+                  <div class="col-sm-2 mb-3 mb-sm-0">
+                      <label for="product_image">Product Image</label>
+                      <input type="file" class="form-control" id="product_image" name="product_image" accept="image/*">
+                  </div>
+
+                  <div class="col-sm-2 mb-3 mb-sm-0">
+                      <label for="availability">Status</label>
+                      <select class="form-control" required name="availability" id="availability">
+                        <option value="1" <?=@($fetchproduct['availability']=="1" || !isset($fetchproduct['availability']))?"selected":""?>>Available</option>
+                        <option value="0" <?=@($fetchproduct['availability']=="0")?"selected":""?>>Not Available</option>
+                      </select>
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <div class="col-sm-10 mb-3 mb-sm-0">
+                      <label for="product_description">Product Description</label>
+                      <textarea class="form-control" id="product_description" name="product_description" placeholder="Product Description"><?=@$fetchproduct['product_description']?></textarea>               
+                  </div>
+                  
+                  <div class="col-sm-2 mb-3 mb-sm-0">
+                      <label class="invisible d-block">.</label><br/>
+                      <button class="btn btn-admin btn-block" type="submit" id="add_product_btn"><?=$btn_name?></button> 
+                  </div>
+
+                  <div class="col-sm-4 mb-3 mb-sm-0 d-none">
+                      <label for="">15 Days Sale Rate</label>
+                      <input type="text" class="form-control" id="f_days" placeholder="15 Days Sale Rate" name="f_days" value="<?=@$fetchproduct['f_days']?>">                       
+                  </div>
+                  <div class="col-sm-4 mb-3 mb-sm-0 d-none">
+                      <label for="">30 Days Sale Rate</label>
+                      <input type="text" class="form-control" id="t_days" placeholder="30 Days Sale Rate" name="t_days" value="<?=@$fetchproduct['t_days']?>">                       
+                  </div>
+                </div>
             </form>
           </div>
            <?php else: ?>
@@ -187,16 +194,17 @@ if (isset($_REQUEST['edit_product_id'])) {
                 <tr>
                 <th>#</th>
                 <th>Code</th>
+                <th>HS Code</th>
                 <th>Name</th>
                 <th>Brand/Category</th>
                 <?php
                 if ($UserData['user_role'] == 'admin'):
                  ?>
-                 <th>Purchase</th>
+                 <th>Purchase Rate</th>
                 <?php 
               endif;
                 ?>
-                <th>Selling Price</th>
+                <th>Sale Rate</th>
                 
                 <?php   if ($get_company['stock_manage']==1):?>
                 <th>Quanity instock</th>
@@ -216,6 +224,7 @@ if (isset($_REQUEST['edit_product_id'])) {
                 <tr>
                   <td><?=$c?></td>
                   <td><?=$r['product_code']?></td>
+                  <td><?=$r['hs_code']?></td>
                   <td><?=$r['product_name']?></td>
                   <td><?=$brandFetched['brand_name']?>/<?=$categoryFetched['categories_name']?></td>
                    <?php
@@ -253,7 +262,6 @@ if (isset($_REQUEST['edit_product_id'])) {
                <?php   endif ?>
                <a href="print_barcode.php?id=<?=base64_encode($r['product_id'])?>" class="btn btn-primary btn-sm">Barcode</a>
                   </td>
-
                 </tr>
               <?php } ?>
               </tbody>

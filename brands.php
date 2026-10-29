@@ -32,7 +32,7 @@ if (isset($_REQUEST['edit_brand_id'])) {
 								<div class="form-group row">
 									<div class="col-sm-6">
 									<label for="">Brand</label>
-									<input type="text" class="form-control" value="<?=@$brands['brand_name']?>" id="add_brand_name" name="add_brand_name"> 
+									<input type="text" class="form-control" value="<?=@$brands['brand_name']?>" required id="add_brand_name" name="add_brand_name"> 
 									<input type="hidden" class="form-control " value="<?=@$brands['brand_id']?>" id="brand_id" name="brand_id">
 
 									</div>
@@ -40,17 +40,17 @@ if (isset($_REQUEST['edit_brand_id'])) {
 									<label for="">Brand Status</label>
 									<select class="form-control" id="brand_status" name="brand_status"> 
 										
-										<option  <?=@($brands['brand_status']==1)?"selected":"selected"?> value="1">Active</option>
-										<option <?=@($brands['brand_status']==0)?"selected":""?> value="0">Inactive</option>
+										<option <?=(!isset($brands['brand_status']) || $brands['brand_status']==1)?"selected":""?> value="1">Active</option>
+										<option <?=(isset($brands['brand_status']) && $brands['brand_status']==0)?"selected":""?> value="0">Inactive</option>
 									</select>
 								</div>
 								</div>
 							<?php if (@$userPrivileges['nav_edit']==1 || $fetchedUserRole=="admin" AND isset($_REQUEST['edit_brand_id'])): ?>
 								<button type="submit" class="btn btn-admin2 float-right" id="formData_btn">Update</button>
-								  <?php   endif ?>
+				  <?php   endif ?>
 								  <?php if (@$userPrivileges['nav_add']==1 || $fetchedUserRole=="admin" AND !isset($_REQUEST['edit_brand_id'])): ?>
 								<button type="submit" class="btn btn-admin float-right" id="formData_btn">Add</button>
-								  <?php   endif ?>
+							<?php   endif ?>
 							</form>
 							
            </div>
@@ -81,7 +81,7 @@ if (isset($_REQUEST['edit_brand_id'])) {
 			</thead>
 			<tbody>
 
-                      <?php   $q=mysqli_query($dbc,"SELECT * FROM brands WHERE brand_status=1 ");
+                      <?php   $q=mysqli_query($dbc,"SELECT * FROM brands");
                       $c=0;
                         while ($r=mysqli_fetch_assoc($q)) { $c++;
                       
@@ -98,7 +98,7 @@ if (isset($_REQUEST['edit_brand_id'])) {
                           			Inactive
                           	<?php endif ?>
                           </td>
-                          <td>
+                          <td class="d-flex">
                           <?php if (@$userPrivileges['nav_edit']==1 || $fetchedUserRole=="admin"): ?>
                             <form action="brands.php" method="POST">
                               <input type="hidden" name="edit_brand_id" value="<?=base64_encode($r['brand_id'])?>">
@@ -109,7 +109,7 @@ if (isset($_REQUEST['edit_brand_id'])) {
                           <?php   endif ?>
                           <?php if (@$userPrivileges['nav_delete']==1 || $fetchedUserRole=="admin"): ?>
 
-                             <a href="#" onclick="deleteAlert('<?=$r['brand_id']?>','brands','brand_id','tableData')" class="btn btn-admin2 btn-sm m-1">Delete</a>
+                             <a href="javascript:void(0)" onclick="deleteAlert('<?=$r['brand_id']?>','brands','brand_id','tableData'); return false;" class="btn btn-admin2 btn-sm m-1">Delete</a>
                           <?php   endif ?>
                           </td>
                        </tr>

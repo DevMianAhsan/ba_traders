@@ -63,6 +63,12 @@
 						<input type="text" name="company_phone" placeholder="Enter Company Phone" class="form-control" value="<?=@$get_company['company_phone']?>" /><br/>
 						<h4>Enter Email Or Website  </h4>
 						<input type="text" name="email" placeholder="Enter Email or Website" class="form-control" value="<?=@$get_company['email']?>" /><br/>
+						<h4>Sales Tax Reg No. (STRN)</h4>
+						<input type="text" name="s_tax_no" placeholder="Enter Sales Tax Reg No." class="form-control" value="<?=@$get_company['s_tax_no']?>" /><br/>
+						<h4>National Tax No. (NTN)</h4>
+						<input type="text" name="ntn_no" placeholder="Enter NTN No." class="form-control" value="<?=@$get_company['ntn_no']?>" /><br/>
+						<h4>CNIC No.</h4>
+						<input type="text" name="cnic_no" placeholder="Enter CNIC No." class="form-control" value="<?=@$get_company['cnic_no']?>" /><br/>
 						<h4>Enter Personal Phone  </h4>
 						<input type="text" name="personal_phone" placeholder="Enter personal Phone" class="form-control" value="<?=@$get_company['personal_phone']?>" /><br/>
 						<h4>Interface</h4>

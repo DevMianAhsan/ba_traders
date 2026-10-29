@@ -8,67 +8,147 @@
 //print_r($_REQUEST);
 //if(isset($_REQUEST['page_type'] == 'invoice')){
 	if (isset($_REQUEST['page_type']) && $_REQUEST['page_type'] == 'invoice') {
-		//echo "as";
-	$data = [
-		'customer_id' => $_REQUEST['customer_account'],
-		'invoice_date' => $_REQUEST['order_date'],
-		'grand_total' => $_REQUEST['grand_total'],
-		'user_id' => @$_SESSION['userId'],
-		'party_po' =>  $_REQUEST['party_po'][0],
-
-	];
-
-	if(insert_data($dbc,'invoices', $data)){
-	  $invoice_id = mysqli_insert_id($dbc);
-}else{
-	echo mysqli_error($dbc);
-}
-
-	for ($i=0; $i < count($_REQUEST['dc_no']); $i++) { 
-		$res['data'][$i] = [
-			'sr' => $i,
-			'party_po' => $_REQUEST['party_po'][$i],
-			'dc_no' => $_REQUEST['dc_no'][$i],
-			'po_amount' => $_REQUEST['po_amount'][$i]
-		];
-
-
-	}
-
-		$debit=[
-					'debit'=>@ $_REQUEST['grand_total'],
-					'credit'=>0,
-					'customer_id'=>@$_REQUEST['customer_account'],
-					'transaction_from'=>'Invoice',
-					'transaction_type'=> 'Invoice',
-					'transaction_remarks'=>@$_REQUEST['order_narration'],
-					'transaction_date'=> @$_REQUEST['order_date'],
+		$res = ['data' => []];
+		if (!empty($_REQUEST['dc_no'])) {
+			for ($i = 0; $i < count($_REQUEST['dc_no']); $i++) { 
+				$res['data'][$i] = [
+					'sr' => $i,
+					'party_po' => is_array($_REQUEST['party_po']) ? ($_REQUEST['party_po'][$i] ?? $_REQUEST['party_po'][0]) : $_REQUEST['party_po'],
+					'dc_no' => $_REQUEST['dc_no'][$i],
+					'po_amount' => $_REQUEST['po_amount'][$i]
 				];
-				insert_data($dbc, "transactions", $debit);
-				$transaction_id = mysqli_insert_id($dbc);
+			}
+		}
 
+		$party_po_val = '';
+		if (!empty($_REQUEST['party_po'])) {
+			$party_po_val = is_array($_REQUEST['party_po']) ? $_REQUEST['party_po'][0] : $_REQUEST['party_po'];
+		}
 
-	$newdata = [
-		'invoice_details' => json_encode($res),
-		'transaction_id' => $transaction_id
-	];			
-
-		 if (update_data($dbc,'invoices', $newdata , 'invoice_id',$invoice_id)) {
-				# code...
-					$data = [
-				'sts' => 'success',
-				'msg' => 'Invoice Added successfully',	
-			];
-					
-				}else{
-					$data = [
-				'sts' => 'fasle',
-				'msg' => mysqli_error($dbc),	
-			];
+		// Fetch po_paymentdays from purchase_order table for this party_po
+		$credit_sale_type = '30days';
+		if (!empty($party_po_val)) {
+			$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
+			$po_q = mysqli_query($dbc, "SELECT po_paymentdays FROM purchase_order WHERE po_partypo = '$po_party_clean' LIMIT 1");
+			if ($po_row = mysqli_fetch_assoc($po_q)) {
+				$days_num = intval(filter_var($po_row['po_paymentdays'], FILTER_SANITIZE_NUMBER_INT));
+				if ($days_num > 0) {
+					$credit_sale_type = $days_num . 'days';
 				}
-	
-echo json_encode($data);
-}
+			}
+		} elseif (!empty($_REQUEST['credit_sale_type'])) {
+			$credit_sale_type = $_REQUEST['credit_sale_type'];
+		}
+
+		$sub_total = 0;
+		if (!empty($_REQUEST['po_amount'])) {
+			foreach ($_REQUEST['po_amount'] as $amt) {
+				$sub_total += floatval($amt);
+			}
+		}
+
+		$discount_val = isset($_REQUEST['ordered_discount']) ? $_REQUEST['ordered_discount'] : 0;
+		$freight_val = isset($_REQUEST['freight']) ? $_REQUEST['freight'] : 0;
+		$total_amount_val = !empty($_REQUEST['total_amount']) ? $_REQUEST['total_amount'] : $sub_total;
+		$order_narration = !empty($_REQUEST['order_narration']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['order_narration'])) : '';
+
+		if (!empty($_REQUEST['product_order_id'])) {
+			$invoice_id = intval($_REQUEST['product_order_id']);
+			$fetchInv = fetchRecord($dbc, 'invoices', 'invoice_id', $invoice_id);
+			$transaction_id = !empty($fetchInv['transaction_id']) ? intval($fetchInv['transaction_id']) : 0;
+
+			$data = [
+				'customer_id' => $_REQUEST['customer_account'],
+				'invoice_date' => $_REQUEST['order_date'],
+				'total_amount' => $total_amount_val,
+				'discount' => $discount_val,
+				'freight' => $freight_val,
+				'grand_total' => $_REQUEST['grand_total'],
+				'order_narration' => $order_narration,
+				'user_id' => @$_SESSION['userId'],
+				'party_po' => $party_po_val,
+				'credit_sale_type' => $credit_sale_type,
+				'invoice_details' => json_encode($res),
+				'transaction_id' => $transaction_id
+			];
+
+			if (update_data($dbc, 'invoices', $data, 'invoice_id', $invoice_id)) {
+				// Sync payment days to Delivery Challans (orders)
+				if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
+					foreach ($_REQUEST['dc_no'] as $dc_id) {
+						$dc_id = intval($dc_id);
+						if ($dc_id > 0) {
+							mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE order_id = '$dc_id'");
+						}
+					}
+				}
+				if (!empty($party_po_val)) {
+					$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
+					mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE party_po = '$po_party_clean'");
+				}
+
+				$data = [
+					'sts' => 'success',
+					'msg' => 'Invoice Updated successfully',
+					'order_id' => $invoice_id,
+					'type' => 'invoice'
+				];
+			} else {
+				$data = [
+					'sts' => 'error',
+					'msg' => mysqli_error($dbc),
+				];
+			}
+		} else {
+			// Commercial invoice adds record only (no transaction created)
+			$data = [
+				'customer_id' => $_REQUEST['customer_account'],
+				'invoice_date' => $_REQUEST['order_date'],
+				'total_amount' => $total_amount_val,
+				'discount' => $discount_val,
+				'freight' => $freight_val,
+				'grand_total' => $_REQUEST['grand_total'],
+				'order_narration' => $order_narration,
+				'user_id' => @$_SESSION['userId'],
+				'party_po' => $party_po_val,
+				'credit_sale_type' => $credit_sale_type,
+				'invoice_details' => json_encode($res),
+				'transaction_id' => 0
+			];
+
+			if (insert_data($dbc, 'invoices', $data)) {
+				$invoice_id = mysqli_insert_id($dbc);
+
+				// Sync payment days to Delivery Challans (orders)
+				if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
+					foreach ($_REQUEST['dc_no'] as $dc_id) {
+						$dc_id = intval($dc_id);
+						if ($dc_id > 0) {
+							mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE order_id = '$dc_id'");
+						}
+					}
+				}
+				if (!empty($party_po_val)) {
+					$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
+					mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE party_po = '$po_party_clean'");
+				}
+
+				$data = [
+					'sts' => 'success',
+					'msg' => 'Invoice Added successfully',
+					'order_id' => $invoice_id,
+					'type' => 'invoice'
+				];
+			} else {
+				$data = [
+					'sts' => 'error',
+					'msg' => mysqli_error($dbc),
+				];
+			}
+		}
+
+		echo json_encode($data);
+	}
 
 	/*Invocie end*/
 	/*parrtypo detil for invice*/
@@ -147,6 +227,16 @@ echo json_encode($data);
 	/*pARTRY PO LIST*/
 	
 		if(isset($_REQUEST['getpoDetails'])){
+			$excludeOrder = "";
+			if (!empty($_REQUEST['order_id'])) {
+				$excludeOrder = " AND o.order_id != '".mysqli_real_escape_string($dbc, $_REQUEST['order_id'])."' ";
+			}
+			$party_po_clean = mysqli_real_escape_string($dbc, $_REQUEST['party_po']);
+			$cust_filter = "";
+			if (!empty($_REQUEST['customer_id'])) {
+				$cust_clean = mysqli_real_escape_string($dbc, $_REQUEST['customer_id']);
+				$cust_filter = " AND p.po_customer = '$cust_clean' ";
+			}
 
 			$fQuery = "SELECT
     poi.product_id,
@@ -158,20 +248,18 @@ FROM
 INNER JOIN
     purchase_order_item poi ON p.po_id = poi.po_id
 LEFT JOIN
-    orders o ON p.po_partypo = o.party_po
+    orders o ON p.po_partypo = o.party_po AND o.customer_account = p.po_customer {$excludeOrder}
 LEFT JOIN
     order_item oitem ON o.order_id = oitem.order_id AND poi.product_id = oitem.product_id
 LEFT JOIN 
     product ON product.product_id = poi.product_id
 WHERE
-    p.po_partypo = '".$_REQUEST['party_po']."'
+    p.po_partypo = '".$party_po_clean."' {$cust_filter}
 GROUP BY
     poi.product_id, product.product_name, poi.quantity, poi.po_id
-
-
 ";
 		$q = mysqli_query($dbc,$fQuery);
-		if(mysqli_num_rows($q)>0){
+		if($q && mysqli_num_rows($q)>0){
 		while ($r = mysqli_fetch_assoc($q)) {
 			?>
 			<tr>
@@ -185,41 +273,188 @@ GROUP BY
 			<?php
 		}
 	}else{
-		echo '<option value="">Not Found</option>';
+		echo '<tr><td colspan="5" class="text-center text-danger">No PO Details Found</td></tr>';
 	}
+	exit;
 	}
 
 
 	if(isset($_REQUEST['get_party_po'])){
-
-
-
-		$q = mysqli_query($dbc,"
-
-		
-
-SELECT purchase_order.*, invoices.*
-FROM purchase_order
-LEFT JOIN invoices ON purchase_order.po_partypo = invoices.party_po
-WHERE purchase_order.po_customer = '$_REQUEST[customer_id]'
-AND invoices.party_po IS NULL
-AND NOT EXISTS (
-    SELECT 1
-    FROM invoices AS i
-    WHERE i.party_po = purchase_order.po_partypo
-)
-ORDER BY purchase_order.po_id DESC;
-
-
-
-			");
-		if(mysqli_num_rows($q)>0){
-		while ($r = mysqli_fetch_assoc($q)) {
-			echo '<option value="'.$r['po_partypo'].'">'.$r['po_partypo'].'</option>';
+		$customer_id = !empty($_REQUEST['customer_id']) ? mysqli_real_escape_string($dbc, $_REQUEST['customer_id']) : '';
+		if (empty($customer_id)) {
+			echo '<option value="">Select Customer first</option>';
+			exit;
 		}
-	}else{
-		echo '<option value="">Not Found</option>';
+
+		$is_invoice = (isset($_REQUEST['page_type']) && $_REQUEST['page_type'] == 'invoice');
+
+		if ($is_invoice) {
+			$q = mysqli_query($dbc, "
+				SELECT p.*
+				FROM purchase_order p
+				WHERE p.po_customer = '$customer_id'
+				AND NOT EXISTS (
+					SELECT 1
+					FROM invoices i
+					WHERE i.party_po = p.po_partypo
+					AND i.customer_id = p.po_customer
+				)
+				ORDER BY p.po_id DESC
+			");
+		} else {
+			$q = mysqli_query($dbc, "
+				SELECT p.*
+				FROM purchase_order p
+				WHERE p.po_customer = '$customer_id'
+				ORDER BY p.po_id DESC
+			");
+		}
+
+		if($q && mysqli_num_rows($q) > 0){
+			$emitted = [];
+			while ($r = mysqli_fetch_assoc($q)) {
+				$po = trim($r['po_partypo']);
+				if ($po === '' || in_array($po, $emitted)) {
+					continue;
+				}
+				$emitted[] = $po;
+				echo '<option data-paymentdays="'.$r['po_paymentdays'].'" value="'.$po.'">'.$po.'</option>';
+			}
+			if (empty($emitted)) {
+				echo '<option value="">Not Found</option>';
+			}
+		}else{
+			echo '<option value="">Not Found</option>';
+		}
+		exit;
 	}
+
+	if (isset($_REQUEST['get_tax_sale_po_products'])) {
+		$party_po = !empty($_REQUEST['party_po']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['party_po'])) : '';
+		$customer_id = !empty($_REQUEST['customer_id']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_id'])) : '';
+
+		$cust_filter = "";
+		if (!empty($customer_id)) {
+			$cust_filter = " AND p.po_customer = '$customer_id' ";
+		}
+
+		$q = mysqli_query($dbc, "
+			SELECT 
+				poi.product_id,
+				poi.quantity AS ordered_qty,
+				poi.rate AS po_rate,
+				prod.product_name,
+				prod.hs_code,
+				prod.current_rate,
+				prod.product_description,
+				prod.product_unit
+			FROM purchase_order p
+			INNER JOIN purchase_order_item poi ON p.po_id = poi.po_id
+			INNER JOIN product prod ON poi.product_id = prod.product_id
+			WHERE p.po_partypo = '$party_po' {$cust_filter}
+			ORDER BY prod.product_name ASC
+		");
+
+		$products = [];
+		$seen = [];
+		if ($q && mysqli_num_rows($q) > 0) {
+			while ($r = mysqli_fetch_assoc($q)) {
+				$pid = $r['product_id'];
+				if (isset($seen[$pid])) {
+					continue;
+				}
+				$seen[$pid] = true;
+
+				$effective_rate = floatval($r['po_rate']) > 0 ? floatval($r['po_rate']) : floatval($r['current_rate']);
+				$products[] = [
+					'product_id' => $r['product_id'],
+					'product_name' => $r['product_name'],
+					'hs_code' => !empty($r['hs_code']) ? $r['hs_code'] : '',
+					'rate' => $effective_rate,
+					'po_rate' => floatval($r['po_rate']),
+					'current_rate' => floatval($r['current_rate']),
+					'ordered_qty' => floatval($r['ordered_qty']),
+					'unit' => 'KG',
+					'description' => !empty($r['product_description']) ? $r['product_description'] : $r['product_name']
+				];
+			}
+		}
+
+		echo json_encode(['sts' => 'success', 'data' => $products]);
+		exit;
+	}
+
+	if (isset($_REQUEST['get_customer_invoices'])) {
+		$customer_id = mysqli_real_escape_string($dbc, $_REQUEST['get_customer_invoices']);
+		$exclude_voucher = !empty($_REQUEST['voucher_id']) ? intval($_REQUEST['voucher_id']) : 0;
+
+		$invoices = [];
+		$other_invoices = [];
+
+		if (!empty($customer_id) && $customer_id !== 'all') {
+			$q = mysqli_query($dbc, "SELECT ts.*, c.customer_name FROM tax_sales ts LEFT JOIN customers c ON ts.customer_id = c.customer_id WHERE ts.customer_id = '$customer_id' ORDER BY ts.tax_sale_id DESC");
+			while ($r = mysqli_fetch_assoc($q)) {
+				$inv_id = !empty($r['invoice_no']) ? $r['invoice_no'] : $r['tax_sale_id'];
+				$ts_id = $r['tax_sale_id'];
+				$exclude_sql = $exclude_voucher > 0 ? " AND voucher_id != '$exclude_voucher'" : "";
+				$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(received_amount AS DECIMAL(15,2)) + CAST(COALESCE(tax_amount, 0) AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE invoice_id = '$inv_id' $exclude_sql");
+				$r_paid = mysqli_fetch_assoc($q_paid);
+				$paid = !empty($r_paid['total_paid']) ? floatval($r_paid['total_paid']) : 0;
+				$grand_total = floatval($r['grand_total']);
+				$due = $grand_total - $paid;
+				if ($due < 0) {
+					$due = 0;
+				}
+				$invoices[] = [
+					'invoice_id' => $inv_id,
+					'tax_sale_id' => $ts_id,
+					'customer_id' => $r['customer_id'],
+					'customer_name' => $r['customer_name'],
+					'party_po' => !empty($r['po_no']) ? $r['po_no'] : '',
+					'invoice_date' => $r['invoice_date'],
+					'grand_total' => $grand_total,
+					'already_paid' => $paid,
+					'due' => $due
+				];
+			}
+
+		} else {
+			$invoices = [];
+		}
+		echo json_encode(['sts' => 'success', 'data' => $invoices]);
+		exit;
+	}
+
+	if (isset($_REQUEST['get_single_invoice_info'])) {
+		$inv_id = mysqli_real_escape_string($dbc, $_REQUEST['get_single_invoice_info']);
+		$exclude_voucher = !empty($_REQUEST['voucher_id']) ? intval($_REQUEST['voucher_id']) : 0;
+		$q = mysqli_query($dbc, "SELECT ts.*, c.customer_name FROM tax_sales ts LEFT JOIN customers c ON ts.customer_id = c.customer_id WHERE ts.invoice_no = '$inv_id' OR ts.tax_sale_id = '$inv_id'");
+		if ($r = mysqli_fetch_assoc($q)) {
+			$inv_num = !empty($r['invoice_no']) ? $r['invoice_no'] : $r['tax_sale_id'];
+			$ts_id = $r['tax_sale_id'];
+			$exclude_sql = $exclude_voucher > 0 ? " AND voucher_id != '$exclude_voucher'" : "";
+			$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(received_amount AS DECIMAL(15,2)) + CAST(COALESCE(tax_amount, 0) AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE invoice_id = '$inv_num' $exclude_sql");
+			$r_paid = mysqli_fetch_assoc($q_paid);
+			$paid = !empty($r_paid['total_paid']) ? floatval($r_paid['total_paid']) : 0;
+			$grand_total = floatval($r['grand_total']);
+			$due = $grand_total - $paid;
+			if ($due < 0) $due = 0;
+			echo json_encode([
+				'sts' => 'success',
+				'invoice_id' => $inv_num,
+				'tax_sale_id' => $ts_id,
+				'customer_id' => $r['customer_id'],
+				'customer_name' => $r['customer_name'],
+				'party_po' => !empty($r['po_no']) ? $r['po_no'] : '',
+				'invoice_date' => $r['invoice_date'],
+				'grand_total' => $grand_total,
+				'already_paid' => $paid,
+				'due' => $due
+			]);
+		} else {
+			echo json_encode(['sts' => 'error', 'msg' => 'Invoice not found']);
+		}
+		exit;
 	}
 
 
@@ -239,13 +474,13 @@ if (!empty($_REQUEST['product_ids'])) {
 			'po_customer'=> $_REQUEST['customer_account'],	
 			'po_customer_name'=> $_REQUEST['purchase_order_client_name'],	
 			'po_customer_no'=> $_REQUEST['client_contact'],	
-			'po_partystm'=> $_REQUEST['party_stm'],
+			'po_partystm'=> @$_REQUEST['party_stm'] ?? '',
 			'po_partypo'=>@$_REQUEST['party_po'],
 			'po_remarks'=>@$_REQUEST['order_narration'],
 			'po_paymentdays'=>@$_REQUEST['payment_days'],
 			'po_targetdate'=>$_REQUEST['target_date'],
-			'po_consumer'=>@$_REQUEST['party_consumer'],
-			'po_jobdesc'=>@$_REQUEST['jobcard_desc'],
+			'po_consumer'=>@$_REQUEST['party_consumer'] ?? '',
+			'po_jobdesc'=>@$_REQUEST['jobcard_desc'] ?? '',
 			
 			'user_id'=>@$_REQUEST['voucher_no'],
 			'freight' => @$_REQUEST['freight'],
@@ -371,7 +606,10 @@ if (isset($_REQUEST['add_manually_user'])) {
 			'customer_phone'=>@$_REQUEST['customer_phone'],
 			'customer_email'=>@$_REQUEST['customer_email'],
 			'customer_address'=>@$_REQUEST['customer_address'],
-			'customer_type'=>@$_REQUEST['customer_type'],
+			'customer_strn'=>@$_REQUEST['customer_strn'],
+			'customer_ntn'=>@$_REQUEST['customer_ntn'],
+			'customer_province'=>@$_REQUEST['customer_province'],
+			'customer_cnic'=>@$_REQUEST['customer_cnic'],
 			'customer_status'=>@$_REQUEST['customer_status'],
 			'customer_type'=>@$_REQUEST['add_manually_user'],
 		];
@@ -403,9 +641,33 @@ echo json_encode($res);
 }
 
 if (isset($_REQUEST['new_voucher_date'])) {
+	if (isset($_REQUEST['voucher_debit'])) {
+		$_REQUEST['voucher_debit'] = floatval(str_replace(',', '', $_REQUEST['voucher_debit']));
+	}
 		
 	if ($_REQUEST['voucher_id']=="") {
 				if ($_REQUEST['voucher_group']=="general_voucher") {
+					$voucher_details = [];
+					if (!empty($_REQUEST['invoice_id']) && is_array($_REQUEST['invoice_id'])) {
+						foreach ($_REQUEST['invoice_id'] as $k => $inv_id) {
+							$inv_id = trim($inv_id);
+							$rec_amt = isset($_REQUEST['received_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['received_amount'][$k])) : 0;
+							$tax_amt = isset($_REQUEST['tax_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['tax_amount'][$k])) : 0;
+							$tax_pct = isset($_REQUEST['tax_percent'][$k]) ? floatval($_REQUEST['tax_percent'][$k]) : 0;
+							if ($inv_id !== '' && ($rec_amt > 0 || $tax_amt > 0)) {
+								$voucher_details[] = [
+									'invoice_id' => $inv_id,
+									'party_po' => isset($_REQUEST['inv_party_po'][$k]) ? trim($_REQUEST['inv_party_po'][$k]) : '',
+									'invoice_amount' => isset($_REQUEST['invoice_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['invoice_amount'][$k])) : 0,
+									'tax_percent' => $tax_pct,
+									'tax_amount' => $tax_amt,
+									'received_amount' => $rec_amt,
+								];
+							}
+						}
+					}
+					$voucher_details_json = !empty($voucher_details) ? json_encode($voucher_details) : null;
+
 					$data=[
 			'customer_id1'=>@$_REQUEST['voucher_from_account'],
 			'customer_id2'=>@$_REQUEST['voucher_to_account'],
@@ -418,6 +680,7 @@ if (isset($_REQUEST['new_voucher_date'])) {
 			'voucher_bank_name'=>@$_REQUEST['voucher_bank_name'],
 			'td_check_date'=>@$_REQUEST['td_check_date'],
 			'check_type'=>@$_REQUEST['check_type'],
+			'voucher_details'=>$voucher_details_json,
 			'addby_user_id'=>@$_SESSION['userId'],
 			];
 		}else{
@@ -457,6 +720,21 @@ if (isset($_REQUEST['new_voucher_date'])) {
 			insert_data($dbc, "checks", $data_checks);
 			}
 
+			if ($_REQUEST['voucher_group']=="general_voucher" && !empty($voucher_details)) {
+				foreach ($voucher_details as $v_inv) {
+					$inv_row = [
+						'voucher_id' => $last_id,
+						'invoice_id' => $v_inv['invoice_id'],
+						'party_po' => $v_inv['party_po'],
+						'invoice_amount' => $v_inv['invoice_amount'],
+						'tax_percent' => isset($v_inv['tax_percent']) ? $v_inv['tax_percent'] : 0,
+						'tax_amount' => isset($v_inv['tax_amount']) ? $v_inv['tax_amount'] : 0,
+						'received_amount' => $v_inv['received_amount'],
+					];
+					insert_data($dbc, "voucher_invoices", $inv_row);
+				}
+			}
+
 
 				$debit=[
 					'debit'=>@$_REQUEST['voucher_debit'],
@@ -493,6 +771,27 @@ if (isset($_REQUEST['new_voucher_date'])) {
 
 	}else{
 	if ($_REQUEST['voucher_group']=="general_voucher") {
+			$voucher_details = [];
+			if (!empty($_REQUEST['invoice_id']) && is_array($_REQUEST['invoice_id'])) {
+				foreach ($_REQUEST['invoice_id'] as $k => $inv_id) {
+					$inv_id = trim($inv_id);
+					$rec_amt = isset($_REQUEST['received_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['received_amount'][$k])) : 0;
+					$tax_amt = isset($_REQUEST['tax_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['tax_amount'][$k])) : 0;
+					$tax_pct = isset($_REQUEST['tax_percent'][$k]) ? floatval($_REQUEST['tax_percent'][$k]) : 0;
+					if ($inv_id !== '' && ($rec_amt > 0 || $tax_amt > 0)) {
+						$voucher_details[] = [
+							'invoice_id' => $inv_id,
+							'party_po' => isset($_REQUEST['inv_party_po'][$k]) ? trim($_REQUEST['inv_party_po'][$k]) : '',
+							'invoice_amount' => isset($_REQUEST['invoice_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['invoice_amount'][$k])) : 0,
+							'tax_percent' => $tax_pct,
+							'tax_amount' => $tax_amt,
+							'received_amount' => $rec_amt,
+						];
+					}
+				}
+			}
+			$voucher_details_json = !empty($voucher_details) ? json_encode($voucher_details) : null;
+
 			$data=[
 			'customer_id1'=>@$_REQUEST['voucher_from_account'],
 			'customer_id2'=>@$_REQUEST['voucher_to_account'],
@@ -506,6 +805,7 @@ if (isset($_REQUEST['new_voucher_date'])) {
 			'voucher_bank_name'=>@$_REQUEST['voucher_bank_name'],
 			'check_type'=>@$_REQUEST['check_type'],
 			'td_check_date'=>@$_REQUEST['td_check_date'],
+			'voucher_details'=>$voucher_details_json,
 		];		
 	}else{
 		$data=[
@@ -547,6 +847,24 @@ if (isset($_REQUEST['new_voucher_date'])) {
 							'voucher_id'=>$last_id,
 							];
 			update_data($dbc, "checks", $data_checks, "voucher_id", $_REQUEST['voucher_id']);
+			}
+
+			if ($_REQUEST['voucher_group']=="general_voucher") {
+				mysqli_query($dbc, "DELETE FROM voucher_invoices WHERE voucher_id = '".$_REQUEST['voucher_id']."'");
+				if (!empty($voucher_details)) {
+					foreach ($voucher_details as $v_inv) {
+						$inv_row = [
+							'voucher_id' => $_REQUEST['voucher_id'],
+							'invoice_id' => $v_inv['invoice_id'],
+							'party_po' => $v_inv['party_po'],
+							'invoice_amount' => $v_inv['invoice_amount'],
+							'tax_percent' => isset($v_inv['tax_percent']) ? $v_inv['tax_percent'] : 0,
+							'tax_amount' => isset($v_inv['tax_amount']) ? $v_inv['tax_amount'] : 0,
+							'received_amount' => $v_inv['received_amount'],
+						];
+						insert_data($dbc, "voucher_invoices", $inv_row);
+					}
+				}
 			}
 
 					$debit=[
@@ -696,13 +1014,18 @@ if(!empty($_REQUEST['action']) AND $_REQUEST['action']=="product_module"){
 		$category_price=fetchRecord($dbc,"categories","categories_id",$_REQUEST['category_id']);
 
 		$total=(double)@$_REQUEST['product_mm']*(double)@$_REQUEST['product_inch']*(double)@$_REQUEST['product_meter'];
-		$purchase_rate=($total*(double)$category_price['category_purchase'])/54;
-					$purchase_rate=round($purchase_rate);
+		if (isset($_REQUEST['purchase_rate']) && $_REQUEST['purchase_rate'] !== '') {
+			$purchase_rate = (double)$_REQUEST['purchase_rate'];
+		} else {
+			$purchase_rate = ($total*(double)@$category_price['category_purchase'])/54;
+			$purchase_rate = round($purchase_rate);
+		}
 					
 		$data_array=[
  			'product_name'=>$_REQUEST['product_name'],
- 			'product_name2'=>$_REQUEST['product_name2'],
+ 			'product_name2'=>@$_REQUEST['product_name2'],
 			'product_code'=>@$_REQUEST['product_code'],
+			'hs_code'=>@$_REQUEST['hs_code'],
 			'brand_id'=>@$_REQUEST['brand_id'],
 			'category_id'=>@$_REQUEST['category_id'],
 			'product_mm'=>@$_REQUEST['product_mm'],
@@ -710,9 +1033,8 @@ if(!empty($_REQUEST['action']) AND $_REQUEST['action']=="product_module"){
 			'product_meter'=>@$_REQUEST['product_meter'],
 			'current_rate'=>@$_REQUEST['current_rate'],
 			'product_description'=>@$_REQUEST['product_description'],
-			't_days'=>@$_REQUEST['current_rate'],
-			'f_days'=>@$_REQUEST['current_rate'],
-			'product_description'=>@$_REQUEST['product_description'],
+			't_days'=>!empty($_REQUEST['t_days']) ? $_REQUEST['t_days'] : @$_REQUEST['current_rate'],
+			'f_days'=>!empty($_REQUEST['f_days']) ? $_REQUEST['f_days'] : @$_REQUEST['current_rate'],
 			'alert_at'=>@$_REQUEST['alert_at'],
 			'availability'=>@$_REQUEST['availability'],
 			'purchase_rate'=>$purchase_rate,
@@ -748,8 +1070,9 @@ if(!empty($_REQUEST['action']) AND $_REQUEST['action']=="product_module"){
 				}	
 
 		}else{
-			if(update_data($dbc,"product",$data_array,"product_id",base64_decode($_REQUEST['product_id']))){
-			$last_id=$_REQUEST['product_id'];
+			$decoded_id = base64_decode($_REQUEST['product_id']);
+			if(update_data($dbc,"product",$data_array,"product_id",$decoded_id)){
+			$last_id=$decoded_id;
 			
 			if ($_FILES['product_image']['tmp_name']) {
 				upload_pic($_FILES['product_image'],'../img/uploads/');
@@ -831,7 +1154,17 @@ if (isset($_REQUEST['get_products_list'])) {
 			$q=mysqli_query($dbc,"SELECT * FROM product WHERE product_code LIKE '%".$_REQUEST['get_products_list']."%' AND status=1 ");
 		if (mysqli_num_rows($q)>0) {
 			while ($r=mysqli_fetch_assoc($q)) {
-				echo '<option value="'.$r['product_id'].'">'.$r['product_name'].'</option>';
+				$p_rate = $r['current_rate'];
+				if (@$_REQUEST['payment_type'] == 'cash_purchase' || @$_REQUEST['payment_type'] == 'credit_purchase') {
+					$p_rate = (isset($r['purchase_rate']) && $r['purchase_rate'] !== '') ? $r['purchase_rate'] : 0;
+					if ($p_rate == 0 || $p_rate == '0') {
+						$last_pi = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT rate FROM purchase_item WHERE product_id = '$r[product_id]' AND rate != 0 ORDER BY purchase_item_id DESC LIMIT 1"));
+						if ($last_pi && !empty($last_pi['rate'])) {
+							$p_rate = $last_pi['rate'];
+						}
+					}
+				}
+				echo '<option value="'.$r['product_id'].'" data-price="'.$p_rate.'" data-uom="'.$r['product_unit'].'" data-code="'.$r['product_code'].'">'.$r['product_name'].'</option>';
 			}
 		}else{
 			echo '<option value="">Not Found</option>';	
@@ -874,6 +1207,12 @@ if (isset($_REQUEST['getPrice'])) {
 		}
 			
 
+		$excludeOrder = "";
+		if (!empty($_REQUEST['order_id'])) {
+			$excludeOrder = " AND o.order_id != '".mysqli_real_escape_string($dbc, $_REQUEST['order_id'])."' ";
+		}
+		$party_po_clean = mysqli_real_escape_string($dbc, @$_REQUEST['party_po']);
+
 		$fetselectedp ="SELECT
     poi.product_id,
     product.product_name,
@@ -885,13 +1224,13 @@ FROM
 INNER JOIN
     purchase_order_item poi ON p.po_id = poi.po_id
 LEFT JOIN
-    orders o ON p.po_partypo = o.party_po
+    orders o ON p.po_partypo = o.party_po AND o.customer_account = p.po_customer {$excludeOrder}
 LEFT JOIN
     order_item oitem ON o.order_id = oitem.order_id AND poi.product_id = oitem.product_id
 LEFT JOIN 
     product ON product.product_id = poi.product_id
 WHERE
-    p.po_partypo = '".@$_REQUEST['party_po']."'
+    p.po_partypo = '".$party_po_clean."'
 AND 
   product.product_id =   '".$record['product_id']."'
 GROUP BY
@@ -899,13 +1238,21 @@ GROUP BY
 ";
 	$dthis = mysqli_fetch_assoc(mysqli_query($dbc,$fetselectedp));
 		
+			$remaining_qty = 0;
+			if ($dthis && isset($dthis['total_ordered_quantity'])) {
+				$remaining_qty = (double)$dthis['total_ordered_quantity'] - (double)$dthis['total_delivered_quantity'];
+			}
 
 			$response=[
 						"price"=>@$price,
+						"current_rate"=>@$record['current_rate'],
+						"uom"=>@$record['product_unit'],
+						"product_unit"=>@$record['product_unit'],
+						"product_code"=>@$record['product_code'],
 						"qty"=>@(double)$record['quantity_instock'],
 						"sts"=>"success",
 						"type"=>@$_REQUEST['credit_sale_type'],
-						"qty2" => @$dthis['total_ordered_quantity']-@$dthis['total_delivered_quantity'],
+						"qty2" => $remaining_qty,
 						'so_rate' => @$dthis['p_rate'],
 					];
 		
@@ -1113,7 +1460,68 @@ GROUP BY
  	$get_company =mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM company ORDER BY id DESC LIMIT 1"));
 if (!empty($_REQUEST['product_ids'])) {
  		# code...
+		if (!empty($_REQUEST['party_po'])) {
+			$party_po_clean = mysqli_real_escape_string($dbc, $_REQUEST['party_po']);
+			$excludeOrder = "";
+			if (!empty($_REQUEST['product_order_id'])) {
+				$excludeOrder = " AND o.order_id != '".mysqli_real_escape_string($dbc, $_REQUEST['product_order_id'])."' ";
+			}
+			foreach ($_REQUEST['product_ids'] as $chkKey => $chkProId) {
+				$chkQty = (double)$_REQUEST['product_quantites'][$chkKey];
+				if ($chkQty <= 0) {
+					echo json_encode(['msg' => "Product quantity must be greater than 0", 'sts' => 'error']);
+					exit;
+				}
+				$chkProId_clean = mysqli_real_escape_string($dbc, $chkProId);
+				$chkSql = "SELECT
+					poi.product_id,
+					product.product_name,
+					poi.quantity AS total_ordered_quantity,
+					SUM(COALESCE(oitem.quantity, 0)) AS total_delivered_quantity
+				FROM
+					purchase_order p
+				INNER JOIN
+					purchase_order_item poi ON p.po_id = poi.po_id
+				LEFT JOIN
+					orders o ON p.po_partypo = o.party_po {$excludeOrder}
+				LEFT JOIN
+					order_item oitem ON o.order_id = oitem.order_id AND poi.product_id = oitem.product_id
+				LEFT JOIN 
+					product ON product.product_id = poi.product_id
+				WHERE
+					p.po_partypo = '{$party_po_clean}'
+					AND poi.product_id = '{$chkProId_clean}'
+				GROUP BY
+					poi.product_id, product.product_name, poi.quantity, poi.po_id";
+				$chkRes = mysqli_query($dbc, $chkSql);
+				if ($chkRow = mysqli_fetch_assoc($chkRes)) {
+					$chkRemaining = (double)$chkRow['total_ordered_quantity'] - (double)$chkRow['total_delivered_quantity'];
+					if ($chkQty > $chkRemaining) {
+						$prodLabel = !empty($chkRow['product_name']) ? $chkRow['product_name'] : "Product ID #".$chkProId;
+						echo json_encode([
+							'msg' => "Cannot add challan: Quantity for '{$prodLabel}' ({$chkQty}) exceeds Remaining Quantity ({$chkRemaining})!",
+							'sts' => 'error'
+						]);
+						exit;
+					}
+				}
+			}
+		}
+
  	$total_ammount=$total_grand=0;
+
+ 	$po_for_order = !empty($_REQUEST['party_po']) ? $_REQUEST['party_po'] : '';
+ 	$order_credit_sale_type = @$_REQUEST['credit_sale_type'];
+ 	if (!empty($po_for_order)) {
+ 		$po_party_clean = mysqli_real_escape_string($dbc, $po_for_order);
+ 		$po_q = mysqli_query($dbc, "SELECT po_paymentdays FROM purchase_order WHERE po_partypo = '$po_party_clean' LIMIT 1");
+ 		if ($po_row = mysqli_fetch_assoc($po_q)) {
+ 			$days_num = intval(filter_var($po_row['po_paymentdays'], FILTER_SANITIZE_NUMBER_INT));
+ 			if ($days_num > 0) {
+ 				$order_credit_sale_type = $days_num . 'days';
+ 			}
+ 		}
+ 	}
 
  	$data=[
  			'order_date'=> $_REQUEST['order_date'],	
@@ -1124,7 +1532,7 @@ if (!empty($_REQUEST['product_ids'])) {
 			'payment_account'=>@$_REQUEST['payment_account'],
 			'customer_account'=>@$_REQUEST['customer_account'],
 			'payment_type'=>'credit_sale',
-			'credit_sale_type'=>@$_REQUEST['credit_sale_type'],
+			'credit_sale_type'=>!empty($order_credit_sale_type) ? $order_credit_sale_type : @$_REQUEST['credit_sale_type'],
 			'vehicle_no'=>@$_REQUEST['vehicle_no'],
 			'freight'=>@$_REQUEST['freight'],
 			'party_po'=>@$_REQUEST['party_po'],
@@ -1340,7 +1748,8 @@ if (!empty($_REQUEST['product_ids'])) {
 		$msg = "Please Add Any Product";
 		$sts = 'error';
 	}
-		 echo json_encode(['msg'=>$msg,'sts'=>$sts,'order_id'=>@$last_id,'type'=>"order",'subtype'=>$_REQUEST['payment_type']]);
+		 $print_type = !empty($_REQUEST['print_type']) ? $_REQUEST['print_type'] : "dc";
+		 echo json_encode(['msg'=>$msg,'sts'=>$sts,'order_id'=>@$last_id,'type'=>$print_type,'subtype'=>$_REQUEST['payment_type']]);
  }
 
  if (isset($_REQUEST['getProductPills'])) {
@@ -1843,5 +2252,348 @@ if(isset($_REQUEST['getCustomerLimit'])){
 
 }
 
+
+
+/* -------------------------------------------------------------
+ * Tax Sale Invoice Handler
+ * ------------------------------------------------------------- */
+if (isset($_REQUEST['tax_sale_action']) && $_REQUEST['tax_sale_action'] == 'save_tax_sale') {
+    $tax_sale_id = !empty($_REQUEST['tax_sale_id']) ? intval($_REQUEST['tax_sale_id']) : 0;
+    
+    $customer_id = !empty($_REQUEST['customer_id']) ? intval($_REQUEST['customer_id']) : NULL;
+    $company_id = !empty($_REQUEST['company_id']) ? intval($_REQUEST['company_id']) : 5;
+
+    $invoice_no = !empty($_REQUEST['invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['invoice_no'])) : '';
+    $invoice_date = !empty($_REQUEST['invoice_date']) ? $_REQUEST['invoice_date'] : date('Y-m-d');
+    $time_of_supply = !empty($_REQUEST['time_of_supply']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['time_of_supply'])) : '';
+    $payment_terms = !empty($_REQUEST['payment_terms']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['payment_terms'])) : 'CREDIT';
+    $copy_type = !empty($_REQUEST['copy_type']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['copy_type'])) : 'ORIGINAL';
+    $header_description = !empty($_REQUEST['header_description']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['header_description'])) : '';
+    $po_no = !empty($_REQUEST['po_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['po_no'])) : '';
+    $fbr_invoice_no = !empty($_REQUEST['fbr_invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['fbr_invoice_no'])) : '';
+    $remarks = !empty($_REQUEST['remarks']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['remarks'])) : '';
+
+    $total_qty = !empty($_REQUEST['total_qty']) ? floatval($_REQUEST['total_qty']) : 0;
+    $total_value_excl_tax = !empty($_REQUEST['total_value_excl_tax']) ? floatval($_REQUEST['total_value_excl_tax']) : 0;
+    $total_sales_tax = !empty($_REQUEST['total_sales_tax']) ? floatval($_REQUEST['total_sales_tax']) : 0;
+    $total_further_tax = !empty($_REQUEST['total_further_tax']) ? floatval($_REQUEST['total_further_tax']) : 0;
+    $total_tax_payable = !empty($_REQUEST['total_tax_payable']) ? floatval($_REQUEST['total_tax_payable']) : 0;
+    $total_value_incl_tax = !empty($_REQUEST['total_value_incl_tax']) ? floatval($_REQUEST['total_value_incl_tax']) : 0;
+    $itax_236g_rate = isset($_REQUEST['itax_236g_rate']) ? floatval($_REQUEST['itax_236g_rate']) : 0.10;
+    $itax_236g_amount = !empty($_REQUEST['itax_236g_amount']) ? floatval($_REQUEST['itax_236g_amount']) : 0;
+    $total_tax_amount = !empty($_REQUEST['total_tax_amount']) ? floatval($_REQUEST['total_tax_amount']) : $total_tax_payable;
+    $grand_total = !empty($_REQUEST['grand_total']) ? floatval($_REQUEST['grand_total']) : $total_value_incl_tax;
+    $amount_in_words = !empty($_REQUEST['amount_in_words']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['amount_in_words'])) : '';
+    $user_id = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
+
+    $sale_data = [
+        'invoice_no' => $invoice_no,
+        'invoice_date' => $invoice_date,
+        'time_of_supply' => $time_of_supply,
+        'payment_terms' => $payment_terms,
+        'copy_type' => $copy_type,
+        'header_description' => $header_description,
+        'po_no' => $po_no,
+        'customer_id' => $customer_id,
+        'company_id' => $company_id,
+        'total_qty' => $total_qty,
+        'total_value_excl_tax' => $total_value_excl_tax,
+        'total_sales_tax' => $total_sales_tax,
+        'total_further_tax' => $total_further_tax,
+        'total_tax_payable' => $total_tax_payable,
+        'total_value_incl_tax' => $total_value_incl_tax,
+        'itax_236g_rate' => $itax_236g_rate,
+        'itax_236g_amount' => $itax_236g_amount,
+        'total_tax_amount' => $total_tax_amount,
+        'grand_total' => $grand_total,
+        'amount_in_words' => $amount_in_words,
+        'fbr_invoice_no' => $fbr_invoice_no,
+        'remarks' => $remarks,
+        'user_id' => $user_id
+    ];
+
+    // Store transaction in transactions table same like invoice.php
+    $trans_amount = !empty($_REQUEST['invoice_amount']) && floatval($_REQUEST['invoice_amount']) > 0 
+        ? floatval($_REQUEST['invoice_amount']) 
+        : $grand_total;
+
+    $trans_remarks = !empty($remarks) ? $remarks : ("Sales Tax Invoice #" . $invoice_no);
+
+    $trans_record = [
+        'credit' => $trans_amount,
+        'debit' => 0,
+        'customer_id' => $customer_id,
+        'transaction_from' => 'invoice',
+        'transaction_type' => 'credit_sale',
+        'transaction_remarks' => $trans_remarks,
+        'transaction_date' => $invoice_date,
+    ];
+
+    if ($tax_sale_id > 0) {
+        $existing_ts = fetchRecord($dbc, 'tax_sales', 'tax_sale_id', $tax_sale_id);
+        $transaction_id = !empty($existing_ts['transaction_id']) ? intval($existing_ts['transaction_id']) : 0;
+
+        if ($transaction_id > 0) {
+            update_data($dbc, "transactions", $trans_record, "transaction_id", $transaction_id);
+        } else if (!empty($customer_id) && $trans_amount > 0) {
+            insert_data($dbc, "transactions", $trans_record);
+            $transaction_id = mysqli_insert_id($dbc);
+        }
+
+        $sale_data['transaction_id'] = $transaction_id;
+        $ok = update_data($dbc, 'tax_sales', $sale_data, 'tax_sale_id', $tax_sale_id);
+    } else {
+        $transaction_id = 0;
+        if (!empty($customer_id) && $trans_amount > 0) {
+            insert_data($dbc, "transactions", $trans_record);
+            $transaction_id = mysqli_insert_id($dbc);
+        }
+        $sale_data['transaction_id'] = $transaction_id;
+        $ok = insert_data($dbc, 'tax_sales', $sale_data);
+        if ($ok) {
+            $tax_sale_id = mysqli_insert_id($dbc);
+            if (empty($invoice_no) && empty($remarks) && $transaction_id > 0) {
+                update_data($dbc, "transactions", ['transaction_remarks' => "Sales Tax Invoice #" . $tax_sale_id], "transaction_id", $transaction_id);
+            }
+        }
+    }
+
+    if ($ok) {
+        // Remove old items if updating
+        mysqli_query($dbc, "DELETE FROM tax_sale_items WHERE tax_sale_id = '$tax_sale_id'");
+
+        // Insert new items
+        if (!empty($_REQUEST['item_description']) && is_array($_REQUEST['item_description'])) {
+            foreach ($_REQUEST['item_description'] as $k => $desc) {
+                $desc = trim($desc);
+                if ($desc === '') continue;
+
+                $pid = !empty($_REQUEST['item_product_id'][$k]) ? intval($_REQUEST['item_product_id'][$k]) : NULL;
+                $unit = 'KG';
+                if (empty($unit)) {
+                    $unit = 'KG';
+                }
+                $hs = !empty($_REQUEST['item_hscode'][$k]) ? $_REQUEST['item_hscode'][$k] : '';
+                $origin = !empty($_REQUEST['item_origin'][$k]) ? $_REQUEST['item_origin'][$k] : '';
+                $qty = !empty($_REQUEST['item_qty'][$k]) ? floatval($_REQUEST['item_qty'][$k]) : 0;
+                $rate = !empty($_REQUEST['item_rate'][$k]) ? floatval($_REQUEST['item_rate'][$k]) : 0;
+                $val_excl = !empty($_REQUEST['item_val_excl'][$k]) ? floatval($_REQUEST['item_val_excl'][$k]) : ($qty * $rate);
+                $tax_rate = isset($_REQUEST['item_tax_rate'][$k]) ? floatval($_REQUEST['item_tax_rate'][$k]) : 18.00;
+                $tax_amt = !empty($_REQUEST['item_tax_amount'][$k]) ? floatval($_REQUEST['item_tax_amount'][$k]) : ($val_excl * ($tax_rate / 100));
+                $further_tax_rate = isset($_REQUEST['item_further_tax_rate'][$k]) ? floatval($_REQUEST['item_further_tax_rate'][$k]) : 0.00;
+                $further_tax_amt = !empty($_REQUEST['item_further_tax_amount'][$k]) ? floatval($_REQUEST['item_further_tax_amount'][$k]) : ($val_excl * ($further_tax_rate / 100));
+                $total_tax_payable = !empty($_REQUEST['item_total_tax'][$k]) ? floatval($_REQUEST['item_total_tax'][$k]) : ($tax_amt + $further_tax_amt);
+                $val_incl = !empty($_REQUEST['item_val_incl'][$k]) ? floatval($_REQUEST['item_val_incl'][$k]) : ($val_excl + $total_tax_payable);
+
+                $item_row = [
+                    'tax_sale_id' => $tax_sale_id,
+                    'product_id' => $pid,
+                    'description_of_goods' => $desc,
+                    'unit' => $unit,
+                    'hs_code' => $hs,
+                    'origin' => $origin,
+                    'quantity' => $qty,
+                    'rate' => $rate,
+                    'value_excl_tax' => $val_excl,
+                    'tax_rate' => $tax_rate,
+                    'tax_amount' => $tax_amt,
+                    'further_tax_rate' => $further_tax_rate,
+                    'further_tax_amount' => $further_tax_amt,
+                    'total_tax_payable' => $total_tax_payable,
+                    'value_incl_tax' => $val_incl
+                ];
+                insert_data($dbc, 'tax_sale_items', $item_row);
+            }
+        }
+
+        echo json_encode([
+            'sts' => 'success',
+            'msg' => 'Tax Sale Invoice Saved Successfully',
+            'order_id' => $tax_sale_id,
+            'type' => 'tax_sale'
+        ]);
+    } else {
+        echo json_encode([
+            'sts' => 'error',
+            'msg' => mysqli_error($dbc)
+        ]);
+    }
+    exit;
+}
+
+/* -------------------------------------------------------------
+ * Tax Purchase Invoice Handler
+ * ------------------------------------------------------------- */
+if (isset($_REQUEST['tax_purchase_action']) && $_REQUEST['tax_purchase_action'] == 'save_tax_purchase') {
+    $tax_purchase_id = !empty($_REQUEST['tax_purchase_id']) ? intval($_REQUEST['tax_purchase_id']) : 0;
+
+    $supplier_id = !empty($_REQUEST['supplier_id']) ? intval($_REQUEST['supplier_id']) : NULL;
+    $company_id = !empty($_REQUEST['company_id']) ? intval($_REQUEST['company_id']) : 5;
+
+    $invoice_no = !empty($_REQUEST['invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['invoice_no'])) : '';
+    $invoice_date = !empty($_REQUEST['invoice_date']) ? $_REQUEST['invoice_date'] : date('Y-m-d');
+    $time_of_supply = !empty($_REQUEST['time_of_supply']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['time_of_supply'])) : '';
+    $payment_terms = !empty($_REQUEST['payment_terms']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['payment_terms'])) : 'CREDIT';
+    $copy_type = !empty($_REQUEST['copy_type']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['copy_type'])) : 'ORIGINAL';
+
+    $header_description = !empty($_REQUEST['header_description']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['header_description'])) : '';
+    $gd_number = !empty($_REQUEST['gd_number']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['gd_number'])) : '';
+    $remarks = !empty($_REQUEST['remarks']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['remarks'])) : '';
+
+    $total_qty = !empty($_REQUEST['total_qty']) ? floatval($_REQUEST['total_qty']) : 0;
+    $total_value_excl_tax = !empty($_REQUEST['total_value_excl_tax']) ? floatval($_REQUEST['total_value_excl_tax']) : 0;
+    $total_sales_tax = !empty($_REQUEST['total_sales_tax']) ? floatval($_REQUEST['total_sales_tax']) : 0;
+    $total_further_tax = !empty($_REQUEST['total_further_tax']) ? floatval($_REQUEST['total_further_tax']) : 0;
+    $total_tax_payable = !empty($_REQUEST['total_tax_payable']) ? floatval($_REQUEST['total_tax_payable']) : 0;
+    $total_value_incl_tax = !empty($_REQUEST['total_value_incl_tax']) ? floatval($_REQUEST['total_value_incl_tax']) : 0;
+    $itax_236g_rate = isset($_REQUEST['itax_236g_rate']) ? floatval($_REQUEST['itax_236g_rate']) : 0.10;
+    $itax_236g_amount = !empty($_REQUEST['itax_236g_amount']) ? floatval($_REQUEST['itax_236g_amount']) : 0;
+    $invoice_amount = !empty($_REQUEST['invoice_amount']) ? floatval($_REQUEST['invoice_amount']) : 0;
+    $amount_in_words = !empty($_REQUEST['amount_in_words']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['amount_in_words'])) : '';
+    $user_id = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
+
+    $purchase_data = [
+        'invoice_no' => $invoice_no,
+        'invoice_date' => $invoice_date,
+        'time_of_supply' => $time_of_supply,
+        'payment_terms' => $payment_terms,
+        'copy_type' => $copy_type,
+        'supplier_id' => $supplier_id,
+        'company_id' => $company_id,
+        'header_description' => $header_description,
+        'gd_number' => $gd_number,
+        'total_qty' => $total_qty,
+        'total_value_excl_tax' => $total_value_excl_tax,
+        'total_sales_tax' => $total_sales_tax,
+        'total_further_tax' => $total_further_tax,
+        'total_tax_payable' => $total_tax_payable,
+        'total_value_incl_tax' => $total_value_incl_tax,
+        'itax_236g_rate' => $itax_236g_rate,
+        'itax_236g_amount' => $itax_236g_amount,
+        'invoice_amount' => $invoice_amount,
+        'amount_in_words' => $amount_in_words,
+        'remarks' => $remarks,
+        'user_id' => $user_id
+    ];
+
+    // Store transaction in transactions table like credit_purchase.php
+    $trans_data = [
+        'debit' => $invoice_amount,
+        'credit' => 0,
+        'customer_id' => $supplier_id,
+        'transaction_from' => 'purchase',
+        'transaction_type' => 'credit_purchase',
+        'transaction_remarks' => "purchased on tax purchase invoice #" . $invoice_no,
+        'transaction_date' => $invoice_date,
+    ];
+
+    if ($tax_purchase_id > 0) {
+        $existing_tp = fetchRecord($dbc, 'tax_purchases', 'tax_purchase_id', $tax_purchase_id);
+        $transaction_id = !empty($existing_tp['transaction_id']) ? intval($existing_tp['transaction_id']) : 0;
+        
+        if ($transaction_id > 0) {
+            update_data($dbc, 'transactions', $trans_data, 'transaction_id', $transaction_id);
+        } else if (!empty($supplier_id) && $invoice_amount > 0) {
+            insert_data($dbc, 'transactions', $trans_data);
+            $transaction_id = mysqli_insert_id($dbc);
+        }
+        $purchase_data['transaction_id'] = $transaction_id;
+        $ok = update_data($dbc, 'tax_purchases', $purchase_data, 'tax_purchase_id', $tax_purchase_id);
+    } else {
+        if (!empty($supplier_id) && $invoice_amount > 0) {
+            insert_data($dbc, 'transactions', $trans_data);
+            $transaction_id = mysqli_insert_id($dbc);
+            $purchase_data['transaction_id'] = $transaction_id;
+        }
+        $ok = insert_data($dbc, 'tax_purchases', $purchase_data);
+        if ($ok) {
+            $tax_purchase_id = mysqli_insert_id($dbc);
+        }
+    }
+
+    if ($ok) {
+        mysqli_query($dbc, "DELETE FROM tax_purchase_items WHERE tax_purchase_id = '$tax_purchase_id'");
+
+        if (!empty($_REQUEST['item_description']) && is_array($_REQUEST['item_description'])) {
+            foreach ($_REQUEST['item_description'] as $k => $desc) {
+                $desc = trim($desc);
+                if ($desc === '') continue;
+
+                $pid = !empty($_REQUEST['item_product_id'][$k]) ? intval($_REQUEST['item_product_id'][$k]) : NULL;
+                $unit = 'KG';
+                if (empty($unit)) {
+                    $unit = 'KG';
+                }
+                $hs = !empty($_REQUEST['item_hscode'][$k]) ? $_REQUEST['item_hscode'][$k] : '';
+                $origin = !empty($_REQUEST['item_origin'][$k]) ? $_REQUEST['item_origin'][$k] : '';
+                $qty = !empty($_REQUEST['item_qty'][$k]) ? floatval($_REQUEST['item_qty'][$k]) : 0;
+                $rate = !empty($_REQUEST['item_rate'][$k]) ? floatval($_REQUEST['item_rate'][$k]) : 0;
+                $val_excl = !empty($_REQUEST['item_val_excl'][$k]) ? floatval($_REQUEST['item_val_excl'][$k]) : ($qty * $rate);
+                $tax_rate = isset($_REQUEST['item_tax_rate'][$k]) ? floatval($_REQUEST['item_tax_rate'][$k]) : 18.00;
+                $tax_amt = !empty($_REQUEST['item_tax_amount'][$k]) ? floatval($_REQUEST['item_tax_amount'][$k]) : ($val_excl * ($tax_rate / 100));
+                $further_tax_rate = isset($_REQUEST['item_further_tax_rate'][$k]) ? floatval($_REQUEST['item_further_tax_rate'][$k]) : 0.00;
+                $further_tax_amt = !empty($_REQUEST['item_further_tax_amount'][$k]) ? floatval($_REQUEST['item_further_tax_amount'][$k]) : ($val_excl * ($further_tax_rate / 100));
+                $total_tax_payable = !empty($_REQUEST['item_total_tax'][$k]) ? floatval($_REQUEST['item_total_tax'][$k]) : ($tax_amt + $further_tax_amt);
+                $val_incl = !empty($_REQUEST['item_val_incl'][$k]) ? floatval($_REQUEST['item_val_incl'][$k]) : ($val_excl + $total_tax_payable);
+
+                $item_row = [
+                    'tax_purchase_id' => $tax_purchase_id,
+                    'product_id' => $pid,
+                    'description_of_goods' => $desc,
+                    'unit' => $unit,
+                    'hs_code' => $hs,
+                    'origin' => $origin,
+                    'quantity' => $qty,
+                    'rate' => $rate,
+                    'value_excl_tax' => $val_excl,
+                    'tax_rate' => $tax_rate,
+                    'tax_amount' => $tax_amt,
+                    'further_tax_rate' => $further_tax_rate,
+                    'further_tax_amount' => $further_tax_amt,
+                    'total_tax_payable' => $total_tax_payable,
+                    'value_incl_tax' => $val_incl
+                ];
+                insert_data($dbc, 'tax_purchase_items', $item_row);
+            }
+        }
+
+        echo json_encode([
+            'sts' => 'success',
+            'msg' => 'Tax Purchase Invoice Saved Successfully',
+            'order_id' => $tax_purchase_id,
+            'type' => 'tax_purchase'
+        ]);
+    } else {
+        echo json_encode([
+            'sts' => 'error',
+            'msg' => mysqli_error($dbc)
+        ]);
+    }
+    exit;
+}
+
+if (isset($_REQUEST['fetch_customer_details'])) {
+    $cid = intval($_REQUEST['fetch_customer_details']);
+    $cdata = fetchRecord($dbc, 'customers', 'customer_id', $cid);
+    if ($cdata) {
+        echo json_encode([
+            'sts' => 'success',
+            'customer_id' => $cdata['customer_id'],
+            'customer_name' => $cdata['customer_name'],
+            'customer_email' => $cdata['customer_email'],
+            'customer_phone' => $cdata['customer_phone'],
+            'customer_address' => $cdata['customer_address'],
+            'customer_strn' => $cdata['customer_strn'],
+            'customer_ntn' => $cdata['customer_ntn'],
+            'customer_province' => $cdata['customer_province'],
+            'customer_cnic' => $cdata['customer_cnic'],
+            'customer_status' => $cdata['customer_status'],
+            'customer_type' => $cdata['customer_type']
+        ]);
+    } else {
+        echo json_encode(['sts' => 'error', 'msg' => 'Customer not found']);
+    }
+    exit;
+}
 
 ?>

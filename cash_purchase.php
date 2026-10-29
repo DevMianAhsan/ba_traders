@@ -74,53 +74,89 @@ $next_increment = $data['Auto_increment']; ?>
                       
                    </div>
               </div> <!-- end of form-group -->
+                            <!-- New row -->
+
               <div class="form-group row">
-                    <div class="col-4 col-md-2">
+
+                    <div class="col-6 col-md-2">
+
                       <label>Product Code</label>
+
                       <input type="text"  name="product_code" autocomplete="off" id="get_product_code" class="form-control">
+
                     </div>
 
-                       <div class="col-6 col-md-2">
+                       <div class="col-6 col-md-4">
+
                         <label>Products</label>
+
                         <input type="hidden" id="add_pro_type" value="add">  
+
                          <select class="form-control searchableSelect" id="get_product_name"  name="product_id"   >
+
                               <option value="">Select Product</option>
+
                           <?php
+
                             $result=mysqli_query($dbc,"SELECT * FROM product WHERE status=1 ");
+
                              while($row=mysqli_fetch_array($result)){ 
+
                              $getBrand=fetchRecord($dbc,"brands","brand_id",$row['brand_id']);
+
                              $getCat=fetchRecord($dbc,"categories","categories_id",$row['category_id']);
+
+                             $purchase_price = (isset($row['purchase_rate']) && $row['purchase_rate'] !== '') ? (double)$row['purchase_rate'] : 0;
+                             if ($purchase_price == 0) {
+                               $last_pi = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT rate FROM purchase_item WHERE product_id = '$row[product_id]' AND rate != 0 ORDER BY purchase_item_id DESC LIMIT 1"));
+                               if ($last_pi && !empty($last_pi['rate'])) {
+                                 $purchase_price = (double)$last_pi['rate'];
+                               }
+                             }
+
                           ?>
-                    
-                      <option data-price="<?=$row["current_rate"]?>"  <?=empty($r['product_id'])?"":"selected"?>  value="<?=$row["product_id"]?>"  >
+
+                      <option data-price="<?=$purchase_price?>" data-uom="<?=@$row["product_unit"]?>" data-code="<?=@$row["product_code"]?>" <?=empty($r['product_id'])?"":"selected"?> value="<?=$row["product_id"]?>" >
+
                         <?=$row["product_name"]?> |  <?=@$getBrand["brand_name"]?>(<?=@$getCat["categories_name"]?>) </option>
 
                       <?php   } ?>
+
                   </select>
+
                   <span  class="text-center w-100" id="instockQty"></span>
+
                       </div>
                       <div class="col-1 col-md-1">
                       <label class="invisible d-block">.</label>
                         <button type="button"  class="btn btn-admin btn-sm" data-toggle="modal" data-target="#add_product_modal"> <i class="fa fa-plus"></i> </button>
+                   
                     </div>
 
-                    <div class="col-6 col-sm-2 col-md-2">
-                        <label>Rate/MM</label>
-                         <input type="number" class="form-control" id="get_product_mm" value="1"  min="1" name="quantity" step="0.5" onkeyup="applyFormula()"  >
-                      </div> 
                         <div class="col-6 col-sm-2 col-md-2">
-                          <label>Price/piece</label>
-                         <input type="number" min="0" <?=($_SESSION['user_role']=="admin")?"":"readonly"?> class="form-control" id="get_product_price" >
+
+                          <label id="product_price_label">Rate / <span id="product_uom"></span></label>
+
+                         <input type="number" step="any" <?=($_SESSION['user_role']=="admin")?"":"readonly"?> min="0" class="form-control" id="get_product_price" >
+
                       </div>
+
                       <div class="col-6 col-sm-2 col-md-2">
+
                         <label>Quantity</label>
-                         <input type="number" class="form-control" id="get_product_quantity" value="1"  min="1" name="quantity" >
+
+                         <input type="text" class="form-control" id="get_product_quantity" value="1"  min="1" name="quantity" >
+
                       </div>
+
                        <div class="col-sm-1">
+
                         <br>
+
                          <button type="button" class="btn btn-admin btn-sm mt-2 float-right" id="addProductPurchase"><i class="fa fa-plus"></i> <b>Add</b></button>
+
                       </div>
-                    
+
               </div>
               <div class="row">
                 <div class="col-12">
@@ -130,7 +166,6 @@ $next_increment = $data['Auto_increment']; ?>
                       <tr>
                         <th>Code</th>
                         <th>Product Name</th>
-                        <th>Rate/MM</th>
                         <th>Unit Price</th>
                         <th>Quantity</th>
                         <th>Total Price</th>
@@ -152,14 +187,13 @@ $next_increment = $data['Auto_increment']; ?>
                 <input type="hidden" id="product_totalrate_<?=$r['product_id']?>" name="product_totalrates[]" value="<?=$r['rate']?>">
                 <td><?=$r['product_code']?></td>
                 <td><?=$r['product_name']?></td>
-                 <td><?=$r['rate_mm']?></td>
                  <td><?=$r['rate']?></td>
                  <td><?=$r['quantity']?></td>
-                <td><?=(double)$r['rate']*(double)$r['quantity']?></?></td>
+                <td><?=(double)$r['rate']*(double)$r['quantity']?></td>
                 <td>
                
             <button type="button" onclick="removeByid(`#product_idN_<?=$r['product_id']?>`)" class="fa fa-trash text-danger" href="#" ></button>
-                  <button type="button" onclick="editByid(<?=$r['product_id']?>,`<?=$r['product_code']?>`,<?=$r['rate']?>,<?=$r['quantity']?>,<?=$r['rate_mm']?>)" class="fa fa-edit text-success ml-2 "  ></button>
+                  <button type="button" onclick="editByid(<?=$r['product_id']?>,`<?=$r['product_code']?>`,<?=$r['rate']?>,<?=$r['quantity']?>)" class="fa fa-edit text-success ml-2 "  ></button>
                   
             </td>
                 </tr>
@@ -168,7 +202,7 @@ $next_increment = $data['Auto_increment']; ?>
                  
            <tfoot>
               <tr>
-                        <td colspan="3" ></td>
+                        <td colspan="2" ></td>
                        
                         <td class="table-bordered"> Sub Total :</td>
                         <td class="table-bordered" id="product_total_amount"><?=@$fetchPurchase['total_amount']?></td>
@@ -191,7 +225,7 @@ $next_increment = $data['Auto_increment']; ?>
                         </td>
                       </tr>
               <tr>
-                  <td colspan="3"class="border-none" ></td>
+                  <td colspan="2" class="border-none" ></td>
                   <td class="table-bordered"> <strong>Grand Total :</strong> </td>
                   <td class="table-bordered" id="product_grand_total_amount"><?=@$fetchPurchase['grand_total']?></td>
                   <td class="table-bordered">Paid :</td>
@@ -200,7 +234,7 @@ $next_increment = $data['Auto_increment']; ?>
                   </td>
                </tr>
                <tr>
-                  <td colspan="3"class="border-none" ></td>
+                  <td colspan="2" class="border-none" ></td>
                    <td class="table-bordered">Remaing Amount :</td>
                   <td class="table-bordered"><input type="number" class="form-control form-control-sm" id="remaining_ammount"  readonly name="remaining_ammount" value="<?=@$fetchPurchase['due']?>">
                   </td>
@@ -252,5 +286,28 @@ $next_increment = $data['Auto_increment']; ?>
 </html>
 <?php include_once 'includes/foot.php'; ?>
 <script type="text/javascript">
-  
+$(document).ready(function() {
+  function updateProductDetails() {
+    var $opt = $('#get_product_name :selected');
+    var val = $opt.val();
+    if (val) {
+      var price = $opt.data('price');
+      var uom = $opt.data('uom') || '';
+      var code = $opt.data('code') || '';
+      if (price !== undefined && price !== '') {
+        $('#get_product_price').val(price);
+      }
+      if (code && !$('#get_product_code').val()) {
+        $('#get_product_code').val(code);
+      }
+      $('#product_uom').text(uom);
+    } else {
+      $('#product_uom').text('');
+    }
+  }
+
+  $('#get_product_name').on('change select2:select', function() {
+    updateProductDetails();
+  });
+});
 </script>
