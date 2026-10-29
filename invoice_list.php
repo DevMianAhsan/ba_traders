@@ -45,10 +45,10 @@
                           <td><?=$c?></td>
                            <td><?=$r['invoice_id']?></td>
                        
-                          <td><?=$r['invoice_date']?></td>
+                          <td><?=$r['invoice_date'] ?: '-'?></td>
                           <td>
-                            <?=$CLEINTHIS['customer_name']?><br/>
-                            <?=$CLEINTHIS['customer_phone']?>
+                            <?=htmlspecialchars($CLEINTHIS['customer_name'] ?? 'N/A')?><br/>
+                            <small class="text-muted"><?=htmlspecialchars($CLEINTHIS['customer_phone'] ?? '')?></small>
                           </td>
                           <td><strong><?=htmlspecialchars($r['party_po'])?></strong></td>
                           <td><?=number_format(floatval($r['grand_total']))?></td>

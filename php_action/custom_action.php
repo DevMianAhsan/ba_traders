@@ -7,7 +7,11 @@
 	/*invocie*/
 //print_r($_REQUEST);
 //if(isset($_REQUEST['page_type'] == 'invoice')){
-	if (isset($_REQUEST['page_type']) && $_REQUEST['page_type'] == 'invoice') {
+	if (isset($_REQUEST['page_type']) && $_REQUEST['page_type'] == 'invoice' && !isset($_REQUEST['get_party_po']) && !isset($_REQUEST['getpodinvoice'])) {
+		if (empty($_REQUEST['customer_account'])) {
+			echo json_encode(['sts' => 'error', 'msg' => 'Please select a Customer Account']);
+			exit;
+		}
 		$res = ['data' => []];
 		if (!empty($_REQUEST['dc_no'])) {
 			for ($i = 0; $i < count($_REQUEST['dc_no']); $i++) { 
@@ -148,6 +152,7 @@
 		}
 
 		echo json_encode($data);
+		exit;
 	}
 
 	/*Invocie end*/

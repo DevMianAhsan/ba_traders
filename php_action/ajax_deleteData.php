@@ -112,6 +112,7 @@ require_once '../includes/functions.php';
 					}
  		deleteFromTable($dbc,"transactions",'transaction_id',$orders['transaction_paid_id']);
  		deleteFromTable($dbc,"transactions",'transaction_id',$orders['transaction_id']);
+ 		deleteFromTable($dbc,"order_item",'order_id',$id);
  		if(mysqli_query($dbc,"DELETE FROM orders WHERE $row='$id'")){
  			$msg = "Data Has been deleted...";
  			$sts ="success";
@@ -139,8 +140,19 @@ require_once '../includes/functions.php';
  		$vouchers=fetchRecord($dbc,'purchase', $row, $id);
  		@deleteFromTable($dbc,"transactions",'transaction_id',$vouchers['transaction_paid_id']);
  		@deleteFromTable($dbc,"transactions",'transaction_id',$vouchers['transaction_id']);
+ 		deleteFromTable($dbc,"purchase_item",'purchase_id',$id);
  		if(mysqli_query($dbc,"DELETE FROM purchase WHERE $row='$id'")){
  			$msg = "Data Has been deleted...";
+ 			$sts ="success";
+ 		}else{
+ 			$msg = mysqli_error($dbc);
+ 			$sts = "error";
+ 		}
+
+ 	}elseif ($table=="purchase_order") {
+ 		deleteFromTable($dbc,"purchase_order_item",'po_id',$id);
+ 		if(mysqli_query($dbc,"DELETE FROM purchase_order WHERE $row='$id'")){
+ 			$msg = "Purchase Order has been deleted...";
  			$sts ="success";
  		}else{
  			$msg = mysqli_error($dbc);

@@ -368,7 +368,7 @@ if (!empty($tax_sale['customer_id'])) {
               </div>
               <div class="meta-field-right">
                 <span class="lbl">Payment Terms :</span>
-                <input type="text" name="payment_terms" id="payment_terms" class="inv-input-clean font-weight-bold" style="width: 100px; text-align: left;" value="<?=@$tax_sale['payment_terms'] ?: 'CREDIT'?>">
+                <input type="text" readonly name="payment_terms" id="payment_terms" class="inv-input-clean font-weight-bold" style="width: 100px; text-align: left;" value="<?=@$tax_sale['payment_terms'] ?: 'CREDIT'?>">
               </div>
               <!-- <div class="meta-field-right">
                 <select name="copy_type" class="inv-input-clean font-weight-bold" style="letter-spacing: 2px;">

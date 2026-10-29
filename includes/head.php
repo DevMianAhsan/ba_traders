@@ -55,6 +55,17 @@
          color: white;    
         }
       
+
+        /* Fallback Select2 highlight and active colors */
+        .select2-container--default .select2-results__option--highlighted[aria-selected],
+        .select2-container--default .select2-results__option--highlighted {
+            background-color: #1b68ff !important;
+            color: #ffffff !important;
+        }
+        .select2-container--default .select2-results__option[aria-selected=true] {
+            background-color: #e9ecef !important;
+            color: #212529 !important;
+        }
     </style>
   </head>
   

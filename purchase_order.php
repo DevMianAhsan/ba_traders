@@ -348,6 +348,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
 <script type="text/javascript">
 $(document).ready(function() {
   function updateProductDetailsPO() {
+    if ($('#add_pro_type').val() === 'update' || window.isEditingByid) return;
     var $opt = $('#get_product_name :selected');
     var val = $opt.val();
     if (val) {

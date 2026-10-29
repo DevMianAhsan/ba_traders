@@ -312,6 +312,7 @@ $next_increment = $data['Auto_increment']; ?>
 <script type="text/javascript">
 $(document).ready(function() {
   function updateProductDetails() {
+    if ($('#add_pro_type').val() === 'update' || window.isEditingByid) return;
     var $opt = $('#get_product_name :selected');
     var val = $opt.val();
     if (val) {

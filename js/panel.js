@@ -3,6 +3,9 @@
 // var view = url.searchParams.get("edit_quotation_id");
 
 $(document).ready(function () {
+  if (window.jQuery && $.fn.select2 && $.fn.select2.defaults && typeof $.fn.select2.defaults.set === 'function') {
+    $.fn.select2.defaults.set('theme', 'bootstrap4');
+  }
 
   
 

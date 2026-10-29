@@ -476,7 +476,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   <div class="card shadow mb-4">
                     <div class="card-header bg-primary ">
                       <strong class="card-title text-white">Balance</strong>
-                      <a class="float-right small text-muted" href="customerpendingreport.php">View all</a>
+                      <a class="float-right small text-white font-weight-bold" href="dues_report.php">View All Dues</a>
                     </div>
                     <div class="card-body">
                       
@@ -1058,5 +1058,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
       }
     </script>
     <script src="js/apps.js"></script>
+    <script src="js/custom.js"></script>
+    <script src="js/enter_navigation.js"></script>
   </body>
 </html>

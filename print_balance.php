@@ -1,269 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<?php  
+include_once 'includes/head.php';
 
+$userid = isset($_REQUEST['customer']) ? trim($_REQUEST['customer']) : '';
+$customers = fetchRecord($dbc, "customers", "customer_id", $userid);
 
-        
- <?php  include_once 'includes/head.php';
-  $userid = $_REQUEST['customer'];
-  $transactionsQ = get($dbc," transactions WHERE customer_id='$userid' ");
-		while($transactions = $transactionsQ->fetch_array()) {
-			$credit=$transactions['credit'];
-			$debit=$transactions['debit'];
-			 $customer_blance_remain = $credit-$debit;
-
-	}//while transation	\
-
-  $customers=fetchRecord($dbc,"customers","customer_id",$_REQUEST['customer']);
-
- 
-
- ?>
-<style type="text/css">
- @font-face {
-    font-family: 'AvantGardeBookBT';
-    src: url('AvantGardeBookBT.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
+if (!$customers) {
+    die("<div class='container p-4'><div class='alert alert-danger'>Customer / Supplier record not found.</div></div>");
 }
 
-/* The following rules are deprecated. */ 
-@font-face {
-    font-family: 'AvantGardeBookBT';
-    src: url('AvantGardeBookBT.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
+$is_supplier = (($customers['customer_type'] ?? '') == 'supplier');
+$bal_res = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) as tot_cr, SUM(CAST(debit AS DECIMAL(15,2))) as tot_dr FROM transactions WHERE customer_id='$userid'"));
+
+if ($is_supplier) {
+    $customer_blance_remain = floatval($bal_res['tot_dr'] ?? 0) - floatval($bal_res['tot_cr'] ?? 0);
+} else {
+    $customer_blance_remain = floatval($bal_res['tot_cr'] ?? 0) - floatval($bal_res['tot_dr'] ?? 0);
 }
 
-body,p { 
-   font-family: 'AvantGardeBookBT'; 
-   font-weight: normal; 
-   font-style: normal; 
-
+// Fetch Recent Transactions for this Account
+$q_recent = mysqli_query($dbc, "SELECT * FROM transactions WHERE customer_id = '$userid' ORDER BY transaction_date DESC, transaction_id DESC LIMIT 15");
+$recent_txs = [];
+while ($rtx = mysqli_fetch_assoc($q_recent)) {
+    $recent_txs[] = $rtx;
 }
-input{
-   font-family:'Lucida Casual', 'Comic Sans MS';    
-   
+// Sort ascending for chronological reading
+$recent_txs = array_reverse($recent_txs);
+
+// Report header variables
+$report_title = $is_supplier ? 'SUPPLIER PENDING PAYABLE STATEMENT' : 'CUSTOMER PENDING BALANCE STATEMENT';
+$report_customer = $customers;
+$report_duration = "As of " . date('d-M-Y');
+
+// Helper for number to words
+function amountToWords($num) {
+    $num = abs(floatval($num));
+    $ones = [
+        0 => '', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five',
+        6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine', 10 => 'Ten',
+        11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen', 14 => 'Fourteen', 15 => 'Fifteen',
+        16 => 'Sixteen', 17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen'
+    ];
+    $tens = [
+        2 => 'Twenty', 3 => 'Thirty', 4 => 'Forty', 5 => 'Fifty',
+        6 => 'Sixty', 7 => 'Seventy', 8 => 'Eighty', 9 => 'Ninety'
+    ];
+    if ($num == 0) return 'Zero Rupees Only';
+
+    $n = intval($num);
+    $out = '';
+    if ($n >= 10000000) {
+        $crore = intval($n / 10000000);
+        $out .= amountToWords($crore) . ' Crore ';
+        $n %= 10000000;
+    }
+    if ($n >= 100000) {
+        $lakh = intval($n / 100000);
+        $out .= amountToWords($lakh) . ' Lakh ';
+        $n %= 100000;
+    }
+    if ($n >= 1000) {
+        $th = intval($n / 1000);
+        $out .= amountToWords($th) . ' Thousand ';
+        $n %= 1000;
+    }
+    if ($n >= 100) {
+        $h = intval($n / 100);
+        $out .= $ones[$h] . ' Hundred ';
+        $n %= 100;
+    }
+    if ($n > 0) {
+        if ($n < 20) {
+            $out .= $ones[$n] . ' ';
+        } else {
+            $t = intval($n / 10);
+            $o = $n % 10;
+            $out .= $tens[$t] . ' ' . $ones[$o] . ' ';
+        }
+    }
+    return trim($out) . ' Rupees Only';
 }
-</style>
-    <div class="page-content-wrapper">
-    <div class="page-content">
-<div id="invoice">
+?>
+<body class="bg-white">
+  <div class="container py-3">
 
-    <div class="invoice overflow-auto">  
-        <div style="min-width: 600px">
-            <header>
-                <div class="row">
-                     <div class="col-sm-5">
-                         <img src="img/logo/<?=$get_company['logo']?>" width="80" height="80" class="img-fluid float-right">
-                </div>
-        <div class="col-sm-7 mt-3">
-          <h2 style="margin-left: -20px; color: red;font-weight: bold;"><?=$get_company['name']?></h2>
-          <p style="margin-left: -20px; font-weight: bold;"><?=$get_company['company_phone']?>-<?=$get_company['email']?></p>
-          <p style="margin-left: -20px; font-weight: bold;margin-top: -10px;"><?=$get_company['address']?></p>
-  
-
-          
-        </div>
-        <center style="width: 100%;margin-top: -5px;"></center>
+    <!-- Action Toolbar (Hidden on Print) -->
+    <div class="d-flex justify-content-between align-items-center d-print-none mb-3">
+      <a href="dues_report.php" class="btn btn-outline-secondary">
+        <i class="fe fe-arrow-left mr-1"></i> Back to Dues Report
+      </a>
+      <div>
+        <button onclick="window.print();" class="btn btn-primary font-weight-bold shadow-sm mr-1">
+          <i class="fe fe-printer mr-1"></i> Print Statement Slip
+        </button>
+        <button onclick="window.close();" class="btn btn-secondary">
+          <i class="fe fe-x mr-1"></i> Close
+        </button>
       </div>
-            </header>
-            <main>
-                <div class="row contacts">
-                    <div class="col invoice-to">
-                        <div class="text-gray-light">CUSTOMER'S DETAILS:</div>
-                        <h2 class="to"><?=ucfirst($customers['customer_name'])?></h2>
-                        <div class="email"><?=$customers['customer_phone']?></div>
-                        <div class="address d-none"><?=@$customers['customer_address']?></div>
-                    </div>
-                    <div class="col invoice-details">
-                        <h1 class="invoice-id">Balance # <?=$customer_blance_remain?></h1>
-                        <!-- <div class="date">Order Type: Delivery</div>
-                        <div class="date">Order Date/Time: <?=$order['timestamp']?></div> -->
-                    </div>
-                </div>
-                              <!--<div class="thanks">Thank you!</div>-->
-                <div class="notices">
-                    <h4><strong>Thank you!</strong></h4>
-                    <p class="notice">Thank you so much for choosing<b class="name">
-                            <?=$get_company['name']?>                        </b> </p>
-                </div>
-            </main>
-            <footer>
-                Invoice was created on a computer and is valid without the signature and seal.
-            </footer>
+    </div>
+
+    <!-- Unified Report Header -->
+    <?php include 'includes/report_header.php'; ?>
+
+    <!-- Main Balance Highlight Box -->
+    <div class="balance-card mb-4 p-3" style="border: 2px solid #000; border-radius: 6px; background-color: #fdfdfd;">
+      <div class="row align-items-center">
+        <div class="col-sm-7">
+          <div class="small text-muted font-weight-bold text-uppercase">
+            <?=$is_supplier ? 'Total Outstanding Payable Amount' : 'Total Outstanding Pending Due Amount'?>
+          </div>
+          <div class="h2 font-weight-bolder mb-1" style="color: <?=$customer_blance_remain > 0 ? '#b30000' : '#1b6330'?>;">
+            Rs. <?=number_format($customer_blance_remain)?>
+          </div>
+          <div class="small font-italic text-dark">
+            <strong>In Words:</strong> <?=amountToWords($customer_blance_remain)?>
+          </div>
         </div>
-        <!--DO NOT DELETE THIS div. IT is responsible for showing footer always at the bottom-->
-        <div></div>
+        <div class="col-sm-5 text-sm-right mt-2 mt-sm-0">
+          <?php if ($customer_blance_remain > 0): ?>
+            <span class="badge badge-due p-2" style="font-size: 13px;">
+              <i class="fe fe-alert-circle mr-1"></i> <?= $is_supplier ? 'PENDING TO PAY' : 'PAYMENT PENDING RECOVERY' ?>
+            </span>
+          <?php elseif ($customer_blance_remain < 0): ?>
+            <span class="badge badge-advance p-2" style="font-size: 13px;">
+              <i class="fe fe-info mr-1"></i> ADVANCE BALANCE
+            </span>
+          <?php else: ?>
+            <span class="badge badge-cleared p-2" style="font-size: 13px;">
+              <i class="fe fe-check-circle mr-1"></i> CLEARED / NIL BALANCE
+            </span>
+          <?php endif; ?>
+          <div class="small text-muted mt-2">
+            Statement Generated: <strong><?=date('d-M-Y h:i A')?></strong>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+
+    <!-- Recent Transactions Table -->
+    <?php if (!empty($recent_txs)): ?>
+      <div class="mb-3">
+        <div class="font-weight-bold text-uppercase small text-dark mb-2">
+          <strong>Recent Statement Transactions:</strong>
+        </div>
+        <table class="table table-bordered table-sm text-center mb-0" style="width: 100%;">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th style="width: 110px;">Date</th>
+              <th style="width: 110px;">Ref #</th>
+              <th style="text-align: left;">Particulars / Remarks</th>
+              <th style="width: 120px;" class="text-right">Debit (Rs)</th>
+              <th style="width: 120px;" class="text-right">Credit (Rs)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php 
+            $i = 0;
+            foreach ($recent_txs as $tx):
+              $i++;
+            ?>
+              <tr>
+                <td><?=$i?></td>
+                <td><?=date('d-M-Y', strtotime($tx['transaction_date']))?></td>
+                <td class="font-weight-bold">#<?=$tx['transaction_id']?></td>
+                <td style="text-align: left;">
+                  <?=htmlspecialchars(str_replace('=', ' ', $tx['transaction_remarks'] ?: 'Account Entry'))?>
+                  <?php if (!empty($tx['transaction_from'])): ?>
+                    <span class="badge badge-light border ml-1"><?=htmlspecialchars($tx['transaction_from'])?></span>
+                  <?php endif; ?>
+                </td>
+                <td class="text-right font-weight-bold text-primary">
+                  <?=floatval($tx['debit']) > 0 ? number_format($tx['debit']) : '-'?>
+                </td>
+                <td class="text-right font-weight-bold text-success">
+                  <?=floatval($tx['credit']) > 0 ? number_format($tx['credit']) : '-'?>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    <?php endif; ?>
+
+    <!-- Note & Computerized Disclaimer -->
+    <div class="p-2 mb-4" style="background: #f8f9fa; border: 1px dashed #999; font-size: 11.5px;">
+      <strong>Note:</strong> This is a computerized pending balance statement issued on behalf of <strong><?=htmlspecialchars($comp_name)?></strong>. Please contact our accounts department if you find any discrepancies.
     </div>
-</div>
-<style>
-    #invoice{
-        padding: 30px;
-    }
 
-    .invoice {
-        position: relative;
-        background-color: #FFF;
-        min-height: 680px;
-        padding: 15px
-    }
+    <!-- Signatures Block -->
+    <div class="print-signature-row">
+      <div class="print-sig-col">
+        <div class="print-sig-line"></div>
+        <div class="print-sig-title">Prepared By</div>
+        <div class="print-sig-sub">Accounts Officer</div>
+      </div>
+      <div class="print-sig-col">
+        <div class="print-sig-line"></div>
+        <div class="print-sig-title">Verified By</div>
+        <div class="print-sig-sub">Chief Accountant</div>
+      </div>
+      <div class="print-sig-col">
+        <div class="print-sig-line"></div>
+        <div class="print-sig-title">Customer / Receiver</div>
+        <div class="print-sig-sub">Signature &amp; Stamp</div>
+      </div>
+    </div>
 
-    .name{
-        color: #cd0606;
-    }
-
-    .invoice header {
-        padding: 10px 0;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #cd0606
-    }
-
-    .invoice .company-details {
-        text-align: right
-    }
-
-    .invoice .company-details .name {
-        margin-top: 0;
-        margin-bottom: 0
-    }
-
-    .invoice .contacts {
-        margin-bottom: 20px
-    }
-
-    .invoice .invoice-to {
-        text-align: left
-    }
-
-    .invoice .invoice-to .to {
-        margin-top: 0;
-        margin-bottom: 0
-    }
-
-    .invoice .invoice-details {
-        text-align: right
-    }
-
-    .invoice .invoice-details .invoice-id {
-        margin-top: 0;
-        color: #cd0606;
-    }
-
-    .invoice main {
-        padding-bottom: 50px
-    }
-
-    .invoice main .thanks {
-        margin-top: -100px;
-        font-size: 2em;
-        margin-bottom: 50px
-    }
-
-    .invoice main .notices {
-        padding-left: 6px;
-        border-left: 6px solid #cd0606
-    }
-
-    .invoice main .notices .notice {
-        font-size: 1.2em
-    }
-
-    .invoice table {
-        width: 100%;
-        border-collapse: collapse;
-        border-spacing: 0;
-        margin-bottom: 20px
-    }
-
-    .invoice table td,.invoice table th {
-        padding: 10px;
-        background: #eee;
-        border-bottom: 1px solid #fff
-    }
-
-    .invoice table th {
-        white-space: nowrap;
-        font-weight: 400;
-        font-size: 16px
-    }
-
-    .invoice table td h3 {
-        margin: 0;
-        font-weight: 400;
-        color: #cd0606;
-        font-size: 1.2em
-    }
-
-    .invoice table .qty,.invoice table .total,.invoice table .unit {
-        text-align: right;
-        font-size: 1.2em
-    }
-
-    .invoice table .no {
-        color: #fff;
-        font-size: 1.6em;
-        background: #cd0606
-    }
-
-    .invoice table .unit {
-        background: #ddd
-    }
-
-    .invoice table .total {
-        background: #cd0606;
-        color: #fff
-    }
-
-    .invoice table tbody tr:last-child td {
-        border: none
-    }
-
-    .invoice table tfoot td {
-        background: 0 0;
-        border-bottom: none;
-        white-space: nowrap;
-        text-align: right;
-        padding: 10px 20px;
-        font-size: 1.2em;
-        border-top: 1px solid #aaa
-    }
-
-    .invoice table tfoot tr:first-child td {
-        border-top: none
-    }
-
-    .invoice table tfoot tr:last-child td {
-        color: #cd0606;
-        font-size: 1.4em;
-        border-top: 1px solid #cd0606
-    }
-
-    .invoice table tfoot tr td:first-child {
-        border: none
-    }
-
-    .invoice footer {
-        width: 100%;
-        text-align: center;
-        color: #777;
-        border-top: 1px solid #aaa;
-        padding: 8px 0
-    }
-
-    @media print {
-        .invoice {
-            font-size: 11px!important;
-            overflow: hidden!important
-        }
-
-        .invoice footer {
-            position: absolute;
-            bottom: 10px;
-            page-break-after: always
-        }
-
-        .invoice>div:last-child {
-            page-break-before: always
-        }
-    }
-</style>
+  </div>
+</body>
+</html>

@@ -325,7 +325,7 @@ if (!empty($tax_purchase['supplier_id'])) {
         <div class="invoice-sheet">
           <!-- Document Title -->
           <div class="invoice-title">
-            <h1>SALES TAX INVOICE</h1>
+            <h1>PURCHASE TAX INVOICE</h1>
           </div>
 
           <!-- Top Metadata Row -->
@@ -348,7 +348,7 @@ if (!empty($tax_purchase['supplier_id'])) {
               </div>
               <div class="meta-field-right">
                 <span class="lbl">Payment Terms :</span>
-                <input type="text" name="payment_terms" id="payment_terms" class="inv-input-clean font-weight-bold" style="width: 100px; text-align: left;" value="<?=@$tax_purchase['payment_terms'] ?: 'CREDIT'?>">
+                <input type="text" readonly name="payment_terms" id="payment_terms" class="inv-input-clean font-weight-bold" style="width: 100px; text-align: left;" value="<?=@$tax_purchase['payment_terms'] ?: 'CREDIT'?>">
               </div>
               <!-- <div class="meta-field-right">
                 <select name="copy_type" class="inv-input-clean font-weight-bold" style="letter-spacing: 2px;">

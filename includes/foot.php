@@ -321,3 +321,4 @@
     <script src="js/apps.js"></script>
     <script src="js/custom.js?v=<?=(file_exists('js/custom.js')?filemtime('js/custom.js'):time())?>"></script>
       <script src="js/panel.js?v=<?=(file_exists('js/panel.js')?filemtime('js/panel.js'):time())?>"></script>
+      <script src="js/enter_navigation.js?v=<?=(file_exists('js/enter_navigation.js')?filemtime('js/enter_navigation.js'):time())?>"></script>

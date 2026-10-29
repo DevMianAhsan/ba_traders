@@ -21,6 +21,11 @@ $selected_month = !empty($_REQUEST['month']) ? ucfirst(strtolower(trim($_REQUEST
 // Output GST Warning Limit (default 10% / 0.10)
 $warning_limit_pct = isset($_REQUEST['warning_limit']) && is_numeric($_REQUEST['warning_limit']) ? floatval($_REQUEST['warning_limit']) : 10.0;
 $warning_limit_ratio = $warning_limit_pct / 100.0;
+$allowed_multiplier_pct = 100 + $warning_limit_pct;
+$example_allowed_sale = 100 + $warning_limit_pct;
+$warning_limit_str = (floatval($warning_limit_pct) == intval($warning_limit_pct)) ? intval($warning_limit_pct) : $warning_limit_pct;
+$allowed_multiplier_str = (floatval($allowed_multiplier_pct) == intval($allowed_multiplier_pct)) ? intval($allowed_multiplier_pct) : $allowed_multiplier_pct;
+$example_sale_str = (floatval($example_allowed_sale) == intval($example_allowed_sale)) ? intval($example_allowed_sale) : $example_allowed_sale;
 
 // Months array
 $all_months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -214,9 +219,8 @@ $net_gst = $tot_pur_gst - $tot_sal_gst;
 $net_inv = $tot_pur_inv - $tot_sal_inv;
 ?>
 
-<head>
-  <style>
-    .metric-card {
+<style>
+  .metric-card {
       border-radius: 8px;
       border: 1px solid #dee2e6;
       background: #ffffff;
@@ -317,11 +321,37 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
     }
 
     /* Print View */
+    @page {
+      size: A4 portrait;
+      margin: 10mm 15mm;
+    }
+
     @media print {
-      .d-print-none, .navbar, .navbar-slide, .toggle-sidebar, .sidebar, #header, footer, .btn, .breadcrumb, .month-pill-group {
+      .d-print-none, 
+      .navbar, 
+      .navbar-slide, 
+      .toggle-sidebar, 
+      .sidebar, 
+      #header, 
+      footer, 
+      .btn, 
+      .breadcrumb, 
+      .month-pill-group {
         display: none !important;
       }
-      .wrapper, main, .main-content, .container-fluid, .card, .card-body {
+
+      html, body {
+        background: #fff !important;
+        color: #000 !important;
+        font-size: 10px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+
+      .wrapper, 
+      main, 
+      .main-content {
         padding: 0 !important;
         margin: 0 !important;
         border: none !important;
@@ -329,36 +359,97 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
         background: #fff !important;
         width: 100% !important;
       }
-      body {
-        background: #fff !important;
-        color: #000 !important;
-        font-size: 10.5px !important;
+
+      #printReportContainer {
+        padding-left: 15mm !important;
+        padding-right: 15mm !important;
+        padding-top: 5mm !important;
+        padding-bottom: 12mm !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
       }
+
+      #printReportContainer .row {
+        margin-left: -5px !important;
+        margin-right: -5px !important;
+      }
+
+      #printReportContainer .row > [class*="col"] {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+      }
+
+      #printReportContainer .card {
+        border: none !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        margin: 0 0 12px 0 !important;
+        width: 100% !important;
+      }
+
+      #printReportContainer .card-body {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      #printReportContainer .card-header.card-bg {
+        border-radius: 4px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      #printReportContainer .table-responsive {
+        overflow: visible !important;
+        width: 100% !important;
+      }
+
+      #printReportContainer .table,
+      #printReportContainer .custom-report-table {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
       .custom-report-table thead th {
         background-color: #222 !important;
         color: #fff !important;
         border: 1px solid #000 !important;
-        font-size: 10px !important;
-        padding: 4px 6px !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        font-size: 9.5px !important;
+        padding: 4px 5px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
-      .custom-report-table tbody td, .custom-report-table tfoot td {
+
+      .custom-report-table tbody td, 
+      .custom-report-table tfoot td {
         border: 1px solid #000 !important;
-        font-size: 10px !important;
-        padding: 4px 6px !important;
+        font-size: 9.5px !important;
+        padding: 4px 5px !important;
         color: #000 !important;
       }
+
+      .custom-report-table tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
       .print-header {
         margin-bottom: 12px !important;
         border-bottom: 2px solid #000;
         padding-bottom: 8px;
+        page-break-after: avoid;
       }
+
       .metric-card {
         border: 1px solid #000 !important;
         box-shadow: none !important;
         padding: 6px !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
       }
+
       .badge {
         border: 1px solid #000 !important;
         color: #000 !important;
@@ -366,14 +457,13 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
       }
     }
   </style>
-</head>
 
 <body class="horizontal light">
   <div class="wrapper">
     <?php include_once 'includes/header.php'; ?>
 
     <main role="main" class="main-content">
-      <div class="container-fluid">
+      <div class="container-fluid print-sheet" id="printReportContainer">
 
         <!-- Top Header & Direct Invoicing Links -->
         <div class="card shadow mb-4">
@@ -403,9 +493,6 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                 </a>
                 <button type="button" class="btn btn-light btn-sm font-weight-bold shadow-sm mr-1" onclick="window.print()">
                   <i class="fe fe-printer mr-1"></i>Print
-                </button>
-                <button type="button" class="btn btn-warning btn-sm font-weight-bold text-dark shadow-sm" onclick="exportToCSV()">
-                  <i class="fe fe-download mr-1"></i>CSV
                 </button>
               </div>
             </div>
@@ -477,18 +564,27 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
           </div>
         </div>
 
-        <!-- Print Header (Visible only on print) -->
-        <div class="d-none d-print-block print-header text-center mb-3">
-          <h3 class="font-weight-bold text-uppercase mb-1"><?=$comp_name?></h3>
-          <p class="mb-1"><?=$comp_address?></p>
-          <p class="mb-1 font-weight-bold">
-            STRN: <?=$comp_strn?> &nbsp;|&nbsp; NTN: <?=$comp_ntn?>
-          </p>
-          <h4 class="mt-2 text-decoration-underline font-weight-bold">
-            MONTHLY SALES TAX RETURN DASHBOARD - <?=strtoupper($selected_month)?> <?=$selected_year?>
-          </h4>
-          <small class="text-muted">Directly Calculated from Tax Sales & Tax Purchases | Generated: <?=date('d-M-Y h:i A')?></small>
+        <!-- Unified Centered Header for Print -->
+        <div class="d-none d-print-block">
+          <?php
+          $report_title = "MONTHLY SALES TAX RETURN - " . strtoupper($selected_month) . " " . $selected_year;
+          $report_customer = null;
+          $report_duration = "Tax Period: " . strtoupper($selected_month) . " " . $selected_year;
+          include 'includes/report_header.php';
+          ?>
         </div>
+        <style>
+          @media print {
+            #printReportContainer {
+              padding-left: 15mm !important;
+              padding-right: 15mm !important;
+              margin: 0 auto !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              box-sizing: border-box !important;
+            }
+          }
+        </style>
 
         <!-- ========================================================= -->
         <!-- EXECUTIVE KPI CARDS / METRICS (The Dashboard Core)        -->
@@ -579,9 +675,9 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
 
             <div class="col-xl-3 col-md-6 col-12 mb-3">
               <div class="metric-card accent-tax">
-                <div class="metric-label text-danger">Allowed Output GST (110%)</div>
+                <div class="metric-label text-danger">Allowed Output GST (<?=$allowed_multiplier_str?>%)</div>
                 <div class="metric-value text-danger">Rs. <?=number_format($curr['allowed_output_gst'], 2)?></div>
-                <div class="metric-sub text-muted">Purchase GST (Rs. <?=number_format($curr['input_gst'], 2)?>) + <?=$warning_limit_pct?>% (e.g. 100 &rarr; 110)</div>
+                <div class="metric-sub text-muted">Purchase GST (Rs. <?=number_format($curr['input_gst'], 2)?>) + <?=$warning_limit_str?>% (e.g. 100 &rarr; <?=$example_sale_str?>)</div>
               </div>
             </div>
 
@@ -713,7 +809,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                     <tr>
                       <td class="font-weight-bold">Allowed Output GST</td>
                       <td class="text-right font-weight-bold">Rs. <?=rtrim(rtrim(number_format($curr['allowed_output_gst'], 4), '0'), '.')?></td>
-                      <td class="text-muted">Purchase GST + <?=$warning_limit_pct?>% (e.g. Rs. 100 purchase GST &rarr; Rs. 110 allowed sale GST)</td>
+                      <td class="text-muted">Purchase GST + <?=$warning_limit_str?>% (e.g. Rs. 100 purchase GST &rarr; Rs. <?=$example_sale_str?> allowed sale GST)</td>
                     </tr>
                     <tr class="<?=($curr['net_gst_payable'] > 0) ? 'table-danger' : 'table-light'?>">
                       <td class="font-weight-bold">Net GST Payable</td>
@@ -726,7 +822,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                       <td class="text-muted font-weight-bold">Total Available Input GST minus Output GST (if > 0)</td>
                     </tr>
                     <tr>
-                      <td class="font-weight-bold">10% GST Warning</td>
+                      <td class="font-weight-bold"><?=$warning_limit_str?>% GST Warning</td>
                       <td class="text-right">
                         <?php if ($curr['gst_warning'] === 'OK'): ?>
                           <span class="badge badge-success font-weight-bold px-2 py-1">OK</span>
@@ -734,7 +830,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                           <span class="badge badge-danger font-weight-bold px-2 py-1">WARNING</span>
                         <?php endif; ?>
                       </td>
-                      <td class="text-muted">Warns if output GST exceeds allowed (<?=$warning_limit_pct?>% limit)</td>
+                      <td class="text-muted">Warns if output GST exceeds allowed (<?=$warning_limit_str?>% limit)</td>
                     </tr>
                     <tr>
                       <td class="font-weight-bold">Stock Warning</td>
@@ -775,7 +871,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                   </li>
                   <li class="list-group-item px-0 py-2 d-flex">
                     <span class="badge badge-warning text-dark mr-2 align-self-start mt-1">4</span>
-                    <div><strong>10% GST Warning:</strong> Warns if Sale Output GST &gt; Purchase Input GST + <?=$warning_limit_pct?>% (e.g. Purchase GST = Rs. 100 &rarr; Allowed Sale GST = Rs. 110).</div>
+                    <div><strong><?=$warning_limit_str?>% GST Warning:</strong> Warns if Sale Output GST &gt; Purchase Input GST + <?=$warning_limit_str?>% (e.g. Purchase GST = Rs. 100 &rarr; Allowed Sale GST = Rs. <?=$example_sale_str?>).</div>
                   </li>
                   <li class="list-group-item px-0 py-2 d-flex">
                     <span class="badge badge-danger mr-2 align-self-start mt-1">5</span>
@@ -983,56 +1079,6 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                 </tr>
                 <?php endforeach; ?>
               </tbody>
-              <tfoot class="bg-light font-weight-bold">
-                <!-- Purchases Subtotal -->
-                <tr class="table-light text-success">
-                  <td colspan="8" class="text-right font-weight-bold">Total Purchases (Input):</td>
-                  <td class="text-right font-weight-bold">+<?=number_format($tot_pur_kg, 2)?></td>
-                  <td></td>
-                  <td class="text-right font-weight-bold">Rs. <?=number_format($tot_pur_val, 2)?></td>
-                  <td></td>
-                  <td class="text-right font-weight-bold">Rs. <?=number_format($tot_pur_gst, 2)?></td>
-                  <td class="text-right font-weight-bold">Rs. <?=number_format($tot_pur_inv, 2)?></td>
-                  <td class="text-right text-muted">-</td>
-                  <td colspan="2" class="d-print-none"></td>
-                </tr>
-                <!-- Sales Subtotal -->
-                <tr class="table-light text-primary">
-                  <td colspan="8" class="text-right font-weight-bold">Total Sales (Output):</td>
-                  <td class="text-right font-weight-bold">-<?=number_format($tot_sal_kg, 2)?></td>
-                  <td></td>
-                  <td class="text-right font-weight-bold">Rs. <?=number_format($tot_sal_val, 2)?></td>
-                  <td></td>
-                  <td class="text-right font-weight-bold text-danger">Rs. <?=number_format($tot_sal_gst, 2)?></td>
-                  <td class="text-right font-weight-bold">Rs. <?=number_format($tot_sal_inv, 2)?></td>
-                  <td class="text-right text-muted">-</td>
-                  <td colspan="2" class="d-print-none"></td>
-                </tr>
-                <!-- Net Total (Purchase - Sale) -->
-                <tr class="table-warning border-top" style="border-top: 2px solid #222 !important;">
-                  <td colspan="8" class="text-center font-weight-bold h6 mb-0 text-dark">
-                    Net Month Total (Purchase − Sale)
-                  </td>
-                  <td class="text-right font-weight-bold h6 mb-0 <?=($net_kg >= 0) ? 'text-success' : 'text-danger'?>">
-                    <?=number_format($net_kg, 2)?>
-                  </td>
-                  <td></td>
-                  <td class="text-right font-weight-bold h6 mb-0 text-dark">
-                    Rs. <?=number_format($net_val, 2)?>
-                  </td>
-                  <td></td>
-                  <td class="text-right font-weight-bold h6 mb-0 <?=($net_gst >= 0) ? 'text-success' : 'text-danger'?>">
-                    Rs. <?=number_format($net_gst, 2)?>
-                  </td>
-                  <td class="text-right font-weight-bold h6 mb-0 text-dark">
-                    Rs. <?=number_format($net_inv, 2)?>
-                  </td>
-                  <td class="text-right font-weight-bold h6 mb-0 text-dark bg-white">
-                    <?=number_format($curr['closing_stock'], 2)?>
-                  </td>
-                  <td colspan="2" class="d-print-none"></td>
-                </tr>
-              </tfoot>
               <?php endif; ?>
             </table>
           </div>

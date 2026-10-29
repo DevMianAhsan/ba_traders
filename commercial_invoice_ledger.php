@@ -92,12 +92,12 @@ $to_date = $_REQUEST['to_date'] ?? '';
           <div class="card-header card-bg d-print-none">
             <div class="row align-items-center">
               <div class="col-sm-6">
-                <h4 class="mb-0 font-weight-bold text-dark">Commercial Invoice Ledger</h4>
+                <h4 class="mb-0 font-weight-bold text-white">Commercial Invoice Ledger</h4>
                 <small class="text-muted">Customer statement for Commercial Invoices & Voucher Payments</small>
               </div>
               <div class="col-sm-6 text-right">
                 <a href="invoice.php" class="btn btn-sm btn-admin ml-1"><i class="fe fe-plus"></i> New Commercial Inv</a>
-                <a href="invoice_list.php" class="btn btn-sm btn-outline-secondary ml-1"><i class="fe fe-list"></i> Inv List</a>
+                <a href="invoice_list.php" class="btn btn-sm btn-outline-secondary text-white ml-1"><i class="fe fe-list"></i> Inv List</a>
               </div>
             </div>
           </div>
@@ -376,47 +376,13 @@ $to_date = $_REQUEST['to_date'] ?? '';
               });
             ?>
 
-            <!-- Printable Company & Customer Header -->
-            <div class="print-header mb-3">
-              <div class="row align-items-center">
-                <div class="col-sm-2 col-3">
-                  <img src="img/logo/<?=$get_company['logo']?>" width="110" class="img-fluid" alt="Company Logo">
-                </div>
-                <div class="col-sm-6 col-5">
-                  <h2 style="color: #930027; font-weight: 800; font-size: 24px; margin-bottom: 2px; text-transform: uppercase;">
-                    <?=htmlspecialchars($get_company['name'])?>
-                  </h2>
-                  <p style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">
-                    <i class="fe fe-map-pin d-print-none"></i> <?=htmlspecialchars($get_company['address'])?>
-                  </p>
-                  <p style="font-weight: 600; font-size: 13px; margin-bottom: 0;">
-                    <i class="fe fe-phone d-print-none"></i> PH: <?=htmlspecialchars($get_company['company_phone'])?>
-                  </p>
-                </div>
-                <div class="col-sm-4 col-4 text-right">
-                  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 14px; display: inline-block; text-align: left; min-width: 240px;">
-                    <h6 style="color: #930027; font-weight: 800; margin-bottom: 4px; font-size: 13px; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; text-transform: uppercase;">
-                      Commercial Statement
-                    </h6>
-                    <p style="margin-bottom: 2px; font-weight: 700; font-size: 14px;">
-                      <strong>Account:</strong> <?=htmlspecialchars(ucwords($fetchCustomer['customer_name'] ?? ''))?>
-                    </p>
-                    <p style="margin-bottom: 2px; font-size: 12px;">
-                      <strong>Phone:</strong> <?=htmlspecialchars($fetchCustomer['customer_phone'] ?? '-')?>
-                    </p>
-                    <?php if (!empty($fetchCustomer['customer_address'])): ?>
-                      <p style="margin-bottom: 0; font-size: 11px; color: #555;">
-                        <strong>Address:</strong> <?=htmlspecialchars($fetchCustomer['customer_address'])?>
-                      </p>
-                    <?php endif; ?>
-                  </div>
-                </div>
-              </div>
-
-              <div class="alert alert-secondary py-1 text-center font-weight-bold mt-2 mb-3" style="font-size: 12px; letter-spacing: 0.5px;">
-                <?=$date_comment?> &bull; COMMERCIAL INVOICE STATEMENT
-              </div>
-            </div>
+            <!-- Unified Centered Report Header -->
+            <?php
+            $report_title = "COMMERCIAL INVOICE STATEMENT";
+            $report_customer = $fetchCustomer;
+            $report_duration = $date_comment;
+            include 'includes/report_header.php';
+            ?>
 
             <!-- Main Clean Ledger Table -->
             <div class="table-responsive">
@@ -641,22 +607,6 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   </tr>
                 </tfoot>
               </table>
-            </div>
-
-            <!-- Printable Signatures Section -->
-            <div class="row mt-5 pt-4 d-none d-print-flex justify-content-between text-center" style="font-size: 12px;">
-              <div class="col-3 border-top pt-2">
-                <strong>Prepared By</strong>
-              </div>
-              <div class="col-3 border-top pt-2">
-                <strong>Checked By</strong>
-              </div>
-              <div class="col-3 border-top pt-2">
-                <strong>Accountant</strong>
-              </div>
-              <div class="col-3 border-top pt-2">
-                <strong>Customer Signature</strong>
-              </div>
             </div>
 
             <?php else: ?>
