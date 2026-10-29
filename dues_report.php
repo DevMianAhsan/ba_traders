@@ -524,7 +524,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                       while ($rc = mysqli_fetch_assoc($q_opt_c)):
                         $sel = ($account_id == $rc['customer_id']) ? 'selected' : '';
                       ?>
-                        <option value="<?=$rc['customer_id']?>" <?=$sel?>><?=htmlspecialchars($rc['customer_name'])?> (<?=htmlspecialchars($rc['customer_phone'] ?? '-')?>)</option>
+                        <option value="<?=$rc['customer_id']?>" <?=$sel?>><?=htmlspecialchars(getCustomerDisplayName($rc['customer_name'], $rc['customer_phone']))?></option>
                       <?php endwhile; ?>
                     </optgroup>
                     <optgroup label="Suppliers">
@@ -533,7 +533,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                       while ($rs = mysqli_fetch_assoc($q_opt_s)):
                         $sel = ($account_id == $rs['customer_id']) ? 'selected' : '';
                       ?>
-                        <option value="<?=$rs['customer_id']?>" <?=$sel?>><?=htmlspecialchars($rs['customer_name'])?> (<?=htmlspecialchars($rs['customer_phone'] ?? '-')?>)</option>
+                        <option value="<?=$rs['customer_id']?>" <?=$sel?>><?=htmlspecialchars(getCustomerDisplayName($rs['customer_name'], $rs['customer_phone']))?></option>
                       <?php endwhile; ?>
                     </optgroup>
                   </select>

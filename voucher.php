@@ -79,7 +79,7 @@ if (isset($_REQUEST['id'])) {
                                   <?php $prev_type = $r['customer_type'];
                               endif;
                           ?>       
-                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id1']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
+                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id1']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=htmlspecialchars(getCustomerDisplayName($r['customer_name'], $r['customer_phone']))?></option>
                           <?php endwhile; 
                           if ($prev_type !== null): ?>
                               </optgroup>
@@ -123,7 +123,7 @@ if (isset($_REQUEST['id'])) {
                                   <?php $prev_type = $r['customer_type'];
                               endif;
                           ?>       
-                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id2']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
+                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id2']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=htmlspecialchars(getCustomerDisplayName($r['customer_name'], $r['customer_phone']))?></option>
                           <?php endwhile; 
                           if ($prev_type !== null): ?>
                               </optgroup>
@@ -425,12 +425,11 @@ if (isset($_REQUEST['id'])) {
                       </div>
                       <div class="col-sm-4">
                           <select class="form-control searchableSelect"  name="voucher_type" >
+                            <option value="expense">EXPENSE</option>
                             <?php $q=get($dbc,"expenses WHERE expense_status=1 ");
                                   while ($r=mysqli_fetch_assoc($q)) {
-                                    # code...
-                                 
                                ?>
-                             <option <?=@($voucher['voucher_type']==$r['expense_id'])?"checked":""?> value="<?=$r['expense_id']?>"><?=strtoupper($r['expense_name'])?></option>
+                             <option <?=@($voucher['voucher_type']==$r['expense_id'])?"selected":""?> value="<?=$r['expense_id']?>"><?=strtoupper($r['expense_name'])?></option>
                            <?php } ?>
                                 
                           </select>
@@ -443,23 +442,23 @@ if (isset($_REQUEST['id'])) {
                         <div class="input-group mb-3">
                           <select class="form-control searchableSelect" onchange="getBalance(this.value,'from_account_exp')" id="voucher_from_account" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
-                           
-
-                          <?php    $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 ORDER BY customer_type ASC ");
-                          $type2='';
-                            while($r=mysqli_fetch_assoc($q)):
-                                $type=$r['customer_type'];
-                             ?>       
-                             <?php if ($type!=$type2): ?>
-                               <optgroup label="<?=$r['customer_type']?>">
-                             <?php endif ?>
-                                   
-                                  <option <?=@($voucher['customer_id1']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
-                                       
-                                   <?php if ($type!=$type2): ?>
-                               </optgroup>
-                             <?php endif ?>
-                            <?php    $type2=$r['customer_type']; endwhile; ?>
+                          <?php   
+                          $q = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 ORDER BY customer_type ASC, customer_name ASC");
+                          $prev_type = null;
+                          while($r = mysqli_fetch_assoc($q)):
+                              if ($prev_type !== $r['customer_type']):
+                                  if ($prev_type !== null): ?>
+                                      </optgroup>
+                                  <?php endif; ?>
+                                  <optgroup label="<?=htmlspecialchars(ucfirst($r['customer_type']))?>">
+                                  <?php $prev_type = $r['customer_type'];
+                              endif;
+                          ?>       
+                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id1']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=htmlspecialchars(getCustomerDisplayName($r['customer_name'], $r['customer_phone']))?></option>
+                          <?php endwhile; 
+                          if ($prev_type !== null): ?>
+                              </optgroup>
+                          <?php endif; ?>
                           </select>
                           <div class="input-group-prepend">
                           <span class="input-group-text" id="basic-addon1">Balance : <span id="from_account_exp">0</span> </span>
@@ -471,7 +470,12 @@ if (isset($_REQUEST['id'])) {
                       </div>
 
                       <div class="col-sm-4">
-                        <input type="number" onkeyup="sameValue(this.value,'#voucher_credit')" min="0" name="voucher_debit" class="form-control" value="<?=@$voucher['voucher_amount']?>" required>
+                        <div class="input-group">
+                          <input type="text" oninput="onDebitInputExpense(this)" onblur="formatInputOnBlur(this); sameValue(this.value,'#voucher_credit');" required name="voucher_debit" id="voucher_debit_exp" value="<?=!empty($voucher['voucher_amount']) ? number_format(floatval($voucher['voucher_amount'])) : ''?>" class="form-control font-weight-bold" placeholder="0">
+                          <div class="input-group-append">
+                            <span class="input-group-text font-weight-bold">RS</span>
+                          </div>
+                        </div>
                       </div>
                     </div>  <!-- end of formgr0up -->
                     <div class="form-group row">
@@ -482,36 +486,39 @@ if (isset($_REQUEST['id'])) {
                         <div class="input-group mb-3">
                           <select class="form-control searchableSelect" onchange="getBalance(this.value,'to_account_exp')" id="voucher_to_account" name="voucher_to_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
-                           
-
-                          <?php   $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type ='expense' ");
-                          $type2='';
-                            while($r=mysqli_fetch_assoc($q)):
-                                $type=$r['customer_type'];
-                             ?>       
-                             <?php if ($type!=$type2): ?>
-                               <optgroup label="<?=$r['customer_type']?>">
-                             <?php endif ?>
-                                   
-                                  <option <?=@($voucher['customer_id2']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
-                                       
-                                   <?php if ($type!=$type2): ?>
-                               </optgroup>
-                             <?php endif ?>
-                            <?php    $type2=$r['customer_type']; endwhile; ?>
-                          
-                        
+                          <?php   
+                          $q = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 AND customer_type ='expense' ORDER BY customer_type ASC, customer_name ASC");
+                          $prev_type = null;
+                          while($r = mysqli_fetch_assoc($q)):
+                              if ($prev_type !== $r['customer_type']):
+                                  if ($prev_type !== null): ?>
+                                      </optgroup>
+                                  <?php endif; ?>
+                                  <optgroup label="<?=htmlspecialchars(ucfirst($r['customer_type']))?>">
+                                  <?php $prev_type = $r['customer_type'];
+                              endif;
+                          ?>       
+                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id2']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=htmlspecialchars(getCustomerDisplayName($r['customer_name'], $r['customer_phone']))?></option>
+                          <?php endwhile; 
+                          if ($prev_type !== null): ?>
+                              </optgroup>
+                          <?php endif; ?>
                           </select>
                           <div class="input-group-prepend">
                           <span class="input-group-text" id="basic-addon1">Balance : <span id="to_account_exp">0</span> </span>
                         </div>
                       </div>
                       </div>
-                      <div class="col-sm-2 text-right">                        Credit
+                      <div class="col-sm-2 text-right">Credit
                       </div>
 
                       <div class="col-sm-4">
-                        <input type="text" readonly  value="<?=@$voucher['voucher_amount']?>" id="voucher_credit" name="voucher_credit" class="form-control">
+                        <div class="input-group">
+                          <input type="text" readonly value="<?=!empty($voucher['voucher_amount']) ? number_format(floatval($voucher['voucher_amount'])) : ''?>" id="voucher_credit" name="voucher_credit" class="form-control font-weight-bold" required placeholder="0">
+                          <div class="input-group-append">
+                            <span class="input-group-text font-weight-bold">RS</span>
+                          </div>
+                        </div>
                       </div>
                     
                     
@@ -527,7 +534,11 @@ if (isset($_REQUEST['id'])) {
                     <hr>
                     <div class="row">
                       <div class="col-sm-2 offset-10">
-                      <button class="btn btn-admin " type="submit" id="voucher_expense_btn">Save  </button>
+                      <?php if (!isset($_REQUEST['id'])): ?>
+                       <button class="btn btn-admin " type="submit" id="voucher_expense_btn">Save  </button> 
+                      <?php else: ?>
+                       <button class="btn btn-admin " type="submit" id="voucher_expense_btn">Update  </button> 
+                      <?php endif ?>
                     </div>
                     </div>
                   </form>
@@ -535,6 +546,9 @@ if (isset($_REQUEST['id'])) {
                 
                         </div>
                 <?php }elseif ($_REQUEST['act']=="single_voucher") {
+                  $transactions = !empty($voucher['transaction_id1']) ? fetchRecord($dbc, "transactions", "transaction_id", $voucher['transaction_id1']) : [];
+                  $is_credit = (!empty($transactions['credit']) && floatval($transactions['credit']) > 0);
+                  $is_debit = (!empty($transactions['debit']) && floatval($transactions['debit']) > 0);
                 ?>
                   <div class="col-sm-12">
 
@@ -559,28 +573,25 @@ if (isset($_REQUEST['id'])) {
                       <div class="col-sm-2 text-right">Account</div>
                       <div class="col-sm-4">
                         <div class="input-group mb-3">
-                          <select class="form-control searchableSelect" required onchange="getBalance(this.value,'account_sing')" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" required onchange="getBalance(this.value,'account_sing')" name="voucher_from_account" id="voucher_single_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
-                           
-
-                          <?php  
-                          $transactions=fetchRecord($dbc,"transactions", "transaction_id", $voucher['transaction_id1']);
-        
-                            $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 ORDER BY customer_type ASC ");
-                          $type2='';
-                            while($r=mysqli_fetch_assoc($q)):
-                                $type=$r['customer_type'];
-                             ?>       
-                             <?php if ($type!=$type2): ?>
-                               <optgroup label="<?=$r['customer_type']?>">
-                             <?php endif ?>
-                                   
-                                  <option <?=@($voucher['customer_id1']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
-                                       
-                                   <?php if ($type!=$type2): ?>
-                               </optgroup>
-                             <?php endif ?>
-                            <?php    $type2=$r['customer_type']; endwhile; ?>
+                          <?php   
+                          $q = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 ORDER BY customer_type ASC, customer_name ASC");
+                          $prev_type = null;
+                          while($r = mysqli_fetch_assoc($q)):
+                              if ($prev_type !== $r['customer_type']):
+                                  if ($prev_type !== null): ?>
+                                      </optgroup>
+                                  <?php endif; ?>
+                                  <optgroup label="<?=htmlspecialchars(ucfirst($r['customer_type']))?>">
+                                  <?php $prev_type = $r['customer_type'];
+                              endif;
+                          ?>       
+                              <option data-type="<?=htmlspecialchars(strtolower($r['customer_type']))?>" <?=@($voucher['customer_id1']==$r['customer_id'])?"selected":""?> value="<?=$r['customer_id']?>"><?=htmlspecialchars(getCustomerDisplayName($r['customer_name'], $r['customer_phone']))?></option>
+                          <?php endwhile; 
+                          if ($prev_type !== null): ?>
+                              </optgroup>
+                          <?php endif; ?>
                           </select>
                           <div class="input-group-prepend">
                           <span class="input-group-text" id="basic-addon1">Balance : <span id="account_sing">0</span> </span>
@@ -589,18 +600,24 @@ if (isset($_REQUEST['id'])) {
                       </div>
                     </div>
                     <div class="form-group row">
-                       <div class="col-sm-2 text-right">                        Credit
+                      <div class="col-sm-2 text-right">Debit</div>
+                      <div class="col-sm-4">
+                        <div class="input-group">
+                          <input type="text" oninput="onSingleDebitInput(this)" onblur="formatInputOnBlur(this); onSingleDebitBlur(this);" name="voucher_debit" id="voucher_sin_debit" class="form-control font-weight-bold" value="<?= $is_debit ? number_format(floatval($transactions['debit'])) : '' ?>" placeholder="0" <?= $is_credit ? 'readonly' : '' ?>>
+                          <div class="input-group-append">
+                            <span class="input-group-text font-weight-bold">RS</span>
+                          </div>
+                        </div>
                       </div>
 
+                      <div class="col-sm-2 text-right">Credit</div>
                       <div class="col-sm-4">
-                        <input type="number" onkeyup="readonlyIt(this.value,'voucher_sin_debit')"   value="<?=@$transactions['credit']?>" id="voucher_sin_credit" name="voucher_credit" class="form-control" required>
-                      </div>
-                      <div class="col-sm-2 text-right">
-                        Debit
-                      </div>
-
-                      <div class="col-sm-4">
-                        <input type="number" onkeyup="readonlyIt(this.value,'voucher_sin_credit')" min="0" name="voucher_debit"  id="voucher_sin_debit" class="form-control" value="<?=@$transactions['debit']?>">
+                        <div class="input-group">
+                          <input type="text" oninput="onSingleCreditInput(this)" onblur="formatInputOnBlur(this); onSingleCreditBlur(this);" value="<?= $is_credit ? number_format(floatval($transactions['credit'])) : '' ?>" id="voucher_sin_credit" name="voucher_credit" class="form-control font-weight-bold" placeholder="0" <?= $is_debit ? 'readonly' : '' ?>>
+                          <div class="input-group-append">
+                            <span class="input-group-text font-weight-bold">RS</span>
+                          </div>
+                        </div>
                       </div>
                     </div>  <!-- end of formgr0up -->
                   
@@ -615,8 +632,12 @@ if (isset($_REQUEST['id'])) {
                     <hr>
                     <div class="row">
                       <div class="col-sm-2 offset-10">
-                      <button class="btn btn-admin " type="submit" id="voucher_single_btn">Save  </button>
-                    </div>
+                        <?php if (!isset($_REQUEST['id'])): ?>
+                       <button class="btn btn-admin " type="submit" id="voucher_single_btn">Save  </button> 
+                        <?php else: ?>
+                       <button class="btn btn-admin " type="submit" id="voucher_single_btn">Update  </button> 
+                     <?php endif ?>
+                     </div>
                     </div>
                   </form>
 
@@ -1007,6 +1028,55 @@ function onDebitInput(input) {
   $('#voucher_credit1').val(formatted);
 }
 
+function onDebitInputExpense(input) {
+  var rawVal = $(input).val();
+  var num = cleanNumber(rawVal);
+  var formatted = num > 0 ? formatNumberWithCommas(num) : rawVal;
+  $('#voucher_credit').val(formatted);
+}
+
+function onSingleDebitInput(input) {
+  var rawVal = $(input).val();
+  var num = cleanNumber(rawVal);
+  if (rawVal.trim() !== '' && num > 0) {
+    $('#voucher_sin_credit').prop('readonly', true).val('');
+  } else {
+    $('#voucher_sin_credit').prop('readonly', false);
+  }
+}
+
+function onSingleDebitBlur(input) {
+  var num = cleanNumber($(input).val());
+  if (num > 0) {
+    $(input).val(formatNumberWithCommas(num));
+    $('#voucher_sin_credit').prop('readonly', true).val('');
+  } else {
+    $(input).val('');
+    $('#voucher_sin_credit').prop('readonly', false);
+  }
+}
+
+function onSingleCreditInput(input) {
+  var rawVal = $(input).val();
+  var num = cleanNumber(rawVal);
+  if (rawVal.trim() !== '' && num > 0) {
+    $('#voucher_sin_debit').prop('readonly', true).val('');
+  } else {
+    $('#voucher_sin_debit').prop('readonly', false);
+  }
+}
+
+function onSingleCreditBlur(input) {
+  var num = cleanNumber($(input).val());
+  if (num > 0) {
+    $(input).val(formatNumberWithCommas(num));
+    $('#voucher_sin_debit').prop('readonly', true).val('');
+  } else {
+    $(input).val('');
+    $('#voucher_sin_debit').prop('readonly', false);
+  }
+}
+
 function calcVoucherInvoicesTotal() {
   var sumTotal = 0;
   var sumTax = 0;
@@ -1056,6 +1126,22 @@ function resetVoucherInvoices() {
 }
 
 $(document).ready(function() {
+  <?php if (!empty($voucher['customer_id1'])): ?>
+    <?php if ($_REQUEST['act'] == 'general_voucher'): ?>
+      getBalance('<?=$voucher['customer_id1']?>', 'from_account_bl');
+      <?php if (!empty($voucher['customer_id2'])): ?>
+      getBalance('<?=$voucher['customer_id2']?>', 'to_account_bl');
+      <?php endif; ?>
+    <?php elseif ($_REQUEST['act'] == 'expense_voucher'): ?>
+      getBalance('<?=$voucher['customer_id1']?>', 'from_account_exp');
+      <?php if (!empty($voucher['customer_id2'])): ?>
+      getBalance('<?=$voucher['customer_id2']?>', 'to_account_exp');
+      <?php endif; ?>
+    <?php elseif ($_REQUEST['act'] == 'single_voucher'): ?>
+      getBalance('<?=$voucher['customer_id1']?>', 'account_sing');
+    <?php endif; ?>
+  <?php endif; ?>
+
   var $fromSel = $('#voucher_from_account');
   var $opt = $fromSel.find(':selected');
   var role = ($opt.data('type') || '').toString().toLowerCase();

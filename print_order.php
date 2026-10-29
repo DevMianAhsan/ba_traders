@@ -255,7 +255,7 @@ input{
                             <?=$get_company['name']?> </b></strong></h5>
                       
                    
-                    <p style="font-size: 20px;">Developed By <b> Samz Creation</b>  (0345-7573667)</p>
+                    <p style="font-size: 20px;">Developed By <b> TheWebConcept.com</b>  (0313-7573667)</p>
                   
                                             
                 </div>

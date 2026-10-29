@@ -93,10 +93,10 @@ if (!empty($_REQUEST['edit_order_id'])) {
                   <select class="form-control searchableSelect" onchange="getBalance(this.value,'customer_account_exp')" name="purchase_order_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
                     <option value="">Customer Account</option>
                     <?php
-                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer'");
+                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer' ORDER BY customer_name ASC");
                       while($r=mysqli_fetch_assoc($q)){
                     ?>
-                      <option <?=@($fetchOrder['po_customer']==$r['customer_id'])?"selected":""?> data-id="<?=$r['customer_id']?>" data-contact="<?=$r['customer_phone']?>" value="<?=$r['customer_name']?>"><?=$r['customer_name']?></option>
+                      <option <?=@($fetchOrder['po_customer']==$r['customer_id'])?"selected":""?> data-id="<?=$r['customer_id']?>" data-contact="<?=$r['customer_phone']?>" value="<?=$r['customer_name']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
                     <?php } ?>
                   </select>
                   <div class="input-group-prepend">

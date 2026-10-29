@@ -544,7 +544,7 @@ if($_REQUEST['type'] == 'dc'){
                         <?php
                     }
                         ?>
-                    <p class="mt-1 text-dark text-center"> Software Developed By :<br/><b>Samz Creation (0345-7573667)</b> </p>
+                    <p class="mt-1 text-dark text-center"> Software Developed By :<br/><b>TheWebConcept.com (0313-7573667)</b> </p>
                     
                     </div>
                      <div class="col-sm-3 h4">

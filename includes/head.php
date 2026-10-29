@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="a software deleveloped by Sam'z Creations">
-    <meta name="author" content="Samz Creations">
+    <meta name="author" content="TheWebConcept.coms">
     <link rel="icon" href="img/logo/<?=$get_company['logo']?>" type="image/gif" sizes="16x16"> 
     <title><?=$get_company['name']?></title>
     <!-- Simple bar CSS -->

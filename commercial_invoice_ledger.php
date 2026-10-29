@@ -114,7 +114,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     $q_cust = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'customer' ORDER BY customer_name ASC");
                     while ($r_c = mysqli_fetch_assoc($q_cust)) {
                       $sel = ($customer == $r_c['customer_id']) ? 'selected' : '';
-                      echo "<option value='{$r_c['customer_id']}' {$sel}>" . htmlspecialchars($r_c['customer_name']) . " (" . htmlspecialchars($r_c['customer_phone'] ?? '') . ")</option>";
+                      echo "<option value='{$r_c['customer_id']}' {$sel}>" . htmlspecialchars(getCustomerDisplayName($r_c['customer_name'], $r_c['customer_phone'] ?? '')) . "</option>";
                     }
                     ?>
                   </select>

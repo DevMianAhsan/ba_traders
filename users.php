@@ -66,13 +66,13 @@
 			    	  <select class="form-control searchableSelect" name="cash_account">
 
 			    	  	<?php
-			    	  	$q = mysqli_query($dbc,"SELECT * FROM customers WHERE customer_type = 'bank' AND customer_status = '1' ");
+			    	  	$q = mysqli_query($dbc,"SELECT * FROM customers WHERE customer_type = 'bank' AND customer_status = '1' ORDER BY customer_name ASC");
 			    	  	while($c = mysqli_fetch_assoc($q)):
 
 ?>
 						<option 
 						<?=@$fetchusers['cash_account'] == $c['customer_id'] ? 'selected':''  ?>
-						value="<?=$c['customer_id']?>"><?=ucfirst($c['customer_name'])?></option>
+						value="<?=$c['customer_id']?>"><?=getCustomerDisplayName($c['customer_name'], $c['customer_phone'] ?? '')?></option>
 <?php
 			    	  	endwhile;
 			    	  	?>

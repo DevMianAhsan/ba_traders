@@ -1,4 +1,4 @@
-
+﻿
 
 <?php 
 
@@ -2458,5 +2458,11 @@ function number_to_words_pkr($number) {
         $out .= " ONLY.";
     }
     return $out;
+}
+
+function getCustomerDisplayName($name, $phone = '') {
+    $formatted_name = ucwords(strtolower(trim($name ?? '')));
+    $phone_str = (isset($phone) && trim($phone) !== '') ? ' (' . trim($phone) . ')' : '';
+    return $formatted_name . $phone_str;
 }
 ?>

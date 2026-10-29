@@ -50,10 +50,10 @@ $next_increment = $data['Auto_increment']; ?>
                     <select class="form-control searchableSelect" name="cash_purchase_supplier" id="credit_order_client_name" required onchange="getBalance(this.value,'customer_account_exp')" aria-label="Username" aria-describedby="basic-addon1">
                        <option value="">Select Supplier</option>
                            <?php
-                            $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='supplier'");
+                            $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='supplier' ORDER BY customer_name ASC");
                                  while($r=mysqli_fetch_assoc($q)){
                           ?>
-                              <option <?=@($fetchPurchase['customer_account']==$r['customer_id'])?"selected":""?> data-id="<?=$r['customer_id']?>" data-contact="<?=$r['customer_phone']?>"  value="<?=$r['customer_name']?>"><?=$r['customer_name']?></option>
+                              <option <?=@($fetchPurchase['customer_account']==$r['customer_id'])?"selected":""?> data-id="<?=$r['customer_id']?>" data-contact="<?=$r['customer_phone']?>"  value="<?=$r['customer_name']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
                          <?php   } ?>
                     </select>
                     <div class="input-group-prepend">
@@ -256,13 +256,13 @@ $next_increment = $data['Auto_increment']; ?>
                     <select class="form-control searchableSelect" onchange="getBalance(this.value,'payment_account_bl')" name="payment_account" id="payment_account" aria-label="Username" aria-describedby="basic-addon1">
                      
                       <?php  if($_SESSION['user_role'] == 'admin' ){
-                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank'");
+                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank' ORDER BY customer_name ASC");
                     }else{
                       $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = 
                         '$UserData[cash_account]'");
                     }
                       while($r=mysqli_fetch_assoc($q)): ?>
-                        <option <?=@($fetchPurchase['payment_account']==$r['customer_id'])?"selected":""?>   value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
+                        <option <?=@($fetchPurchase['payment_account']==$r['customer_id'])?"selected":""?>   value="<?=$r['customer_id']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
                       <?php endwhile; ?>  
                     </select>
                           <div class="input-group-prepend">

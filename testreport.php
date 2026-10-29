@@ -64,7 +64,7 @@
                 $selected='selected';
               }
 
-              echo "<option ".$selected." value='".$row['customer_id']."'>".$row['customer_name']."</option>";
+              echo "<option ".$selected." value='".$row['customer_id']."'>".htmlspecialchars(getCustomerDisplayName($row['customer_name'], $row['customer_phone']))."</option>";
             } // while
             ?>
           </select> 

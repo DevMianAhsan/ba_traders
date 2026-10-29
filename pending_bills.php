@@ -306,9 +306,9 @@
              <div class="col-sm-4">
                     <select class="form-control searchableSelect" id="bill_payment_account" name="bill_payment_account" required>
                      
-                      <?php $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank'");
+                      <?php $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank' ORDER BY customer_name ASC");
                       while($r=mysqli_fetch_assoc($q)): ?>
-                        <option <?=@($fetchOrder['payment_account']==$r['customer_id'])?"selected":""?>   value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
+                        <option <?=@($fetchOrder['payment_account']==$r['customer_id'])?"selected":""?>   value="<?=$r['customer_id']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
                       <?php endwhile; ?>  
                     </select>
                   

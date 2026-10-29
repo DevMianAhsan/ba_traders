@@ -25,11 +25,11 @@
 				<select class="form-control searchableSelect" id="clientName" name="customer_id" autofocus="true">
 		      	<option value="">~~SELECT~~</option>
 		      	<?php 
-		      	$sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type='supplier'";
+		      	$sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type='supplier' ORDER BY customer_name ASC";
 						$result = $connect->query($sql);
 
 						while($row = $result->fetch_array()) {
-							echo "<option value='".$row[0]."'>".$row[1]."</option>";
+							echo "<option value='".$row['customer_id']."'>".htmlspecialchars(getCustomerDisplayName($row['customer_name'], $row['customer_phone']))."</option>";
 						} // while
 						
 		      	?>

@@ -907,11 +907,17 @@ if (isset($_REQUEST['new_voucher_date'])) {
 echo json_encode($res);
 }
 if (isset($_REQUEST['new_sin_voucher_date'])) {
-		if (!empty($_REQUEST['voucher_debit'])) {
-			$amount=$_REQUEST['voucher_debit'];
-		}else{
-			$amount=$_REQUEST['voucher_credit'];
-		}
+	if (isset($_REQUEST['voucher_debit'])) {
+		$_REQUEST['voucher_debit'] = floatval(str_replace(',', '', $_REQUEST['voucher_debit']));
+	}
+	if (isset($_REQUEST['voucher_credit'])) {
+		$_REQUEST['voucher_credit'] = floatval(str_replace(',', '', $_REQUEST['voucher_credit']));
+	}
+	if (!empty($_REQUEST['voucher_debit'])) {
+		$amount=$_REQUEST['voucher_debit'];
+	}else{
+		$amount=$_REQUEST['voucher_credit'];
+	}
 	if ($_REQUEST['voucher_id']=="") {
 		$data=[
 			'customer_id1'=>@$_REQUEST['voucher_from_account'],

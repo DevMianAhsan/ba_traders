@@ -241,7 +241,7 @@
                         <?php
                     }
                         ?>
-                    <p class="mt-1 text-dark text-center"> Software Developed By :<b>Samz Creation (0345-7573667)</b> </p>
+                    <p class="mt-1 text-dark text-center"> Software Developed By :<b>TheWebConcept.com (0313-7573667)</b> </p>
                      <p class="text-dark text-center p-0 m-0"><?=$copy?></p>
                     </div>
                      <div class="col-sm-3 h4">

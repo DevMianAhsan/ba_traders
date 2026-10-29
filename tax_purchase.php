@@ -395,7 +395,7 @@ if (!empty($tax_purchase['supplier_id'])) {
                         data-strn="<?=htmlspecialchars($rs['customer_strn'] ?? '')?>"
                         data-ntn="<?=htmlspecialchars($rs['customer_ntn'] ?? '')?>"
                       >
-                        <?=$rs['customer_name']?> (STRN: <?=$rs['customer_strn'] ?: 'N/A'?>)
+                        <?=htmlspecialchars(getCustomerDisplayName($rs['customer_name'], $rs['customer_phone']))?>
                       </option>
                     <?php } ?>
                   </select>

@@ -568,9 +568,9 @@ if ($q_ann) {
                     $q_cust = mysqli_query($dbc, "SELECT customer_id, customer_name, customer_phone, customer_ntn FROM customers WHERE customer_status = 1 AND customer_type = 'customer' ORDER BY customer_name ASC");
                     while ($rc = mysqli_fetch_assoc($q_cust)) {
                       $sel = ($customer_id == $rc['customer_id']) ? 'selected' : '';
-                      $phone_str = !empty($rc['customer_phone']) ? " - " . htmlspecialchars($rc['customer_phone']) : "";
+                      $phone_str = "";
                       $ntn_str = !empty($rc['customer_ntn']) ? " [NTN: " . htmlspecialchars($rc['customer_ntn']) . "]" : "";
-                      echo "<option value='{$rc['customer_id']}' {$sel}>" . htmlspecialchars($rc['customer_name']) . $phone_str . $ntn_str . "</option>";
+                      echo "<option value='{$rc['customer_id']}' {$sel}>" . htmlspecialchars(getCustomerDisplayName($rc['customer_name'], $rc['customer_phone'])) . $ntn_str . "</option>";
                     }
                     ?>
                   </select>

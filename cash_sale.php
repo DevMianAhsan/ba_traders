@@ -276,13 +276,13 @@ $next_increment = $data['Auto_increment']; ?>
                      
                       <?php 
                       if($_SESSION['user_role'] == 'admin' ){
-                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank'");
+                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank' ORDER BY customer_name ASC");
                     }else{
                       $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = 
                         '$UserData[cash_account]'");
                     }
                       while($r=mysqli_fetch_assoc($q)): ?>
-                        <option <?=@($fetchOrder['payment_account']==$r['customer_id'])?"selected":""?>   value="<?=$r['customer_id']?>"><?=$r['customer_name']?></option>
+                        <option <?=@($fetchOrder['payment_account']==$r['customer_id'])?"selected":""?>   value="<?=$r['customer_id']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
                       <?php endwhile; ?>  
                     </select>
                   </td>

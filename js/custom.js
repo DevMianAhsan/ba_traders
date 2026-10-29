@@ -460,6 +460,9 @@ if (e.altKey && e.which == 80) {
                   $('#voucher_general_fm').each(function(){
                     this.reset();
                 });
+                  $('#voucher_general_fm').find('select.searchableSelect').val('').trigger('change');
+                  $('#from_account_bl').text('0');
+                  $('#to_account_bl').text('0');
                   if (typeof resetVoucherInvoices === 'function') {
                     resetVoucherInvoices();
                   }
@@ -517,6 +520,9 @@ if (e.altKey && e.which == 80) {
                   $('#voucher_expense_fm').each(function(){
                     this.reset();
                 });
+                  $('#voucher_expense_fm').find('select.searchableSelect').val('').trigger('change');
+                  $('#from_account_exp').text('0');
+                  $('#to_account_exp').text('0');
                   $("#tableData").load(location.href+" #tableData"); 
               }    $('#voucher_expense_btn').prop("disabled",false); 
         //    sweeetalert(response.msg,response.sts,1500);
@@ -557,6 +563,12 @@ if (e.altKey && e.which == 80) {
       $("#voucher_single_fm").on('submit',function(e) {
         e.preventDefault();
         var form = $('#voucher_single_fm');
+        var deb = typeof cleanNumber === 'function' ? cleanNumber($('#voucher_sin_debit').val()) : parseFloat($('#voucher_sin_debit').val()) || 0;
+        var crd = typeof cleanNumber === 'function' ? cleanNumber($('#voucher_sin_credit').val()) : parseFloat($('#voucher_sin_credit').val()) || 0;
+        if (!deb && !crd) {
+          Swal.fire('Error', 'Please enter Debit or Credit amount', 'error');
+          return false;
+        }
         $.ajax({
             type: 'POST',
             url: form.attr('action'),
@@ -570,6 +582,10 @@ if (e.altKey && e.which == 80) {
                   $('#voucher_single_fm').each(function(){
                     this.reset();
                 });
+                  $('#voucher_single_fm').find('select.searchableSelect').val('').trigger('change');
+                  $('#voucher_sin_debit').prop('readonly', false);
+                  $('#voucher_sin_credit').prop('readonly', false);
+                  $('#account_sing').text('0');
                   $("#tableData").load(location.href+" #tableData"); 
               }    $('#voucher_single_btn').prop("disabled",false); 
             sweeetalert(response.msg,response.sts,1500);

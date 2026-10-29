@@ -199,6 +199,56 @@ if (!empty($tax_sale['customer_id'])) {
       min-width: 90px;
       font-size: 13px;
     }
+    .desc-line strong.po-lbl {
+      min-width: auto;
+      margin-left: 14px;
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+    .po-input-group {
+      width: 250px !important;
+      min-width: 220px !important;
+      max-width: 260px !important;
+      flex: 0 0 250px !important;
+    }
+    .po-input-group .select2-container,
+    .po-input-group .select2-container--bootstrap4 {
+      flex: 1 1 auto !important;
+      width: 1% !important;
+      min-width: 0 !important;
+    }
+    .po-input-group .select2-selection--single {
+      height: 31px !important;
+      min-height: 31px !important;
+      max-height: 31px !important;
+      font-size: 12.5px !important;
+      display: flex !important;
+      align-items: center !important;
+      border: 1px solid #ced4da !important;
+    }
+    .po-input-group .select2-selection__rendered {
+      line-height: 29px !important;
+      padding-left: 8px !important;
+      padding-right: 20px !important;
+      font-size: 12.5px !important;
+      font-weight: bold;
+      color: #000 !important;
+    }
+    .po-input-group .select2-selection__arrow {
+      height: 29px !important;
+      top: 0 !important;
+    }
+    .po-input-group .input-group-append button,
+    .po-input-group .input-group-append .btn-admin {
+      height: 31px !important;
+      min-height: 31px !important;
+      max-height: 31px !important;
+      line-height: 29px !important;
+      padding: 0 10px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
 
     /* Table */
     .invoice-table-wrapper {
@@ -455,7 +505,7 @@ if (!empty($tax_sale['customer_id'])) {
                         data-province="<?=htmlspecialchars($rc['customer_province'] ?? '')?>"
                         data-cnic="<?=htmlspecialchars($rc['customer_cnic'] ?? '')?>"
                       >
-                        <?=$rc['customer_name']?> (STRN: <?=$rc['customer_strn'] ?: 'N/A'?>)
+                        <?=htmlspecialchars(getCustomerDisplayName($rc['customer_name'], $rc['customer_phone']))?>
                       </option>
                     <?php } ?>
                   </select>
@@ -504,8 +554,9 @@ if (!empty($tax_sale['customer_id'])) {
               <strong style="white-space: nowrap;">Description :</strong> &nbsp;
               <input type="text" name="header_description" id="header_description" class="inv-input flex-grow-1 font-weight-bold" placeholder="GST Invoice Number : ... / BA TRADERS / P.O # : ... / H.S.Code # ..." value="<?=@$tax_sale['header_description']?>">
               
-              <div class="input-group ml-2" style="width: auto; max-width: 260px;">
-                <select name="po_no" id="po_no" class="inv-input font-weight-bold searchableSelect" style="min-width: 160px; height: 28px;" onchange="onPoChange(this.value)">
+              <strong class="po-lbl">PO # :</strong>
+              <div class="input-group po-input-group">
+                <select name="po_no" id="po_no" data-placeholder="-- Select PO --" class="inv-input font-weight-bold searchableSelect" style="height: 31px;" onchange="onPoChange(this.value)">
                   <?php if (!empty($customer_pos)): ?>
                     <option value="">-- Select PO --</option>
                     <?php 
@@ -529,7 +580,7 @@ if (!empty($tax_sale['customer_id'])) {
                   <?php endif; ?>
                 </select>
                 <div class="input-group-append">
-                  <button type="button" class="btn btn-sm btn-admin" onclick="getpoDetails()" title="View PO Details" style="height: 28px; padding: 2px 9px;">
+                  <button type="button" class="btn btn-sm btn-admin" onclick="getpoDetails()" title="View PO Details" style="height: 31px; padding: 2px 10px;">
                     <span class="fa fa-eye"></span>
                   </button>
                 </div>
@@ -538,12 +589,6 @@ if (!empty($tax_sale['customer_id'])) {
             <button type="button" class="btn btn-sm btn-primary no-print shadow-sm" onclick="addItemRow()" style="white-space: nowrap; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
               <i class="fe fe-plus mr-1"></i>Add Item Row
             </button>
-          </div>
-
-          <!-- Remarks Row -->
-          <div class="desc-line d-flex align-items-center mb-2">
-            <strong style="min-width: 90px; font-size: 13px;">Remarks :</strong> &nbsp;
-            <input type="text" name="remarks" id="remarks" class="inv-input flex-grow-1" placeholder="Transaction remarks / narration (optional, defaults to Sales Tax Invoice #...)" value="<?=htmlspecialchars(@$tax_sale['remarks'] ?? '')?>">
           </div>
 
           <!-- Main 10-Column Table with rounded corners -->
@@ -754,7 +799,7 @@ if (!empty($tax_sale['customer_id'])) {
       }
 
       // Customer selection change handler
-      $('#customer_select').on('change select2:select', function() {
+      $('#customer_select').on('change', function() {
         var opt = $(this).find(':selected');
         if (opt.val()) {
           var cid = opt.data('id') || opt.val();
@@ -805,15 +850,47 @@ if (!empty($tax_sale['customer_id'])) {
       }
     });
 
+    function updatePoDropdown(html, valToSelect) {
+      if ($.fn.select2) {
+        try {
+          if ($('#po_no').hasClass('select2-hidden-accessible')) {
+            $('#po_no').select2('destroy');
+          }
+        } catch (e) {}
+      }
+      $('.po-input-group').find('.select2-container').remove();
+
+      $('#po_no').html(html);
+
+      if (valToSelect) {
+        $('#po_no').val(valToSelect);
+      } else {
+        $('#po_no').val('');
+      }
+
+      var firstOptText = $('#po_no option:first').text() || '-- Select PO --';
+
+      if ($.fn.select2) {
+        $('#po_no').select2({
+          theme: 'bootstrap4',
+          width: 'resolve',
+          placeholder: {
+            id: '',
+            text: firstOptText
+          }
+        });
+      }
+    }
+
     function loadCustomerPOs(cid, selectedPo) {
       if (!cid) {
-        $('#po_no').html('<option value="">Select Customer first</option>');
+        updatePoDropdown('<option value="">Select Customer first</option>', '');
         resetProductDropdown();
         autoUpdateHeaderDesc();
         return;
       }
 
-      $('#po_no').html('<option value="">Loading POs...</option>');
+      updatePoDropdown('<option value="">Loading POs...</option>', '');
 
       $.ajax({
         type: 'POST',
@@ -826,43 +903,67 @@ if (!empty($tax_sale['customer_id'])) {
         dataType: 'text',
         success: function(msg) {
           var res = (msg || '').trim();
-          var html = '<option value="">-- Select PO --</option>';
-          if (res && res.indexOf('<option') !== -1 && res.indexOf('Not Found') === -1) {
-            html += res;
-          } else {
-            html = '<option value="">No PO Found</option>';
-          }
-          html += '<option value="__custom__">+ Enter Custom PO...</option>';
-          $('#po_no').html(html);
+          var hasPOs = (res && res.indexOf('<option') !== -1 && res.indexOf('Not Found') === -1);
+          var html = '';
 
-          if (selectedPo) {
-            if ($('#po_no option[value="' + selectedPo + '"]').length === 0) {
-              $('#po_no option[value="__custom__"]').before('<option value="' + selectedPo + '" selected>' + selectedPo + '</option>');
+          if (hasPOs) {
+            html += '<option value="">-- Select PO --</option>';
+            html += res;
+            html += '<option value="__custom__">+ Enter Custom PO...</option>';
+
+            var poToSelect = '';
+            if (selectedPo) {
+              poToSelect = selectedPo;
+            } else {
+              // Extract the first PO number from res
+              var match = res.match(/value="([^"]+)"/);
+              if (match && match[1]) {
+                poToSelect = match[1];
+              }
             }
-            $('#po_no').val(selectedPo);
-            onPoChange(selectedPo);
+
+            updatePoDropdown(html, poToSelect);
+
+            if (poToSelect) {
+              onPoChange(poToSelect);
+            } else {
+              resetProductDropdown();
+              autoUpdateHeaderDesc();
+            }
           } else {
+            html += '<option value="">-- No PO Found --</option>';
+            html += '<option value="__custom__">+ Enter Custom PO...</option>';
+            updatePoDropdown(html, '');
             resetProductDropdown();
+            autoUpdateHeaderDesc();
           }
-          autoUpdateHeaderDesc();
         },
         error: function() {
-          $('#po_no').html('<option value="">-- Select PO --</option><option value="__custom__">+ Enter Custom PO...</option>');
+          updatePoDropdown('<option value="">-- No PO Found --</option><option value="__custom__">+ Enter Custom PO...</option>', '');
           resetProductDropdown();
+          autoUpdateHeaderDesc();
         }
       });
     }
 
+    var isHandlingCustomPo = false;
     function onPoChange(poVal, isInit) {
+      if (isHandlingCustomPo) return;
       if (poVal === '__custom__') {
         var custom = prompt('Enter Custom P.O Number:');
         if (custom && custom.trim() !== '') {
           custom = custom.trim();
-          $('#po_no option[value="__custom__"]').before('<option value="' + custom + '" selected>' + custom + '</option>');
-          $('#po_no').val(custom);
+          if ($('#po_no option[value="' + custom + '"]').length === 0) {
+            $('#po_no option[value="__custom__"]').before('<option value="' + custom + '" selected>' + custom + '</option>');
+          }
+          isHandlingCustomPo = true;
+          updatePoDropdown($('#po_no').html(), custom);
+          isHandlingCustomPo = false;
           poVal = custom;
         } else {
-          $('#po_no').val('');
+          isHandlingCustomPo = true;
+          updatePoDropdown($('#po_no').html(), '');
+          isHandlingCustomPo = false;
           poVal = '';
         }
       }

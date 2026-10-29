@@ -337,7 +337,7 @@ body{
                         <b class="name">
                             <?=$get_company['name']?>
                          </b></strong></h4>
-                    <p class="notice"> Software Developed By :  <b class="name">Samz Creation (0345-7573667)</b> <b class="float-right"><?=$copy?></b></p>
+                    <p class="notice"> Software Developed By :  <b class="name">TheWebConcept.com (0313-7573667)</b> <b class="float-right"><?=$copy?></b></p>
 
                 </div>
                  <div class="row mb-5" style="font-size: 18px">

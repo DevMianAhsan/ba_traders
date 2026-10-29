@@ -57,10 +57,10 @@
             <option value="">Select Account</option>
             <?php
 
-            $sql = get($dbc,"customers WHERE customer_status = 1 AND customer_type='".$_REQUEST['type']."' ");
+            $sql = get($dbc,"customers WHERE customer_status = 1 AND customer_type='".$_REQUEST['type']."' ORDER BY customer_name ASC");
             while($row = $sql->fetch_array()) {
 
-              echo "<option value='".$row['customer_id']."'>".$row['customer_name']."</option>";
+              echo "<option value='".$row['customer_id']."'>".htmlspecialchars(getCustomerDisplayName($row['customer_name'], $row['customer_phone']))."</option>";
             } // while
             ?>
           </select> 
