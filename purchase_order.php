@@ -164,7 +164,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
 
                              $getBrand=fetchRecord($dbc,"brands","brand_id",$row['brand_id']);
 
-                             $getCat=fetchRecord($dbc,"categories","categories_id",$row['categories_id']);
+                             $getCat=fetchRecord($dbc,"categories","categories_id",$row['category_id']);
 
                           ?>
 

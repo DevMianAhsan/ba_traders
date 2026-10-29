@@ -159,7 +159,7 @@ $next_increment = $data['Auto_increment']; ?>
                       
 
                         <div class="col-6 col-sm-1 col-md-1 ">
-                          <label>Price</label>
+                          <label>Rate</label>
                          <input type="number" <?=($_SESSION['user_role']=="admin")?"":"readonly"?> min="0" class="form-control" id="get_product_price" >
                       </div>
                       <div class="col-6 col-sm-2 col-md-2">
