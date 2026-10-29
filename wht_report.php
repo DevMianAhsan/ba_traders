@@ -562,7 +562,7 @@ if ($q_ann) {
                     <i class="fe fe-user text-primary mr-1"></i> Customer Account
                     <small class="text-muted font-weight-normal">(Leave blank for Overall)</small>
                   </label>
-                  <select name="customer_id" id="wht_customer_id" class="form-control select2" onchange="$('#whtFilterForm').submit();">
+                  <select name="customer_id" id="wht_customer_id" class="form-control select2 searchableSelect" onchange="$('#whtFilterForm').submit();">
                     <option value="">-- All Customers (Overall) --</option>
                     <?php
                     $q_cust = mysqli_query($dbc, "SELECT customer_id, customer_name, customer_phone, customer_ntn FROM customers WHERE customer_status = 1 AND customer_type = 'customer' ORDER BY customer_name ASC");

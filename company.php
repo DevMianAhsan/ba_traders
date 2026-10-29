@@ -48,7 +48,7 @@
 					
 					<h4>Stock Manage</h4>
 
-						<select class="form-control" name="stock_manage">
+						<select class="form-control searchableSelect" name="stock_manage">
 							<option <?=@($get_company['stock_manage']==0)?"selected":""?> value="0">No</option>
 							<option <?=@($get_company['stock_manage']==1)?"selected":""?> value="1">Yes</option>
 						</select>
@@ -73,7 +73,7 @@
 						<input type="text" name="personal_phone" placeholder="Enter personal Phone" class="form-control" value="<?=@$get_company['personal_phone']?>" /><br/>
 						<h4>Interface</h4>
 
-						<select class="form-control" name="sale_interface">
+						<select class="form-control searchableSelect" name="sale_interface">
 							<option <?=@($get_company['sale_interface']=='gui')?"selected":""?> value="gui">gui</option>
 							<option <?=@($get_company['sale_interface']=='keyboard')?"selected":""?> value="keyboard">keyboard</option>
 							<option <?=@($get_company['sale_interface']=='barcode')?"selected":""?> value="barcode">barcode</option>

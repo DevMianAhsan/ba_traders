@@ -53,7 +53,7 @@ $next_increment = $data['Auto_increment']; ?>
                         <label>Customer Account</label>
                         <div class="input-group">
                        
-                          <select class="form-control" onchange="getBalance(this.value,'customer_account_exp')" name="invoice_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" onchange="getBalance(this.value,'customer_account_exp')" name="invoice_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
                        <option value="">Customer Account</option>
                           <?php
                             $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer'");
@@ -91,7 +91,7 @@ $next_increment = $data['Auto_increment']; ?>
                         <?php
                       }else{
                         ?>
-                        <select id="party_po" name="party_po" class="form-control">
+                        <select id="party_po" name="party_po" class="form-control searchableSelect">
                        <option > Select Customer first </option>
                      </select>
                       <?php

@@ -380,7 +380,7 @@ if (!empty($tax_purchase['supplier_id'])) {
                       ?></span>
                     </span>
                   </div>
-                  <select class="form-control form-control-sm select2 mb-1" id="supplier_select">
+                  <select class="form-control form-control-sm select2 mb-1 searchableSelect" id="supplier_select">
                     <option value="">-- Select Supplier --</option>
                     <?php
                     $qs = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'supplier' ORDER BY customer_name ASC");

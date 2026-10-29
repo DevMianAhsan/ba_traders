@@ -22,7 +22,7 @@
     			<form action="" method="post" class="form-inline print_hide" >
 			<div class="form-group">
 				<label for="">Customer Account</label>
-				<select class="form-control" id="clientName" name="customer_id" autofocus="true">
+				<select class="form-control searchableSelect" id="clientName" name="customer_id" autofocus="true">
 		      	<option value="">~~SELECT~~</option>
 		      	<?php 
 		      	$sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type='customer'";

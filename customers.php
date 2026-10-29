@@ -58,7 +58,7 @@ if (empty($_REQUEST['type'])) {
 				    
 
 				    <label for="active">Status:</label>
-				    <select name="customer_status" id="customer_status" required class="form-control "> 
+				    <select name="customer_status" id="customer_status" required class="form-control  searchableSelect"> 
 				    	<option <?=(@$Getdata['customer_status']=="1" || !isset($Getdata['customer_status']))?"selected":""?> value="1">Active</option>
 				    	<option <?=(@$Getdata['customer_status']=="0")?"selected":""?> value="0">Deactive</option>
 				    </select>

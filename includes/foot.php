@@ -158,7 +158,7 @@
                       <div class="col-sm-6 mb-3 mb-sm-0">
                         
                          <label for="">Status</label>
-                        <select class="form-control" required name="availability" id="availability">
+                        <select class="form-control searchableSelect" required name="availability" id="availability">
                           <option    value="1">Available</option>
                           <option    value="0">Not Available</option>
                          </select>
@@ -201,7 +201,7 @@
                                     </div>
                                     <div class="col-sm-6">
                                     <label for="">Brand Status</label>
-                                    <select class="form-control" id="brand_status" name="brand_status"> 
+                                    <select class="form-control searchableSelect" id="brand_status" name="brand_status"> 
                                                 <option <?=(isset($brands['brand_status']) && $brands['brand_status']==0)?"selected":""?> value="0">Inactive</option>
 										<option <?=(!isset($brands['brand_status']) || $brands['brand_status']==1)?"selected":""?> value="1">Active</option>
                                         
@@ -258,7 +258,7 @@
                 </div> -->
                   <div class="col-sm-6">
                   <label for=""> Status</label>
-                  <select class="form-control" id="categories_status" name="categories_status"> 
+                  <select class="form-control searchableSelect" id="categories_status" name="categories_status"> 
                     
                     <option <?=(isset($categories['categories_status']) && $categories['categories_status']==0)?"selected":""?> value="0">Inactive</option>
 										<option <?=(!isset($categories['categories_status']) || $categories['categories_status']==1)?"selected":""?> value="1">Active</option>

@@ -63,7 +63,7 @@ include_once "includes/header.php";
 			  <div class="form-group">
 			    <label for="clientContact" class="col-sm-5 control-label">Budget Category Type</label>
 			    <div class="col-sm-7">
-			      <select type="text" class="form-control" id="budget_category_type" name="budget_category_type" required  >
+			      <select type="text" class="form-control searchableSelect" id="budget_category_type" name="budget_category_type" required  >
 			      		<?php getSelectTag($fetchBudgetCategory['budget_category_type'],"~~SELECT~~"); ?>
 			      		<!-- <option value="income">Income</option> -->
 			      		<option value="expense">Expence</option>

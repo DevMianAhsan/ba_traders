@@ -53,7 +53,7 @@
 
 
 
-        <select required class="form-control" id="ledger_customer_id" name="customer_id" autofocus="true">
+        <select required class="form-control searchableSelect" id="ledger_customer_id" name="customer_id" autofocus="true">
             <option value="">Select Account</option>
             <?php
 

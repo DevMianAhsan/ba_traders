@@ -385,6 +385,7 @@ if (e.altKey && e.which == 80) {
             success:function (msg) {
               var res=msg.trim();
                $("#party_po").empty().html(res);
+                $("#party_po").trigger("change.select2");
                var pDays = $("#party_po").find(':selected').data('paymentdays');
                if (pDays) {
                    $('#credit_sale_type').val(pDays + 'days');

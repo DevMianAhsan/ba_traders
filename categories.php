@@ -46,7 +46,7 @@ if (isset($_REQUEST['edit_categories_id'])) {
                 </div> -->
 									<div class="col-sm-6">
 									<label for=""> Status</label>
-									<select class="form-control" id="categories_status" name="categories_status"> 
+									<select class="form-control searchableSelect" id="categories_status" name="categories_status"> 
 										
 										<option <?=(!isset($categories['categories_status']) || $categories['categories_status']==1)?"selected":""?> value="1">Active</option>
 										<option <?=(isset($categories['categories_status']) && $categories['categories_status']==0)?"selected":""?> value="0">Inactive</option>

@@ -36,7 +36,7 @@
 								<div class="col-sm-3">
 										<div class="form-group">
 				<label for="">Customer Account</label>
-				  <select class="form-control" onchange="getBalance(this.value,'customer_account_exp')" name="customer_id" id="credit_order_client_name"  aria-label="Username" aria-describedby="basic-addon1">
+				  <select class="form-control searchableSelect" onchange="getBalance(this.value,'customer_account_exp')" name="customer_id" id="credit_order_client_name"  aria-label="Username" aria-describedby="basic-addon1">
                        <option value="">Customer Account</option>
                           <?php
                             $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer'");
@@ -51,7 +51,7 @@
 								<div  class="col-sm-2">
 										<div class="form-group">
 				<label for="">Party PO</label>
-				 <select id="party_po" name="party_po" class="form-control">
+				 <select id="party_po" name="party_po" class="form-control searchableSelect">
                        <option value=""> Select Customer first </option>
                      </select>
 				
@@ -74,7 +74,7 @@
 								<div class="col-sm-2">
 									<div class="form-group">
 										<label>Type</label>
-										<select  class="form-control" name="sale_type">
+										<select  class="form-control searchableSelect" name="sale_type">
 											<option value="all">Select Type</option>
 											<option value="cash_in_hand">Cash Sale</option>
 											<option value="credit_sale">Credit Sale</option>

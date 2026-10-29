@@ -525,7 +525,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                         <div class="input-group-prepend">
                           <span class="input-group-text font-weight-bold bg-white">Month</span>
                         </div>
-                        <select name="month" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <select name="month" class="form-control form-control-sm searchableSelect" onchange="this.form.submit()">
                           <?php foreach ($all_months as $m): ?>
                             <option value="<?=$m?>" <?=($m === $selected_month) ? 'selected' : ''?>><?=$m?></option>
                           <?php endforeach; ?>
@@ -538,7 +538,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                         <div class="input-group-prepend">
                           <span class="input-group-text font-weight-bold bg-white">Year</span>
                         </div>
-                        <select name="year" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <select name="year" class="form-control form-control-sm searchableSelect" onchange="this.form.submit()">
                           <?php for ($y = 2024; $y <= 2028; $y++): ?>
                             <option value="<?=$y?>" <?=($y == $selected_year) ? 'selected' : ''?>><?=$y?></option>
                           <?php endfor; ?>

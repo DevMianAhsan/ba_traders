@@ -90,7 +90,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
               <div class="col-12 col-md-3 po-col-customer px-1">
                 <label>Customer Account</label>
                 <div class="input-group">       
-                  <select class="form-control" onchange="getBalance(this.value,'customer_account_exp')" name="purchase_order_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
+                  <select class="form-control searchableSelect" onchange="getBalance(this.value,'customer_account_exp')" name="purchase_order_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
                     <option value="">Customer Account</option>
                     <?php
                       $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer'");

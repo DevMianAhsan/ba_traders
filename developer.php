@@ -43,7 +43,7 @@ if (!empty($_REQUEST['edit_menu_id'])) {
           </div><!-- group -->
           <div class="form-group">
             <label for="">Parent</label>
-            <select name="nav_parent_id" id="" class="form-control">
+            <select name="nav_parent_id" id="" class="form-control searchableSelect">
             <option  value="0">No parent</option>
               <?php $q=mysqli_query($dbc,"SELECT DISTINCT(title),id FROM menus where parent_id=0");
               while($r=mysqli_fetch_assoc($q)):

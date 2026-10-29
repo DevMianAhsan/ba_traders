@@ -47,7 +47,7 @@ $next_increment = $data['Auto_increment']; ?>
               <div class="col-sm-5">
                  <label>Select Supplier</label>
                    <div class="input-group">
-                    <select class="form-control" name="cash_purchase_supplier" id="credit_order_client_name" required onchange="getBalance(this.value,'customer_account_exp')" aria-label="Username" aria-describedby="basic-addon1">
+                    <select class="form-control searchableSelect" name="cash_purchase_supplier" id="credit_order_client_name" required onchange="getBalance(this.value,'customer_account_exp')" aria-label="Username" aria-describedby="basic-addon1">
                        <option value="">Select Supplier</option>
                           <?php
                             $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='supplier'");
@@ -242,7 +242,7 @@ $next_increment = $data['Auto_increment']; ?>
                   <td class="table-bordered">
 
                     <div class="input-group">
-                    <select class="form-control" onchange="getBalance(this.value,'payment_account_bl')" name="payment_account" id="payment_account" aria-label="Username" aria-describedby="basic-addon1">
+                    <select class="form-control searchableSelect" onchange="getBalance(this.value,'payment_account_bl')" name="payment_account" id="payment_account" aria-label="Username" aria-describedby="basic-addon1">
                       
                       <?php 
                       if($_SESSION['user_role'] == 'admin' ){

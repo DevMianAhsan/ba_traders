@@ -516,7 +516,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
               <div class="row align-items-end">
                 <div class="col-md-3 col-sm-6 mb-2">
                   <label class="font-weight-bold small text-muted">ACCOUNT (CUSTOMER / SUPPLIER)</label>
-                  <select name="account_id" class="form-control form-control-sm select2">
+                  <select name="account_id" class="form-control form-control-sm select2 searchableSelect">
                     <option value="">-- All Accounts (Overall) --</option>
                     <optgroup label="Customers">
                       <?php 
@@ -548,7 +548,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                   <label class="font-weight-bold small text-muted">STATUS FILTER</label>
-                  <select name="filter_status" class="form-control form-control-sm">
+                  <select name="filter_status" class="form-control form-control-sm searchableSelect">
                     <option value="pending_only" <?=$filter_status == 'pending_only' ? 'selected' : ''?>>Only Pending Accounts (Due > 0)</option>
                     <option value="all" <?=$filter_status == 'all' ? 'selected' : ''?>>All Accounts (Including Cleared)</option>
                     <option value="cleared_only" <?=$filter_status == 'cleared_only' ? 'selected' : ''?>>Only Cleared Accounts (Due = 0)</option>

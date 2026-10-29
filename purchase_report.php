@@ -24,7 +24,7 @@
 					<div class="col-sm-4">
 						<div class="form-group">
 				<label for="">Customer Account</label>
-				<select class="form-control"  name="customer_id" autofocus="true">
+				<select class="form-control searchableSelect"  name="customer_id" autofocus="true">
 		      	<option value="">~~SELECT~~</option>
 		      	<?php 
 		      	$sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type='supplier'";

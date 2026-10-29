@@ -131,7 +131,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
                     <tr>
                   <td class="table-bordered">Account :</td>
                   <td class="table-bordered">
-                    <select class="form-control" name="payment_account">
+                    <select class="form-control searchableSelect" name="payment_account">
                       <option value="">Select Account</option>
                       <?php $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank'");
                       while($r=mysqli_fetch_assoc($q)): ?>

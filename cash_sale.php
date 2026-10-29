@@ -272,7 +272,7 @@ $next_increment = $data['Auto_increment']; ?>
 
                   <td class="table-bordered">Account :</td>
                   <td class="table-bordered">
-                    <select class="form-control" id="payment_account" name="payment_account" required>
+                    <select class="form-control searchableSelect" id="payment_account" name="payment_account" required>
                      
                       <?php 
                       if($_SESSION['user_role'] == 'admin' ){

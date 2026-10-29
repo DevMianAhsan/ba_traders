@@ -108,7 +108,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
               <div class="row align-items-end">
                 <div class="form-group col-md-4 col-sm-6 mb-2">
                   <label class="font-weight-bold">Customer Account <span class="text-danger">*</span></label>
-                  <select required class="form-control" id="ledger_customer_id" name="customer_id" autofocus="true">
+                  <select required class="form-control searchableSelect" id="ledger_customer_id" name="customer_id" autofocus="true">
                     <option value="">-- Select Customer Account --</option>
                     <?php
                     $q_cust = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'customer' ORDER BY customer_name ASC");

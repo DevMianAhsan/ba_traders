@@ -51,7 +51,7 @@ if (isset($_REQUEST['id'])) {
                         Type
                       </div>
                       <div class="col-sm-4">
-                          <select class="form-control"  name="voucher_type" >
+                          <select class="form-control searchableSelect"  name="voucher_type" >
                             <option <?=@($voucher['voucher_type']=="general_voucher")?"checked":""?> value="general_voucher">General Voucher</option>
                             <option <?=@($voucher['voucher_type']=="payment_clearance")?"checked":""?> value="payment_clearance ">Payment Clearance </option>
                             <option <?=@($voucher['voucher_type']=="transferring")?"checked":""?> value="transferring">Transferring</option>
@@ -65,7 +65,7 @@ if (isset($_REQUEST['id'])) {
                       <div class="col-sm-2 text-right">From Account</div>
                       <div class="col-sm-4">
                         <div class="input-group mb-3">
-                          <select class="form-control" id="voucher_from_account" onchange="getBalance(this.value,'from_account_bl'); checkCustomerRole(false);" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" id="voucher_from_account" onchange="getBalance(this.value,'from_account_bl'); checkCustomerRole(false);" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
                           <?php   
                           $q = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 ORDER BY customer_type ASC, customer_name ASC");
@@ -109,7 +109,7 @@ if (isset($_REQUEST['id'])) {
                       <div class="col-sm-2 text-right">To Account</div>
                       <div class="col-sm-4">
                         <div class="input-group mb-3">
-                          <select class="form-control" id="voucher_to_account" name="voucher_to_account" onchange="getBalance(this.value,'to_account_bl');" aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" id="voucher_to_account" name="voucher_to_account" onchange="getBalance(this.value,'to_account_bl');" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
                           <?php   
                           $q = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 ORDER BY customer_type ASC, customer_name ASC");
@@ -424,7 +424,7 @@ if (isset($_REQUEST['id'])) {
                         Type
                       </div>
                       <div class="col-sm-4">
-                          <select class="form-control"  name="voucher_type" >
+                          <select class="form-control searchableSelect"  name="voucher_type" >
                             <?php $q=get($dbc,"expenses WHERE expense_status=1 ");
                                   while ($r=mysqli_fetch_assoc($q)) {
                                     # code...
@@ -441,7 +441,7 @@ if (isset($_REQUEST['id'])) {
                       <div class="col-sm-2 text-right">From Account</div>
                       <div class="col-sm-4">
                         <div class="input-group mb-3">
-                          <select class="form-control" onchange="getBalance(this.value,'from_account_exp')" id="voucher_from_account" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" onchange="getBalance(this.value,'from_account_exp')" id="voucher_from_account" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
                            
 
@@ -480,7 +480,7 @@ if (isset($_REQUEST['id'])) {
                       <div class="col-sm-2 text-right">To Account</div>
                       <div class="col-sm-4">
                         <div class="input-group mb-3">
-                          <select class="form-control" onchange="getBalance(this.value,'to_account_exp')" id="voucher_to_account" name="voucher_to_account" aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" onchange="getBalance(this.value,'to_account_exp')" id="voucher_to_account" name="voucher_to_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
                            
 
@@ -559,7 +559,7 @@ if (isset($_REQUEST['id'])) {
                       <div class="col-sm-2 text-right">Account</div>
                       <div class="col-sm-4">
                         <div class="input-group mb-3">
-                          <select class="form-control" required onchange="getBalance(this.value,'account_sing')" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
+                          <select class="form-control searchableSelect" required onchange="getBalance(this.value,'account_sing')" name="voucher_from_account" aria-label="Username" aria-describedby="basic-addon1">
                             <option value="">Select Account</option>
                            
 

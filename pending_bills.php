@@ -304,7 +304,7 @@
             <label>Select Account</label>
           </div>
              <div class="col-sm-4">
-                    <select class="form-control" id="bill_payment_account" name="bill_payment_account" required>
+                    <select class="form-control searchableSelect" id="bill_payment_account" name="bill_payment_account" required>
                      
                       <?php $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='bank'");
                       while($r=mysqli_fetch_assoc($q)): ?>

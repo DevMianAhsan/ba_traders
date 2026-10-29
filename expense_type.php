@@ -38,7 +38,7 @@ if (isset($_REQUEST['edit_expense_id'])) {
 									</div>
 									<div class="col-sm-6">
 									<label for="">Expense Status</label>
-									<select class="form-control" id="expense_status" name="expense_status"> 
+									<select class="form-control searchableSelect" id="expense_status" name="expense_status"> 
 										
 										<option  <?=@($expenses['expense_status']==1)?"selected":"selected"?> value="1">Active</option>
 										<option <?=@($expenses['expense_status']==0)?"selected":""?> value="0">Inactive</option>

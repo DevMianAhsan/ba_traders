@@ -66,6 +66,116 @@
             background-color: #e9ecef !important;
             color: #212529 !important;
         }
+
+        /* Fix input-group layout with Select2: keep buttons and badges on the same line */
+        .input-group {
+            flex-wrap: nowrap !important;
+            align-items: stretch !important;
+        }
+
+        .input-group > .select2-container,
+        .input-group > .select2-container--bootstrap4 {
+            position: relative;
+            flex: 1 1 auto !important;
+            width: 1% !important;
+            min-width: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        .input-group > .select2-container .select2-selection--single,
+        .input-group > .select2-container--bootstrap4 .select2-selection--single {
+            height: calc(1.5em + 0.75rem + 2px) !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .input-group > .select2-container .select2-selection--single .select2-selection__rendered,
+        .input-group > .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+            line-height: normal !important;
+            padding-left: 0.75rem !important;
+            padding-right: 1.75rem !important;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .input-group > .select2-container .select2-selection--single .select2-selection__arrow,
+        .input-group > .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+            height: 100% !important;
+            top: 0 !important;
+            right: 3px !important;
+        }
+
+        /* Seamless border connection */
+        .input-group > .select2-container:not(:last-child) .select2-selection,
+        .input-group > .select2-container--bootstrap4:not(:last-child) .select2-selection {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .input-group > .input-group-prepend:first-child ~ .select2-container .select2-selection,
+        .input-group > .input-group-prepend:first-child ~ .select2-container--bootstrap4 .select2-selection,
+        .input-group > .select2-container:not(:first-child) .select2-selection,
+        .input-group > .select2-container--bootstrap4:not(:first-child) .select2-selection {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+        }
+
+        .input-group > .select2-container + .input-group-prepend,
+        .input-group > .select2-container + .input-group-append,
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend,
+        .input-group > .select2-container--bootstrap4 + .input-group-append {
+            display: flex !important;
+            flex: 0 0 auto !important;
+            margin-left: -1px !important;
+        }
+
+        .input-group > .select2-container + .input-group-prepend > .btn,
+        .input-group > .select2-container + .input-group-prepend > .btn-sm,
+        .input-group > .select2-container + .input-group-prepend > .btn-admin,
+        .input-group > .select2-container + .input-group-prepend > button,
+        .input-group > .select2-container + .input-group-prepend > .input-group-text,
+        .input-group > .select2-container + .input-group-append > .btn,
+        .input-group > .select2-container + .input-group-append > .btn-sm,
+        .input-group > .select2-container + .input-group-append > .btn-admin,
+        .input-group > .select2-container + .input-group-append > button,
+        .input-group > .select2-container + .input-group-append > .input-group-text,
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend > .btn,
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend > .btn-sm,
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend > .btn-admin,
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend > button,
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend > .input-group-text,
+        .input-group > .select2-container--bootstrap4 + .input-group-append > .btn,
+        .input-group > .select2-container--bootstrap4 + .input-group-append > .btn-sm,
+        .input-group > .select2-container--bootstrap4 + .input-group-append > .btn-admin,
+        .input-group > .select2-container--bootstrap4 + .input-group-append > button,
+        .input-group > .select2-container--bootstrap4 + .input-group-append > .input-group-text {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+            border-top-right-radius: 0.25rem !important;
+            border-bottom-right-radius: 0.25rem !important;
+            height: 100% !important;
+            min-height: calc(1.5em + 0.75rem + 2px) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            float: none !important;
+        }
+
+        .input-group > .select2-container + .input-group-prepend > :not(:last-child),
+        .input-group > .select2-container + .input-group-append > :not(:last-child),
+        .input-group > .select2-container--bootstrap4 + .input-group-prepend > :not(:last-child),
+        .input-group > .select2-container--bootstrap4 + .input-group-append > :not(:last-child) {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .input-group > .input-group-prepend button.btn-admin,
+        .input-group > .input-group-append button.btn-admin {
+            padding: 0 12px !important;
+            box-shadow: none !important;
+        }
     </style>
   </head>
   

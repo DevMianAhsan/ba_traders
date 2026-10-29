@@ -156,7 +156,7 @@ if (isset($_REQUEST['edit_product_id'])) {
 
                   <div class="col-sm-2 mb-3 mb-sm-0">
                       <label for="availability">Status</label>
-                      <select class="form-control" required name="availability" id="availability">
+                      <select class="form-control searchableSelect" required name="availability" id="availability">
                         <option value="1" <?=@($fetchproduct['availability']=="1" || !isset($fetchproduct['availability']))?"selected":""?>>Available</option>
                         <option value="0" <?=@($fetchproduct['availability']=="0")?"selected":""?>>Not Available</option>
                       </select>

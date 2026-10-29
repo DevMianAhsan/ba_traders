@@ -438,7 +438,7 @@ if (!empty($tax_sale['customer_id'])) {
                       ?></span>
                     </span>
                   </div>
-                  <select class="form-control form-control-sm select2 mb-1" id="customer_select">
+                  <select class="form-control form-control-sm select2 mb-1 searchableSelect" id="customer_select">
                     <option value="">-- Select Customer --</option>
                     <?php
                     $qc = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'customer' ORDER BY customer_name ASC");
@@ -505,7 +505,7 @@ if (!empty($tax_sale['customer_id'])) {
               <input type="text" name="header_description" id="header_description" class="inv-input flex-grow-1 font-weight-bold" placeholder="GST Invoice Number : ... / BA TRADERS / P.O # : ... / H.S.Code # ..." value="<?=@$tax_sale['header_description']?>">
               
               <div class="input-group ml-2" style="width: auto; max-width: 260px;">
-                <select name="po_no" id="po_no" class="inv-input font-weight-bold" style="min-width: 160px; height: 28px;" onchange="onPoChange(this.value)">
+                <select name="po_no" id="po_no" class="inv-input font-weight-bold searchableSelect" style="min-width: 160px; height: 28px;" onchange="onPoChange(this.value)">
                   <?php if (!empty($customer_pos)): ?>
                     <option value="">-- Select PO --</option>
                     <?php 

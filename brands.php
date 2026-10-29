@@ -38,7 +38,7 @@ if (isset($_REQUEST['edit_brand_id'])) {
 									</div>
 									<div class="col-sm-6">
 									<label for="">Brand Status</label>
-									<select class="form-control" id="brand_status" name="brand_status"> 
+									<select class="form-control searchableSelect" id="brand_status" name="brand_status"> 
 										
 										<option <?=(!isset($brands['brand_status']) || $brands['brand_status']==1)?"selected":""?> value="1">Active</option>
 										<option <?=(isset($brands['brand_status']) && $brands['brand_status']==0)?"selected":""?> value="0">Inactive</option>

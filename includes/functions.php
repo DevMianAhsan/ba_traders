@@ -1580,7 +1580,7 @@ function countryBySelect($id = "", $name = "", $classes = "",$defaultoption = ""
 
     
 
-    $output = "<select  id='".$id."' name='".$name."' class='".$classes."'  ".$defaultMsg.">";
+    $output = "<select  id='".$id."' name='".$name."' class='".$classes." searchableSelect'  ".$defaultMsg.">";
 
   
 

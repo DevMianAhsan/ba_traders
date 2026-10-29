@@ -36,7 +36,7 @@
 								<div class="col-sm-3">
 										<div class="form-group">
 				<label for="">Customer Account</label>
-				<select class="form-control" id="clientName" name="customer_id" autofocus="true">
+				<select class="form-control searchableSelect" id="clientName" name="customer_id" autofocus="true">
 		      	<option value="">~~SELECT~~</option>
 		      	<?php 
 		      	$sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type='customer'";
@@ -66,7 +66,7 @@
 								<div class="col-sm-2">
 									<div class="form-group">
 										<label>Type</label>
-										<select  class="form-control" name="sale_type">
+										<select  class="form-control searchableSelect" name="sale_type">
 											<option value="all">Select Type</option>
 											<option value="cash_in_hand">Cash Sale</option>
 											<option value="credit_sale">Credit Sale</option>

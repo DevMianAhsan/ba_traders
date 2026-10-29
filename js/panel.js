@@ -27,14 +27,35 @@ $(document).ready(function () {
         ],
          "order": [[ 6, "asc" ]]
       });
-      $('.searchableSelect').select2(
-      {
-        theme: 'bootstrap4',
+      function initAppSelect2(container) {
+        var $scope = container ? $(container) : $(document);
+        $scope.find('.searchableSelect, .select2').each(function () {
+          var $el = $(this);
+          if (!$el.hasClass('select2-hidden-accessible') && !$el.data('select2')) {
+            var opts = {
+              theme: 'bootstrap4',
+              width: $el.closest('.input-group').length ? 'resolve' : '100%'
+            };
+            var $modal = $el.closest('.modal');
+            if ($modal.length) {
+              opts.dropdownParent = $modal;
+            }
+            $el.select2(opts);
+          }
+        });
+      }
+      initAppSelect2();
+      window.initAppSelect2 = initAppSelect2;
+
+      $(document).on('shown.bs.modal', '.modal', function () {
+        initAppSelect2(this);
       });
+
       $('.selectMulti').select2(
       {
         multiple: true,
         theme: 'bootstrap4',
+        width: '100%'
       });
    // $('.my-colorpicker2').colorpicker();
 

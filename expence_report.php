@@ -38,7 +38,7 @@
 			<div class="row " >
 				<div class="col-sm-3 form-group ">
 				<label for="">Select Type</label>
-				<select class="form-control" name="exp_cat">
+				<select class="form-control searchableSelect" name="exp_cat">
 					<option value="all">All</option>
 					<?php
 					$q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_type = 'expense' ");
