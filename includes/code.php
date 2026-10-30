@@ -1,4 +1,3 @@
-
 <?php 
 include_once 'functions.php';
 @include_once '../php_action/db_connect.php'; 

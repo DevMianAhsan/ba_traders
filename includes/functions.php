@@ -1,5 +1,3 @@
-﻿
-
 <?php 
 
 //Debug Function 
@@ -14,35 +12,23 @@ exit;
 
 }
 
-?>
-
- <?php function getYesNo($data){
+ function getYesNo($data){
 
   return ($data==1)?'Yes':'No';
 
- } ?>
-
-  
-
-<?php function getEnDis($data){
+ }  function getEnDis($data){
 
   return ($data==1)?'<span class="text-success">Enabled</span>':'<span class="text-danger">Disabled</span>';
 
-} ?>
-
-<?php function isActive($data){
+}  function isActive($data){
 
   return ($data==1)?'<span class="label label-success">Activate</span>':'<span class="label label-danger">Deactivated</span>';
 
-} ?>
-
-<?php function getDateFormat($format,$data){
+}  function getDateFormat($format,$data){
 
   return date($format,strtotime($data));
 
-  } ?>
-
-<?php 
+  }  
 
 //Get Data from table 
 
@@ -52,9 +38,7 @@ return mysqli_query($dbc,"SELECT * FROM $table");
 
 }
 
-?>
-
-<?php 
+ 
 
 //Get Data by criteria  
 
@@ -64,9 +48,7 @@ return mysqli_query($dbc,"SELECT * FROM $table WHERE $fld = '$id'");
 
 }
 
-?>
-
-<?php 
+ 
 
 //Get Data from table 
 
@@ -76,9 +58,7 @@ return mysqli_query($dbc,"SELECT * FROM $table ORDER BY $fld ASC");
 
 }
 
-?>
-
-<?php 
+ 
 
 //Get and Fetch Data from table
 
@@ -88,9 +68,7 @@ return mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM $table"));
 
 }
 
- ?>
-
-<?php 
+  
 
 //Count Row
 
@@ -100,9 +78,7 @@ function countIf($dbc,$arr){
 
 }
 
-?>
-
-<?php 
+ 
 
  //Get Message 
 
@@ -122,9 +98,7 @@ echo "<div class='alert alert-".$sts."'>".$msg."</div>";
 
 }
 
-  ?>
-
-  <?php 
+   
 
   //Delete Data From Table
 
@@ -148,9 +122,7 @@ if (mysqli_query($dbc,"DELETE FROM $table WHERE $fld='$id'")) {
 
   }
 
-   ?>
-
-   <?php 
+    
 
    //Redirect Function
 
@@ -174,9 +146,7 @@ window.location="<?=$url?>";
 
   }
 
-    ?>
-
-     <?php 
+     
 
    //Redirect Function
 
@@ -200,9 +170,7 @@ window.location=window.location.href;
 
   }
 
-    ?>
-
-    <?php 
+     
 
     //Validate Function
 
@@ -214,9 +182,7 @@ window.location=window.location.href;
 
     return mysqli_real_escape_string($dbc,strip_tags($data));
 
-    } ?>
-
-<?php 
+    }  
 
 // Delete All function
 
@@ -256,9 +222,7 @@ endif;
 
 }
 
-?>
-
-<?php 
+ 
 
 //count unseen
 
@@ -268,9 +232,7 @@ return mysqli_num_rows(mysqli_query($dbc,"SELECT * FROM $table WHERE $fld=0"));
 
 }
 
- ?>
-
-<?php 
+  
 
   // Fetch by Criteria
 
@@ -278,9 +240,7 @@ function fetchRecord($dbc,$table,$fld,$data){
 
 return  mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM $table WHERE $fld='$data'"));
 
-} ?>
-
-<?php 
+}  
 
   // Count When
 
@@ -288,9 +248,7 @@ function countWhen($dbc,$table,$fld,$data){
 
 return  mysqli_num_rows(mysqli_query($dbc,"SELECT * FROM $table WHERE $fld='$data'"));
 
-} ?>
-
-<?php 
+}  
 
   // Count When
 
@@ -298,9 +256,7 @@ function countWhens($dbc,$table,$fld1,$data1,$fld2,$data2){
 
 return  mysqli_num_rows(mysqli_query($dbc,"SELECT * FROM $table WHERE $fld1='$data1' AND $fld2='$data2'"));
 
-} ?>
-
-<?php 
+}  
 
 //Insert Data Function
 
@@ -354,9 +310,7 @@ function insert_data($dbc,$table,$data){
 
 
 
-?>
-
-<?php 
+ 
 
 //Update Data Function
 
@@ -394,9 +348,7 @@ return mysqli_query($dbc,"UPDATE $table SET $set_data WHERE $col='$val'");
 
 
 
-?>
 
-<?php
 
 //Count Rows  
 
@@ -406,9 +358,7 @@ return mysqli_num_rows(mysqli_query($dbc,"SELECT * FROM $table"));
 
 }
 
-?>
-
-<?php 
+ 
 
 // get User IP Address 
 
@@ -422,13 +372,11 @@ if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
 
 } else {
 
-   $ip = $_SERVER['REMOTE_ADDR'];
+   $ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
 }
 
-?>
-
-<?php 
+ 
 
 function url(){
 
@@ -438,9 +386,7 @@ function url(){
 
 }
 
- ?>
-
- <?php 
+  
 
 function url_origin( $s, $use_forwarded_host = false )
 
@@ -476,9 +422,7 @@ function full_url( $s, $use_forwarded_host = false )
 
 
 
- ?>
-
-<?php
+ 
 
 // Pic upload
 
@@ -574,11 +518,7 @@ $msg= "Not Uploaded...";
 
 }
 
-} ?>
-
-
-
-<?php
+} 
 
 // file upload
 
@@ -676,11 +616,7 @@ $msg[]= "Not Uploaded...";
 
   echo "<script>alert('".$txt."')</script>";*/
 
-} ?>
-
-
-
-<?php 
+}  
 
   function getSelectTag($data,$text){
 
@@ -700,11 +636,7 @@ $msg[]= "Not Uploaded...";
 
   }
 
- ?>
-
-
-
-<?php 
+  
 
   function getSelectTagEnDis($data,$text){
 
@@ -724,9 +656,7 @@ $msg[]= "Not Uploaded...";
 
   }
 
- ?>
-
-<?php 
+  
 
 //Send Email
 
@@ -862,11 +792,7 @@ $sts="success";
 
 
 
-} ?>
-
-
-
- <?php  
+}   
 
   //student promoton
 
@@ -882,11 +808,7 @@ $sts="success";
 
    }
 
-  ?>
-
-
-
-<?php  
+    
 
   //student Fund History
 
@@ -944,11 +866,7 @@ $sts="success";
 
    }
 
-  ?>
-
-
-
-<?php 
+   
 
   //Level status
 
@@ -1034,13 +952,7 @@ function getOrderType($sts){
 
 }  
 
- ?>
-
-
-
-
-
-<?php 
+  
 
   function setColor($dbc, $tbl, $colName, $checkID, $fetchThis){
 
@@ -1052,11 +964,7 @@ function getOrderType($sts){
 
   // setColor($dbc,"vehicle_info", "vehicle_id", $r['vehicle_id'], "vehicle_id")
 
-?> 
-
-
-
-<?php 
+ 
 
 $countryArray = array(
 
@@ -1867,11 +1775,7 @@ function countryCurrency($id = "", $name = "", $classes = "",$checkstate=""){
 
 }
 
-?>
-
-
-
-<?php 
+ 
 
 function getTotalCost($dbc,$data){
 
@@ -2001,9 +1905,7 @@ function getTotalExpense($dbc,$data){
 
 
 
-?>
 
-<?php
 
 
 

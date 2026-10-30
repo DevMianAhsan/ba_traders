@@ -1,22 +1,18 @@
-
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <?php include_once 'includes/head.php'; 
-
-
-
+<?php 
+require_once 'php_action/db_connect.php';
+require_once 'includes/functions.php';
 
 if(isset($_SESSION['userId'])) {
   header('location: dashboard.php');  
+  exit();
 }
 
-
+$msg = "";
+$sts = "";
 
 if($_POST) {    
-
-   $username = $_POST['username'];
-   $password = $_POST['pass'];
+  $username = $_POST['username'] ?? '';
+  $password = $_POST['pass'] ?? '';
 
   if(empty($username) || empty($password)) {
     if($username == "") {
@@ -42,16 +38,13 @@ if($_POST) {
         $value = $mainResult->fetch_assoc();
         $user_id = $value['user_id'];
         $_SESSION['user_id']= $value['user_id'];
-          setcookie("user_id",$user_id,time()+(86400),"/");
+        setcookie("user_id",$user_id,time()+(86400),"/");
 
         // set session
         $_SESSION['userId'] = $user_id;
-       header('location: dashboard.php');
-?>
-
-<?php
+        header('location: dashboard.php');
+        exit();
       } else{
-        
         $msg = "Incorrect username/password combination";
         $sts="danger";
       } // /else
@@ -63,8 +56,9 @@ if($_POST) {
   
 } // /if $_POST
 ?>
-   
-  </head>
+<!DOCTYPE html>
+<html lang="en">
+<?php include_once 'includes/head.php'; ?>
   <body class="light ">
     <div class="container vh-100">
       <div class="row align-items-center h-100">
@@ -79,11 +73,11 @@ if($_POST) {
           <?=@getMessage($msg,$sts)?>
           <div class="form-group">
             <label for="inputEmail" class="sr-only">Email address</label>
-            <input type="text" id="inputEmail" class="form-control form-control-lg" placeholder="Email address" required="" autofocus="">
+            <input type="text" id="inputEmail" class="form-control form-control-lg" placeholder="Email address" required="" name="username" autofocus="">
           </div>
           <div class="form-group">
             <label for="inputPassword" class="sr-only">Password</label>
-            <input type="password" id="inputPassword" class="form-control form-control-lg" placeholder="Password" required="">
+            <input type="password" id="inputPassword" class="form-control form-control-lg" placeholder="Password" required="" name="pass">
           </div>
           <div class="checkbox mb-3">
             <label>
@@ -97,6 +91,4 @@ if($_POST) {
     </div>
     <?php include_once 'includes/foot.php'; ?>
   </body>
-</html>
-</body>
 </html>
