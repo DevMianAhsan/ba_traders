@@ -35,7 +35,7 @@ $_SESSION['user_role'] = $UserData['user_role'];
             <ul class="navbar-nav mr-auto">
               <li class="nav-item dropdown">
                 <a href="dashboard.php"  class="nav-link">
-                  <span class="ml-lg-2">Dashboard</span>
+                  <span class="ml-lg-2">DASHBOARD</span>
                 </a>
     
               </li>
@@ -232,7 +232,7 @@ $_SESSION['user_role'] = $UserData['user_role'];
                   <a class="nav-link pl-3" href="setting.php">Profile</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link pl-3" href="logout.php">Logut</a>
+                  <a class="nav-link pl-3" href="logout.php">LogOut</a>
                 </li>
               </ul>
             </li>

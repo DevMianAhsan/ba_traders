@@ -77,18 +77,67 @@ if($_POST) {
           </div>
           <div class="form-group">
             <label for="inputPassword" class="sr-only">Password</label>
-            <input type="password" name="pass" id="inputPassword" class="form-control form-control-lg" placeholder="Password" required="">
+            <div class="input-group input-group-lg">
+              <input type="password" name="pass" id="inputPassword" class="form-control form-control-lg" placeholder="Password" required="">
+              <div class="input-group-append">
+                <span class="input-group-text toggle-password" role="button" tabindex="-1" title="Show/Hide Password">
+                  <i class="fe fe-eye"></i>
+                </span>
+              </div>
+            </div>
           </div>
           <div class="checkbox mb-3">
             <label>
               <input type="checkbox" value="remember-me"> Stay logged in </label>
           </div>
           <button class="btn btn-lg btn-admin btn-block" type="submit">Signin</button>
-          <p class="mt-5 mb-3 text-muted">samcreations©<?=date('Y')?></p>
+          <p class="mt-5 mb-3 text-muted">TheWebConcept.Com©<?=date('Y')?></p>
         </form>
         </div>
       </div>
     </div>
     <?php include_once 'includes/foot.php'; ?>
+    <style>
+    .toggle-password {
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-password:hover {
+      color: #930027;
+    }
+    /* Prevent double eye icon in Edge/IE */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+      display: none;
+    }
+    </style>
+    <script>
+    $(document).ready(function() {
+      $(document).off('click', '.toggle-password').on('click', '.toggle-password', function(e) {
+        e.preventDefault();
+        var $group = $(this).closest('.input-group');
+        var $input = $group.find('input');
+        if ($input.length) {
+          var isPassword = $input.attr('type') === 'password';
+          $input.attr('type', isPassword ? 'text' : 'password');
+          
+          var $icon = $(this).find('i, span');
+          if ($icon.hasClass('fe-eye')) {
+            $icon.removeClass('fe-eye').addClass('fe-eye-off');
+          } else if ($icon.hasClass('fe-eye-off')) {
+            $icon.removeClass('fe-eye-off').addClass('fe-eye');
+          }
+          
+          if ($icon.hasClass('fa-eye')) {
+            $icon.removeClass('fa-eye').addClass('fa-eye-slash');
+          } else if ($icon.hasClass('fa-eye-slash')) {
+            $icon.removeClass('fa-eye-slash').addClass('fa-eye');
+          }
+          
+          $input.focus();
+        }
+      });
+    });
+    </script>
   </body>
 </html>

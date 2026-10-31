@@ -61,9 +61,11 @@ if (!empty($tax_sale['customer_id'])) {
     }
 }
 ?>
-<head>
-  <style>
+<style>
     /* Project Theme Integrated */
+    .invoice-sheet-container {
+      background: #eef2f5;
+    }
     .invoice-sheet {
       width: 98%;
       max-width: 1700px;
@@ -96,6 +98,7 @@ if (!empty($tax_sale['customer_id'])) {
       text-decoration: underline;
       display: inline-block;
       margin: 0;
+      color: inherit;
     }
 
     /* Top Metadata */
@@ -136,6 +139,7 @@ if (!empty($tax_sale['customer_id'])) {
       font-family: inherit;
       font-size: 13px;
       background: #fafafa;
+      color: inherit;
     }
     .inv-input:focus {
       background: #fff;
@@ -151,6 +155,7 @@ if (!empty($tax_sale['customer_id'])) {
       background: transparent;
       font-family: inherit;
       font-size: 13px;
+      color: inherit;
     }
     .inv-input-clean:focus {
       border-bottom: 1px solid #930027;
@@ -238,7 +243,7 @@ if (!empty($tax_sale['customer_id'])) {
       padding-right: 20px !important;
       font-size: 12.5px !important;
       font-weight: bold;
-      color: #000 !important;
+      color: inherit !important;
     }
     .po-input-group .select2-selection__arrow {
       height: 29px !important;
@@ -313,6 +318,7 @@ if (!empty($tax_sale['customer_id'])) {
       font-size: 11px;
       font-family: inherit;
       background: #fbfbfb;
+      color: inherit;
       box-sizing: border-box;
     }
     .tbl-input:focus {
@@ -324,6 +330,12 @@ if (!empty($tax_sale['customer_id'])) {
       background: #f4f4f4;
       border: 1px solid #e0e0e0;
       font-weight: bold;
+    }
+
+    .total-cell {
+      border: 1.5px solid #000;
+      font-weight: bold;
+      padding: 4px 6px;
     }
 
     .rupees-words-box {
@@ -357,9 +369,237 @@ if (!empty($tax_sale['customer_id'])) {
       font-size: 12.5px;
       font-weight: bold;
     }
-  </style>
-</head>
 
+    /* ============================================================
+       DARK THEME OVERRIDES FOR INVOICE SHEET
+       ============================================================ */
+    .dark-theme .invoice-sheet-container,
+    body.dark .invoice-sheet-container,
+    :root:has(#darkTheme:not([disabled])) .invoice-sheet-container {
+      background: #1b1e22 !important;
+    }
+
+    .dark-theme .invoice-sheet,
+    body.dark .invoice-sheet,
+    :root:has(#darkTheme:not([disabled])) .invoice-sheet {
+      background: #2b3035 !important;
+      color: #e9ecef !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.65) !important;
+    }
+
+    .dark-theme .invoice-title h1,
+    body.dark .invoice-title h1,
+    :root:has(#darkTheme:not([disabled])) .invoice-title h1 {
+      color: #f8f9fa !important;
+    }
+
+    .dark-theme .meta-field .lbl,
+    .dark-theme .meta-field-right .lbl,
+    .dark-theme .party-lbl,
+    body.dark .meta-field .lbl,
+    body.dark .meta-field-right .lbl,
+    body.dark .party-lbl,
+    :root:has(#darkTheme:not([disabled])) .meta-field .lbl,
+    :root:has(#darkTheme:not([disabled])) .meta-field-right .lbl,
+    :root:has(#darkTheme:not([disabled])) .party-lbl {
+      color: #adb5bd !important;
+    }
+
+    .dark-theme .inv-input,
+    body.dark .inv-input,
+    :root:has(#darkTheme:not([disabled])) .inv-input {
+      background: #343a40 !important;
+      color: #f8f9fa !important;
+      border: 1px solid #495057 !important;
+    }
+
+    .dark-theme .inv-input:focus,
+    body.dark .inv-input:focus,
+    :root:has(#darkTheme:not([disabled])) .inv-input:focus {
+      background: #23272b !important;
+      border-color: #1b68ff !important;
+      box-shadow: 0 0 4px rgba(27,104,255,0.4) !important;
+    }
+
+    .dark-theme .inv-input-clean,
+    body.dark .inv-input-clean,
+    :root:has(#darkTheme:not([disabled])) .inv-input-clean {
+      color: #f8f9fa !important;
+      border-bottom: 1px dashed #6c757d !important;
+    }
+
+    .dark-theme .inv-input-clean:focus,
+    body.dark .inv-input-clean:focus,
+    :root:has(#darkTheme:not([disabled])) .inv-input-clean:focus {
+      border-bottom: 1px solid #e63946 !important;
+      background: #343a40 !important;
+    }
+
+    .dark-theme .parties-card,
+    body.dark .parties-card,
+    :root:has(#darkTheme:not([disabled])) .parties-card {
+      border: 2px solid #495057 !important;
+      background: #23272b;
+    }
+
+    .dark-theme .party-col.left-col,
+    body.dark .party-col.left-col,
+    :root:has(#darkTheme:not([disabled])) .party-col.left-col {
+      border-right: 2px solid #495057 !important;
+    }
+
+    .dark-theme .party-name-val,
+    body.dark .party-name-val,
+    :root:has(#darkTheme:not([disabled])) .party-name-val {
+      color: #ffffff !important;
+    }
+
+    .dark-theme .invoice-table-wrapper,
+    body.dark .invoice-table-wrapper,
+    :root:has(#darkTheme:not([disabled])) .invoice-table-wrapper {
+      border: 2px solid #495057 !important;
+    }
+
+    .dark-theme .inv-table th,
+    body.dark .inv-table th,
+    :root:has(#darkTheme:not([disabled])) .inv-table th {
+      border-right: 1.5px solid #495057 !important;
+      border-bottom: 2px solid #495057 !important;
+      background: #1e2227 !important;
+      color: #f8f9fa !important;
+    }
+
+    .dark-theme .inv-table td,
+    body.dark .inv-table td,
+    :root:has(#darkTheme:not([disabled])) .inv-table td {
+      border-right: 1.5px solid #495057 !important;
+      color: #ced4da;
+    }
+
+    .dark-theme .item-dotted-row td,
+    body.dark .item-dotted-row td,
+    :root:has(#darkTheme:not([disabled])) .item-dotted-row td {
+      border-bottom: 1.5px dotted #495057 !important;
+    }
+
+    .dark-theme .totals-divider-row td,
+    body.dark .totals-divider-row td,
+    :root:has(#darkTheme:not([disabled])) .totals-divider-row td {
+      border-top: 2px solid #495057 !important;
+      border-bottom: 2px solid #495057 !important;
+      background: #1e2227 !important;
+      color: #ffffff !important;
+    }
+
+    .dark-theme .total-cell,
+    body.dark .total-cell,
+    :root:has(#darkTheme:not([disabled])) .total-cell {
+      border: 1.5px solid #495057 !important;
+      color: #f8f9fa !important;
+    }
+
+    .dark-theme .tbl-input,
+    body.dark .tbl-input,
+    :root:has(#darkTheme:not([disabled])) .tbl-input {
+      background: #343a40 !important;
+      color: #f8f9fa !important;
+      border-color: #495057 !important;
+    }
+
+    .dark-theme .tbl-input:focus,
+    body.dark .tbl-input:focus,
+    :root:has(#darkTheme:not([disabled])) .tbl-input:focus {
+      background: #23272b !important;
+      border-color: #1b68ff !important;
+    }
+
+    .dark-theme .tbl-input-readonly,
+    body.dark .tbl-input-readonly,
+    :root:has(#darkTheme:not([disabled])) .tbl-input-readonly {
+      background: #212529 !important;
+      border-color: #343a40 !important;
+      color: #adb5bd !important;
+    }
+
+    .dark-theme .signature-line,
+    body.dark .signature-line,
+    :root:has(#darkTheme:not([disabled])) .signature-line {
+      border-top: 1.5px solid #adb5bd !important;
+      color: #ced4da !important;
+    }
+
+    .dark-theme .po-input-group .select2-selection--single,
+    body.dark .po-input-group .select2-selection--single,
+    :root:has(#darkTheme:not([disabled])) .po-input-group .select2-selection--single {
+      background-color: #343a40 !important;
+      border-color: #495057 !important;
+    }
+
+    .dark-theme .po-input-group .select2-selection__rendered,
+    body.dark .po-input-group .select2-selection__rendered,
+    :root:has(#darkTheme:not([disabled])) .po-input-group .select2-selection__rendered {
+      color: #f8f9fa !important;
+    }
+
+    .dark-theme #amount_in_words,
+    body.dark #amount_in_words,
+    :root:has(#darkTheme:not([disabled])) #amount_in_words {
+      color: #f8f9fa !important;
+    }
+
+    .dark-theme .text-dark,
+    body.dark .text-dark,
+    :root:has(#darkTheme:not([disabled])) .text-dark {
+      color: #f8f9fa !important;
+    }
+
+    /* Select2 default dropdown dark support */
+    .dark-theme .select2-container--default .select2-selection--single,
+    body.dark .select2-container--default .select2-selection--single,
+    :root:has(#darkTheme:not([disabled])) .select2-container--default .select2-selection--single {
+      background-color: #343a40 !important;
+      border-color: #495057 !important;
+      color: #f8f9fa !important;
+    }
+    .dark-theme .select2-container--default .select2-selection--single .select2-selection__rendered,
+    body.dark .select2-container--default .select2-selection--single .select2-selection__rendered,
+    :root:has(#darkTheme:not([disabled])) .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: #f8f9fa !important;
+    }
+    .dark-theme .select2-dropdown,
+    body.dark .select2-dropdown,
+    :root:has(#darkTheme:not([disabled])) .select2-dropdown {
+      background-color: #2b3035 !important;
+      border-color: #495057 !important;
+      color: #f8f9fa !important;
+    }
+    .dark-theme .select2-search__field,
+    body.dark .select2-search__field,
+    :root:has(#darkTheme:not([disabled])) .select2-search__field {
+      background-color: #343a40 !important;
+      border-color: #495057 !important;
+      color: #f8f9fa !important;
+    }
+    .dark-theme .select2-container--default .select2-results__option,
+    body.dark .select2-container--default .select2-results__option,
+    :root:has(#darkTheme:not([disabled])) .select2-container--default .select2-results__option {
+      color: #e9ecef !important;
+    }
+    .dark-theme .select2-container--default .select2-results__option--highlighted[aria-selected],
+    .dark-theme .select2-container--default .select2-results__option--highlighted,
+    body.dark .select2-container--default .select2-results__option--highlighted[aria-selected],
+    body.dark .select2-container--default .select2-results__option--highlighted,
+    :root:has(#darkTheme:not([disabled])) .select2-container--default .select2-results__option--highlighted {
+      background-color: #1b68ff !important;
+      color: #ffffff !important;
+    }
+    .dark-theme .select2-container--default .select2-results__option[aria-selected=true],
+    body.dark .select2-container--default .select2-results__option[aria-selected=true],
+    :root:has(#darkTheme:not([disabled])) .select2-container--default .select2-results__option[aria-selected=true] {
+      background-color: #3d4349 !important;
+      color: #ffffff !important;
+    }
+  </style>
 <body class="horizontal light">
   <div class="wrapper">
     <?php include_once 'includes/header.php'; ?>
@@ -391,7 +631,7 @@ if (!empty($tax_sale['customer_id'])) {
               </div>
             </div>
           </div>
-          <div class="card-body p-3" style="background: #eef2f5;">
+          <div class="card-body p-3 invoice-sheet-container">
             <form id="tax_sale_form" method="POST" action="php_action/custom_action.php">
               <input type="hidden" name="tax_sale_action" value="save_tax_sale">
               <input type="hidden" name="tax_sale_id" value="<?=@$tax_sale['tax_sale_id']?>">
@@ -471,7 +711,7 @@ if (!empty($tax_sale['customer_id'])) {
               <div class="party-row">
                 <div class="party-lbl">NTN No. :</div>
                 <div class="party-val">
-                  <input type="text" name="company_ntn" id="company_ntn" class="inv-input font-weight-bold text-dark w-100" value="<?=$company_ntn?>">
+                  <input type="text" name="company_ntn" id="company_ntn" class="inv-input font-weight-bold w-100" value="<?=$company_ntn?>">
                 </div>
               </div>
             </div>
@@ -546,7 +786,7 @@ if (!empty($tax_sale['customer_id'])) {
               <div class="party-row">
                 <div class="party-lbl">NTN No. :</div>
                 <div class="party-val d-flex align-items-center">
-                  <input type="text" name="customer_ntn" id="customer_ntn" class="inv-input font-weight-bold text-dark mr-2" style="width: 100px;" placeholder="e.g. 0711733-7" value="<?=htmlspecialchars(@$edit_customer['customer_ntn'] ?: @$tax_sale['customer_ntn'])?>">
+                  <input type="text" name="customer_ntn" id="customer_ntn" class="inv-input font-weight-bold mr-2" style="width: 100px;" placeholder="e.g. 0711733-7" value="<?=htmlspecialchars(@$edit_customer['customer_ntn'] ?: @$tax_sale['customer_ntn'])?>">
                   <!-- <strong class="mr-1">CNIC No. :</strong>
                   <input type="text" name="customer_cnic" id="customer_cnic" class="inv-input flex-grow-1" placeholder="CNIC" value="<?=@$tax_sale['customer_cnic']?>"> -->
                 </div>
@@ -664,10 +904,10 @@ if (!empty($tax_sale['customer_id'])) {
                 <!-- Inv. Amt -->
                 <tr>
                   <td colspan="4" style="border: none;"></td>
-                  <td colspan="2" class="align-right" style="border: 1.5px solid #000; font-weight: bold; padding: 4px 6px;">
+                  <td colspan="2" class="align-right total-cell">
                     Total Amount:
                   </td>
-                  <td class="align-right" style="border: 1.5px solid #000; font-weight: bold; padding: 4px 6px;">
+                  <td class="align-right total-cell">
                     <span id="lbl_invoice_amount" style="font-size: 12px; font-weight: bold;">0.00</span>
                     <input type="hidden" name="invoice_amount" id="invoice_amount" value="0">
                   </td>
@@ -679,7 +919,7 @@ if (!empty($tax_sale['customer_id'])) {
 
           <!-- Rupees in Words -->
           <div class="rupees-words-box">
-            <textarea readonly name="amount_in_words" id="amount_in_words" rows="2" class="inv-input-clean w-100 font-weight-bold" style="font-size: 12px; color: #000;"><?=@$tax_sale['amount_in_words']?></textarea>
+            <textarea readonly name="amount_in_words" id="amount_in_words" rows="2" class="inv-input-clean w-100 font-weight-bold" style="font-size: 12px;"><?=@$tax_sale['amount_in_words']?></textarea>
           </div>
 
           <!-- Bottom Section: FBR and Signature -->

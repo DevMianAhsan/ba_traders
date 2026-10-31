@@ -27,6 +27,20 @@
     <!-- App CSS -->
     <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
     <link rel="stylesheet" href="css/app-dark.css" id="darkTheme" disabled>
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem("mode");
+          if (mode === "dark") {
+            var dark = document.getElementById("darkTheme");
+            var light = document.getElementById("lightTheme");
+            if (dark) dark.removeAttribute("disabled");
+            if (light) light.setAttribute("disabled", "disabled");
+            document.documentElement.classList.add("dark-theme");
+          }
+        } catch(e) {}
+      })();
+    </script>
     <script src="js/sweetalert2.min.js"></script>
     <script src="js/all.min.js"></script>
     <link rel="stylesheet" href="css/sweetalert2.min.css">
