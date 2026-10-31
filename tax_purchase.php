@@ -518,8 +518,8 @@ if (!empty($tax_purchase['supplier_id'])) {
                 <!-- Totals Row -->
                 <tr class="totals-divider-row">
                   <td class="align-right">
-                    <span id="lbl_total_qty">0.0</span>
-                    <input type="hidden" name="total_qty" id="total_qty" value="0">KG
+                    <span id="lbl_total_qty">0.0</span> KG
+                    <input type="hidden" name="total_qty" id="total_qty" value="0">
                   </td>
                   <td></td>
                   <td></td>
@@ -610,7 +610,7 @@ if (!empty($tax_purchase['supplier_id'])) {
   <?php include_once 'includes/foot.php'; ?>
 
   <!-- Template for Products Dropdown -->
-  <div id="product_options_source" style="display: none;">
+  <select id="product_options_source" style="display: none;">
     <option value="">-- Choose Product --</option>
     <?php
     $qp = mysqli_query($dbc, "SELECT * FROM product WHERE status = 1 ORDER BY product_name ASC");
@@ -627,7 +627,7 @@ if (!empty($tax_purchase['supplier_id'])) {
         <?=$rp['product_name']?> (HS: <?=$rp['hs_code'] ?: 'N/A'?>)
       </option>
     <?php } ?>
-  </div>
+  </select>
 
   <script>
     var rowIndex = 0;
@@ -713,12 +713,12 @@ if (!empty($tax_purchase['supplier_id'])) {
         <tr id="row_${currentIdx}" class="item-dotted-row">
           <td>
             <div class="d-flex align-items-center">
-              <input type="number" step="0.1" min="0" name="item_qty[]" id="item_qty_${currentIdx}" class="tbl-input align-right" placeholder="0.000" value="${qty}" oninput="calcRow(${currentIdx})" style="flex: 1 1 auto; min-width: 0;">
+              <input type="number" step="any" min="0" name="item_qty[]" id="item_qty_${currentIdx}" class="tbl-input align-right" placeholder="0.0" value="${qty}" oninput="calcRow(${currentIdx})" style="flex: 1 1 auto; min-width: 0;">
               <input type="text" readonly name="item_unit[]" id="item_unit_${currentIdx}" class="tbl-input align-center tbl-input-readonly ml-1" style="width: 36px; flex: 0 0 36px; font-size: 9.5px; height: 26px; font-weight: bold; padding: 2px;" value="KG">
             </div>
           </td>
           <td>
-            <select class="tbl-input product_selector" onchange="onProductSelect(${currentIdx}, this)">
+            <select class="tbl-input product_selector" required onchange="onProductSelect(${currentIdx}, this)">
               ${productOptionsHtml}
             </select>
             <input type="hidden" name="item_product_id[]" id="item_product_id_${currentIdx}" value="${pid}">
@@ -944,6 +944,19 @@ if (!empty($tax_purchase['supplier_id'])) {
 
       if ($('#items_tbody tr').length === 0) {
         Swal.fire('Error', 'Please add at least one item row', 'error');
+        return false;
+      }
+
+      var hasEmptyProduct = false;
+      $('#items_tbody tr').each(function() {
+        var pid = $(this).find('.product_selector').val();
+        var desc = $(this).find('input[name="item_description[]"]').val();
+        if (!pid && !desc) {
+          hasEmptyProduct = true;
+        }
+      });
+      if (hasEmptyProduct) {
+        Swal.fire('Error', 'Please select a product for each line item', 'error');
         return false;
       }
 

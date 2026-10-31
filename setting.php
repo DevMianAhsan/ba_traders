@@ -101,7 +101,7 @@
 			<input type="hidden" name="user_id" value="<?=$fetchedUserData['user_id']?>">
 			
 		     <div class="form-group"><input required type="password" class="form-control" name="current_password" placeholder="Old Password"></div> 
-				<input type="hidden" class="form-control" name="user_email" value="<?=$fetchUser['user_email']?>">
+				<input type="hidden" class="form-control" name="user_email" value="<?=@$fetchedUserData['user_email']?>">
 		          <div class="form-group"><input type="password" class="form-control" name="new_password" placeholder="New Password" required></div>
 
 		          <div class="form-group"><input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required></div><br>

@@ -46,7 +46,7 @@ $buyer_cnic = $get_company['cnic_no'] ?? '';
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sales Tax Invoice - <?=$purchase['invoice_no']?></title>
+  <title>Purchase Tax Invoice - <?=$purchase['invoice_no']?></title>
   <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=2">
   <?php if (!empty($get_company['logo'])) : ?>
