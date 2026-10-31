@@ -56,6 +56,12 @@ $inv_net_amount = $total_val_incl + $itax_amount;
 <head>
   <meta charset="UTF-8">
   <title>Sales Tax Invoice - <?=$sale['invoice_no']?></title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=2">
+  <?php if (!empty($get_company['logo'])) : ?>
+    <link rel="icon" type="image/gif" sizes="16x16" href="img/logo/<?=$get_company['logo']?>?v=2">
+    <link rel="icon" type="image/png" sizes="32x32 16x16" href="img/logo/<?=$get_company['logo']?>?v=2">
+  <?php endif; ?>
   <style>
     @page {
       size: A4 portrait;
@@ -513,7 +519,11 @@ $inv_net_amount = $total_val_incl + $itax_amount;
   </div>
 
 <script type="text/javascript">
-  window.print();
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      window.print();
+    }, 300);
+  });
 </script>
 </body>
 </html>
