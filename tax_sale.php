@@ -72,18 +72,24 @@ if (!empty($tax_sale['customer_id'])) {
       background: #fff;
       padding: 25px 35px 30px 35px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.35);
-      font-family: "Times New Roman", Times, Georgia, serif;
+      font-family: "Overpass", Tahoma, Arial, sans-serif;
       color: #000;
       box-sizing: border-box;
       border-radius: 6px;
       position: relative;
+    }
+    .invoice-sheet input,
+    .invoice-sheet select,
+    .invoice-sheet textarea,
+    .invoice-sheet button {
+      font-family: inherit;
     }
     .invoice-title {
       text-align: center;
       margin-bottom: 12px;
     }
     .invoice-title h1 {
-      font-family: "Times New Roman", Times, Georgia, serif;
+      font-family: "Overpass", Tahoma, Arial, sans-serif;
       font-size: 26px;
       font-weight: bold;
       letter-spacing: 1.5px;
@@ -127,7 +133,7 @@ if (!empty($tax_sale['customer_id'])) {
       border: 1px solid #ced4da;
       border-radius: 3px;
       padding: 2px 6px;
-      font-family: "Times New Roman", Times, serif;
+      font-family: inherit;
       font-size: 13px;
       background: #fafafa;
     }
@@ -143,7 +149,7 @@ if (!empty($tax_sale['customer_id'])) {
       border-radius: 0;
       padding: 1px 4px;
       background: transparent;
-      font-family: "Times New Roman", Times, serif;
+      font-family: inherit;
       font-size: 13px;
     }
     .inv-input-clean:focus {
@@ -305,7 +311,7 @@ if (!empty($tax_sale['customer_id'])) {
       border-radius: 2px;
       padding: 2px 4px;
       font-size: 11px;
-      font-family: "Times New Roman", Times, serif;
+      font-family: inherit;
       background: #fbfbfb;
       box-sizing: border-box;
     }
@@ -586,7 +592,7 @@ if (!empty($tax_sale['customer_id'])) {
                 </div>
               </div>
             </div>
-            <button type="button" class="btn btn-sm btn-primary no-print shadow-sm" onclick="addItemRow()" style="white-space: nowrap; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <button type="button" class="btn btn-sm btn-primary no-print shadow-sm" onclick="addItemRow()" style="white-space: nowrap; font-weight: bold;">
               <i class="fe fe-plus mr-1"></i>Add Item Row
             </button>
           </div>
@@ -617,7 +623,7 @@ if (!empty($tax_sale['customer_id'])) {
                 <!-- Totals Row -->
                 <tr class="totals-divider-row">
                   <td class="align-right">
-                    <span id="lbl_total_qty">0.000</span> KG
+                    <span id="lbl_total_qty">0.0</span> KG
                     <input type="hidden" name="total_qty" id="total_qty" value="0">
                   </td>
                   <td></td>
@@ -1128,22 +1134,19 @@ if (!empty($tax_sale['customer_id'])) {
       var rowHtml = `
         <tr id="row_${currentIdx}" class="item-dotted-row">
           <td>
-            <input type="number" step="0.001" min="0" name="item_qty[]" id="item_qty_${currentIdx}" class="tbl-input align-right" placeholder="0.000" value="${qty}" oninput="calcRow(${currentIdx})">
-            <div class="d-flex align-items-center mt-1">
-              <input type="text" readonly name="item_unit[]" id="item_unit_${currentIdx}" class="tbl-input align-center tbl-input-readonly" style="font-size: 9.5px; height: 22px; font-weight: bold;" value="KG">
+            <div class="d-flex align-items-center">
+              <input type="number" step="0.1" min="0" name="item_qty[]" id="item_qty_${currentIdx}" class="tbl-input align-right" placeholder="0.000" value="${qty}" oninput="calcRow(${currentIdx})" style="flex: 1 1 auto; min-width: 0;">
+              <input type="text" readonly name="item_unit[]" id="item_unit_${currentIdx}" class="tbl-input align-center tbl-input-readonly ml-1" style="width: 36px; flex: 0 0 36px; font-size: 9.5px; height: 26px; font-weight: bold; padding: 2px;" value="KG">
             </div>
           </td>
           <td>
-            <select class="tbl-input product_selector mb-1" onchange="onProductSelect(${currentIdx}, this)">
+            <select class="tbl-input product_selector" onchange="onProductSelect(${currentIdx}, this)">
               ${productOptionsHtml}
             </select>
             <input type="hidden" name="item_product_id[]" id="item_product_id_${currentIdx}" value="${pid}">
             <input type="hidden" name="item_origin[]" id="item_origin_${currentIdx}" value="">
-            <input type="text" name="item_description[]" id="item_description_${currentIdx}" required class="tbl-input font-weight-bold" placeholder="Description of goods" value="${desc}">
-            <div class="d-flex align-items-center mt-1">
-              <span style="font-size: 9px; min-width: 55px;">H.S. Code:</span>
-              <input type="text" name="item_hscode[]" id="item_hscode_${currentIdx}" class="tbl-input align-center" style="font-size: 9.5px; height: 20px;" placeholder="HS Code" value="${hscode}" onchange="autoUpdateHeaderDesc()">
-            </div>
+            <input type="hidden" name="item_description[]" id="item_description_${currentIdx}" value="${desc}">
+            <input type="hidden" name="item_hscode[]" id="item_hscode_${currentIdx}" value="${hscode}">
           </td>
           <td>
             <input type="number" step="0.0001" min="0" name="item_rate[]" id="item_rate_${currentIdx}" class="tbl-input align-right" placeholder="0.0000" value="${rate}" oninput="calcRow(${currentIdx})">
@@ -1175,6 +1178,13 @@ if (!empty($tax_sale['customer_id'])) {
 
       if (pid) {
         $(`#row_${currentIdx} .product_selector`).val(pid);
+      } else if (desc) {
+        var matchedOpt = $(`#row_${currentIdx} .product_selector option`).filter(function() {
+          return $(this).data('name') === desc || $(this).text().indexOf(desc) === 0;
+        });
+        if (matchedOpt.length > 0 && matchedOpt.val()) {
+          $(`#row_${currentIdx} .product_selector`).val(matchedOpt.val());
+        }
       }
 
       calcRow(currentIdx);
@@ -1247,12 +1257,12 @@ if (!empty($tax_sale['customer_id'])) {
       $('input[name="item_tax_amount[]"]').each(function() { totalSalesTax += parseFloat($(this).val()) || 0; });
       $('input[name="item_val_incl[]"]').each(function() { totalValIncl += parseFloat($(this).val()) || 0; });
 
-      $('#lbl_total_qty').text(totalQty.toFixed(3));
+      $('#lbl_total_qty').text(totalQty.toFixed(1));
       $('#lbl_total_val_excl').text(totalValExcl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       $('#lbl_total_sales_tax').text(totalSalesTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       $('#lbl_total_val_incl').text(totalValIncl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-      $('#total_qty').val(totalQty.toFixed(3));
+      $('#total_qty').val(totalQty.toFixed(1));
       $('#total_value_excl_tax').val(totalValExcl.toFixed(2));
       $('#total_sales_tax').val(totalSalesTax.toFixed(2));
       $('#total_further_tax').val('0.00');

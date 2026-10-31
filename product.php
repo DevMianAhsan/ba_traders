@@ -197,6 +197,7 @@ if (isset($_REQUEST['edit_product_id'])) {
                 <th>HS Code</th>
                 <th>Name</th>
                 <th>Brand/Category</th>
+                <th>UOM</th>
                 <?php
                 if ($UserData['user_role'] == 'admin'):
                  ?>
@@ -227,6 +228,7 @@ if (isset($_REQUEST['edit_product_id'])) {
                   <td><?=$r['hs_code']?></td>
                   <td><?=$r['product_name']?></td>
                   <td><?=$brandFetched['brand_name']?>/<?=$categoryFetched['categories_name']?></td>
+                  <td><?=$r['product_unit']?></td>
                    <?php
                 if ($UserData['user_role'] == 'admin'):
                  ?>

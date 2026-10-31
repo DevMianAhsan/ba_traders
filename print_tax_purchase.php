@@ -56,7 +56,7 @@ $buyer_cnic = $get_company['cnic_no'] ?? '';
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: "Times New Roman", Times, Georgia, serif;
+      font-family: "Overpass", Tahoma, Arial, sans-serif;
     }
     body {
       background-color: #fff;
@@ -289,7 +289,7 @@ $buyer_cnic = $get_company['cnic_no'] ?? '';
   <div class="invoice-sheet">
     <!-- Header Title -->
     <div class="invoice-title">
-      <h1>SALES TAX INVOICE</h1>
+      <h1>PURCHASE TAX INVOICE</h1>
     </div>
 
     <!-- Metadata Row -->
@@ -402,7 +402,7 @@ $buyer_cnic = $get_company['cnic_no'] ?? '';
           ?>
           <tr class="item-dotted-row">
             <td class="align-right">
-              <?=number_format($item['quantity'], 3)?> &nbsp; KG
+              <?=number_format($item['quantity'], 1)?> &nbsp; KG
             </td>
             <td class="align-left">
               <strong><?=strtoupper($item['description_of_goods'])?></strong>
@@ -413,7 +413,7 @@ $buyer_cnic = $get_company['cnic_no'] ?? '';
               <?php endif; ?>
               
             </td>
-            <td class="align-right"><?=number_format($item['rate'], 4)?></td>
+            <td class="align-right"><?=number_format($item['rate'], 2)?></td>
             <td class="align-right"><?=number_format($item['value_excl_tax'], 2)?></td>
             <td class="align-center"><?=number_format($item['tax_rate'], 2)?></td>
             <td class="align-right"><?=number_format($item['tax_amount'], 2)?></td>
@@ -436,7 +436,7 @@ $buyer_cnic = $get_company['cnic_no'] ?? '';
           <!-- Totals Row -->
           <tr class="totals-divider-row">
             <td class="align-right">
-              <?=number_format($purchase['total_qty'], 3)?>
+              <?=number_format($purchase['total_qty'], 1)?> &nbsp; KG
             </td>
             <td></td>
             <td></td>

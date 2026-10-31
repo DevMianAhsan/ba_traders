@@ -65,7 +65,7 @@ $inv_net_amount = $total_val_incl + $itax_amount;
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: "Times New Roman", Times, Georgia, serif;
+      font-family: "Overpass", Tahoma, Arial, sans-serif;
     }
     body {
       background-color: #fff;
@@ -430,7 +430,7 @@ $inv_net_amount = $total_val_incl + $itax_amount;
           ?>
           <tr class="item-dotted-row">
             <td class="align-right">
-              <?=number_format($item['quantity'], 3)?> &nbsp; KG
+              <?=number_format($item['quantity'], 1)?> &nbsp; KG
             </td>
             <td class="align-left">
               <strong><?=strtoupper($item['description_of_goods'])?></strong>
@@ -441,7 +441,7 @@ $inv_net_amount = $total_val_incl + $itax_amount;
               <?php endif; ?>
               
             </td>
-            <td class="align-right"><?=number_format($item['rate'], 4)?></td>
+            <td class="align-right"><?=number_format($item['rate'], 2)?></td>
             <td class="align-right"><?=number_format($item['value_excl_tax'], 2)?></td>
             <td class="align-center"><?=number_format($item['tax_rate'], 2)?></td>
             <td class="align-right"><?=number_format($item['tax_amount'], 2)?></td>
@@ -464,7 +464,7 @@ $inv_net_amount = $total_val_incl + $itax_amount;
           <!-- Totals Row -->
           <tr class="totals-divider-row">
             <td class="align-right">
-              <?=number_format($sale['total_qty'], 3)?> &nbsp; KG
+              <?=number_format($sale['total_qty'], 1)?> &nbsp; KG
             </td>
             <td></td>
             <td></td>

@@ -11,7 +11,7 @@
 
             <div class="row">
               <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">Sales Tax Purchase List</b>
+                <b class="text-center card-text">Purchase Tax Invoice List</b>
                 <a href="monthly_tax_return.php" class="btn btn-admin float-right btn-sm ml-2"><i class="fe fe-book-open"></i> Monthly Tax Return</a>
                 <a href="tax_purchase.php" class="btn btn-admin2 float-right btn-sm"><i class="fe fe-plus"></i> New Purchase Invoice</a>
               </div>
