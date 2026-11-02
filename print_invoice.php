@@ -270,11 +270,27 @@ $freight = !empty($saleorder['freight']) ? floatval($saleorder['freight']) : (!e
         <h4>Sales Tax:</h4>
         <h4>Total Value :</h4>
       </div>
-      <div class="" style="text-align: right;">
-        <h4><?=(floatval($grandtotal) == intval($grandtotal)) ? number_format($grandtotal) : number_format($grandtotal, 2)?> RS</h4>
-        <h4><?=$tax_percent?>%</h4>
-        <h4><?=(floatval($total_value) == intval($total_value)) ? number_format($total_value) : number_format($total_value, 2)?> RS</h4>
-      </div>
+     
+<?php
+$total_value = $grandtotal + ($grandtotal * 18 / 100);
+?>
+
+<div class="" style="text-align: right;">
+    <h4>
+        <?= (floatval($grandtotal) == intval($grandtotal))
+            ? number_format($grandtotal)
+            : number_format($grandtotal, 2) ?> RS
+    </h4>
+
+    <h4>18%</h4>
+
+    <h4>
+        <?= (floatval($total_value) == intval($total_value))
+            ? number_format($total_value)
+            : number_format($total_value, 2) ?> RS
+    </h4>
+</div>
+
     </div>
     <?php endif; ?>
     <div class="sign-sec">
