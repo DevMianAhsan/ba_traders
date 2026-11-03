@@ -1767,7 +1767,7 @@ function applyFormula(){
   $.ajax({
     url: 'php_action/custom_action.php',
     type: 'post',
-    data: { getpodinvoice: 'getpodinvoice', party_po: party_po },
+    data: { getpodinvoice: 'getpodinvoice', party_po: party_po, customer_id: ($('#customer_account').val() || '') },
     dataType: 'json',
     success: function (res) {
       if (res.sts === "success" && res.data && res.data.length > 0) {
