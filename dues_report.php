@@ -500,6 +500,9 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
             </span>
           </div>
           <div>
+            <a href="tax_sale_report.php" class="btn btn-outline-primary font-weight-bold shadow-sm mr-1">
+              <i class="fe fe-file-text mr-1"></i> Tax Invoice Payment Report
+            </a>
             <button onclick="window.print();" class="btn btn-primary font-weight-bold shadow-sm mr-1">
               <i class="fe fe-printer mr-1"></i> Print Report
             </button>

@@ -9,20 +9,20 @@ $to_date = $_REQUEST['to_date'] ?? '';
 ?>
 <style type="text/css">
   .ledger-table thead th {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
     color: #fff;
     background-color: #2b3035;
     vertical-align: middle;
     border: 1px solid #454d55;
-    padding: 10px 8px;
+    padding: 6px 4px;
     text-align: center;
   }
   .ledger-table tbody td {
-    font-size: 14px;
+    font-size: 12px;
     vertical-align: middle;
     border: 1px solid #dee2e6;
-    padding: 10px 10px;
+    padding: 6px 4px;
     color: #212529;
   }
   .ledger-table tbody tr:nth-of-type(even) {
@@ -32,14 +32,19 @@ $to_date = $_REQUEST['to_date'] ?? '';
     background-color: #f4f6f9;
   }
   .item-title {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
     color: #111;
   }
   .item-meta {
-    font-size: 13px;
+    font-size: 11px;
     color: #555;
     margin-top: 2px;
+  }
+
+  @page {
+    size: auto;
+    margin: 8mm 4mm !important;
   }
 
   @media print {
@@ -57,7 +62,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
     body {
       background: #fff !important;
       color: #000 !important;
-      font-size: 12px !important;
+      font-size: 11px !important;
     }
     .ledger-table {
       width: 100% !important;
@@ -67,15 +72,15 @@ $to_date = $_REQUEST['to_date'] ?? '';
       background-color: #222 !important;
       color: #fff !important;
       border: 1px solid #000 !important;
-      font-size: 12px !important;
-      padding: 6px 8px !important;
+      font-size: 10.5px !important;
+      padding: 4px 2px !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .ledger-table tbody td, .ledger-table tfoot td {
       border: 1px solid #000 !important;
-      font-size: 12px !important;
-      padding: 6px 8px !important;
+      font-size: 10px !important;
+      padding: 4px 2px !important;
       color: #000 !important;
     }
     .print-header {
@@ -180,13 +185,9 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   $q_pvi = mysqli_query($dbc, "SELECT * FROM voucher_invoices WHERE voucher_id = '$pv_id'");
                   if ($q_pvi && mysqli_num_rows($q_pvi) > 0) {
                     while ($pvi_row = mysqli_fetch_assoc($q_pvi)) {
-                      $r_amt = floatval(str_replace(',', '', $pvi_row['received_amount'] ?? 0));
-                      $t_amt = floatval(str_replace(',', '', $pvi_row['tax_amount'] ?? 0));
-                      $tot_settle = $r_amt + $t_amt;
-                      if ($tot_settle <= 0) {
-                        $tot_settle = floatval(str_replace(',', '', $pvi_row['invoice_amount'] ?? 0));
-                      }
-                      $pre_debit += $tot_settle;
+                      $inv_settle = floatval(str_replace(',', '', $pvi_row['invoice_amount'] ?? 0));
+                      $tax_settle = floatval(str_replace(',', '', $pvi_row['tax_amount'] ?? 0));
+                      $pre_debit += ($inv_settle + $tax_settle);
                     }
                   } else {
                     $pre_debit += floatval(str_replace(',', '', $pv['voucher_amount'] ?? 0));
@@ -210,9 +211,20 @@ $to_date = $_REQUEST['to_date'] ?? '';
 
               while ($inv = mysqli_fetch_assoc($q_invoices)) {
                 $items = [];
+                $inv_total_qty = 0;
+                $prod_names = [];
+                $inv_pos = [];
+                $inv_rates = [];
+                if (!empty($inv['party_po'])) {
+                  $inv_pos[] = trim($inv['party_po']);
+                }
+
                 $invDetails = json_decode($inv['invoice_details'], true);
                 if (!empty($invDetails['data']) && is_array($invDetails['data'])) {
                   foreach ($invDetails['data'] as $d) {
+                    if (!empty($d['party_po'])) {
+                      $inv_pos[] = trim($d['party_po']);
+                    }
                     if (!empty($d['dc_no'])) {
                       $dc_no = intval($d['dc_no']);
                       $q_items = mysqli_query($dbc, "SELECT oi.*, p.product_name, p.product_code, p.product_unit 
@@ -221,15 +233,25 @@ $to_date = $_REQUEST['to_date'] ?? '';
                         WHERE oi.order_id = '$dc_no'");
                       if ($q_items) {
                         while ($it = mysqli_fetch_assoc($q_items)) {
+                          $item_qty = floatval($it['quantity']);
+                          $item_rate = floatval($it['rate']);
+                          $inv_total_qty += $item_qty;
+                          if ($item_rate > 0) {
+                            $inv_rates[] = number_format($item_rate, 2);
+                          }
+                          $pname = !empty($it['product_name']) ? trim($it['product_name']) : ('Product #' . $it['product_id']);
+                          if (!empty($pname) && !in_array($pname, $prod_names)) {
+                            $prod_names[] = $pname;
+                          }
                           $items[] = [
                             'dc_no' => $dc_no,
                             'party_po' => $d['party_po'] ?? $inv['party_po'],
-                            'product_name' => $it['product_name'] ?? ('Product #' . $it['product_id']),
+                            'product_name' => $pname,
                             'product_code' => $it['product_code'] ?? '',
                             'product_unit' => $it['product_unit'] ?? '',
-                            'quantity' => floatval($it['quantity']),
-                            'rate' => floatval($it['rate']),
-                            'total' => floatval($it['total'] ?? ($it['quantity'] * $it['rate']))
+                            'quantity' => $item_qty,
+                            'rate' => $item_rate,
+                            'total' => floatval($it['total'] ?? ($item_qty * $item_rate))
                           ];
                         }
                       }
@@ -237,16 +259,27 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   }
                 }
 
+                $inv_total_amt = floatval($inv['total_amount']);
+                $inv_disc = floatval($inv['discount']);
+                $inv_tax_amt = ($inv_total_amt * ($inv_disc / 100));
+                $po_display = implode(', ', array_unique(array_filter($inv_pos)));
+                $inv_rate_display = !empty($inv_rates) ? implode(', ', array_unique($inv_rates)) : '-';
+
                 $entries[] = [
                   'type' => 'invoice',
                   'date' => $inv['invoice_date'],
                   'sort_time' => strtotime($inv['invoice_date'] . ' 00:00:00'),
                   'id' => $inv['invoice_id'],
-                  'party_po' => $inv['party_po'],
+                  'fbr_no' => '',
+                  'party_po' => $po_display,
                   'days' => $inv['credit_sale_type'],
                   'items' => $items,
-                  'total_amount' => floatval($inv['total_amount']),
-                  'discount' => floatval($inv['discount']),
+                  'prod_names' => $prod_names,
+                  'total_qty' => $inv_total_qty,
+                  'rate_display' => $inv_rate_display,
+                  'total_amount' => $inv_total_amt,
+                  'discount' => $inv_disc,
+                  'tax_amount' => $inv_tax_amt,
                   'freight' => floatval($inv['freight']),
                   'grand_total' => floatval($inv['grand_total']),
                   'narration' => $inv['order_narration'],
@@ -254,7 +287,6 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   'debit' => 0,
                   'wht_percent' => 0,
                   'wht_amount' => 0,
-                  'received_amount' => 0,
                 ];
               }
 
@@ -278,101 +310,81 @@ $to_date = $_REQUEST['to_date'] ?? '';
               $q_v = mysqli_query($dbc, $v_sql);
               while ($v = mysqli_fetch_assoc($q_v)) {
                 $v_id = $v['voucher_id'];
-                $q_vi = mysqli_query($dbc, "SELECT * FROM voucher_invoices WHERE voucher_id = '$v_id'");
-                $has_breakdown = ($q_vi && mysqli_num_rows($q_vi) > 0);
+                $q_vi = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '$v_id' ORDER BY vi.id ASC");
+                
+                $sum_vi_amt = 0;
+                $sum_vi_wht = 0;
+                $v_pos = [];
+                $v_fbrs = [];
+                $v_wht_pcts = [];
 
-                if ($has_breakdown) {
-                  $sum_vi_settled = 0;
+                if ($q_vi && mysqli_num_rows($q_vi) > 0) {
                   while ($vi = mysqli_fetch_assoc($q_vi)) {
-                    $rec = floatval(str_replace(',', '', $vi['received_amount'] ?? 0));
+                    $inv_amt = floatval(str_replace(',', '', $vi['invoice_amount'] ?? 0));
                     $tax = floatval(str_replace(',', '', $vi['tax_amount'] ?? 0));
-                    $total_settled = $rec + $tax;
-                    if ($total_settled <= 0) {
-                      $total_settled = floatval(str_replace(',', '', $vi['invoice_amount'] ?? 0));
+                    $sum_vi_amt += $inv_amt;
+                    $sum_vi_wht += $tax;
+                    if (!empty($vi['party_po'])) {
+                      $v_pos[] = trim($vi['party_po']);
                     }
-                    $sum_vi_settled += $total_settled;
-
-                    $entries[] = [
-                      'type' => 'voucher',
-                      'date' => $v['voucher_date'],
-                      'sort_time' => strtotime($v['voucher_date'] . ' 12:00:00'),
-                      'id' => $v['voucher_id'],
-                      'invoice_id' => $vi['invoice_id'],
-                      'party_po' => $vi['party_po'] ?? '',
-                      'days' => '',
-                      'items' => [],
-                      'voucher_hint' => $v['voucher_hint'],
-                      'check_no' => $v['td_check_no'],
-                      'bank_name' => $v['voucher_bank_name'],
-                      'check_date' => $v['td_check_date'],
-                      'check_type' => $v['check_type'],
-                      'credit' => 0,
-                      'debit' => $rec,
-                      'wht_percent' => !empty($vi['tax_percent']) ? $vi['tax_percent'] : 0,
-                      'wht_amount' => $tax,
-                      'received_amount' => $rec,
-                    ];
+                    $fbr_val = !empty($vi['fbr_invoice_no']) ? trim($vi['fbr_invoice_no']) : (!empty($vi['invoice_id']) ? trim($vi['invoice_id']) : '');
+                    if (!empty($fbr_val) && !in_array($fbr_val, $v_fbrs)) {
+                      $v_fbrs[] = $fbr_val;
+                    }
+                    if (!empty($vi['tax_percent']) && floatval($vi['tax_percent']) > 0) {
+                      $pct_str = ($vi['tax_percent'] + 0) . '%';
+                      if (!in_array($pct_str, $v_wht_pcts)) {
+                        $v_wht_pcts[] = $pct_str;
+                      }
+                    }
                   }
-
-                  // If voucher has unallocated balance
-                  $v_raw_amt = floatval(str_replace(',', '', $v['voucher_amount'] ?? 0));
-                  $rem_v_amt = $v_raw_amt - $sum_vi_settled;
-                  if ($rem_v_amt > 0.01) {
-                    $entries[] = [
-                      'type' => 'voucher',
-                      'date' => $v['voucher_date'],
-                      'sort_time' => strtotime($v['voucher_date'] . ' 12:00:00'),
-                      'id' => $v['voucher_id'],
-                      'invoice_id' => '',
-                      'party_po' => '',
-                      'days' => '',
-                      'items' => [],
-                      'voucher_hint' => $v['voucher_hint'] ?: 'Unallocated Balance',
-                      'check_no' => $v['td_check_no'],
-                      'bank_name' => $v['voucher_bank_name'],
-                      'check_date' => $v['td_check_date'],
-                      'check_type' => $v['check_type'],
-                      'credit' => 0,
-                      'debit' => $rem_v_amt,
-                      'wht_percent' => 0,
-                      'wht_amount' => 0,
-                      'received_amount' => $rem_v_amt,
-                    ];
-                  }
-                } else {
-                  $amt = floatval(str_replace(',', '', $v['voucher_amount'] ?? 0));
-                  $entries[] = [
-                    'type' => 'voucher',
-                    'date' => $v['voucher_date'],
-                    'sort_time' => strtotime($v['voucher_date'] . ' 12:00:00'),
-                    'id' => $v['voucher_id'],
-                    'invoice_id' => '',
-                    'party_po' => '',
-                    'days' => '',
-                    'items' => [],
-                    'voucher_hint' => $v['voucher_hint'],
-                    'check_no' => $v['td_check_no'],
-                    'bank_name' => $v['voucher_bank_name'],
-                    'check_date' => $v['td_check_date'],
-                    'check_type' => $v['check_type'],
-                    'credit' => 0,
-                    'debit' => $amt,
-                    'wht_percent' => 0,
-                    'wht_amount' => 0,
-                    'received_amount' => $amt,
-                  ];
                 }
+
+                $v_raw_amt = floatval(str_replace(',', '', $v['voucher_amount'] ?? 0));
+                $v_final_debit = ($sum_vi_amt > 0) ? max($v_raw_amt, $sum_vi_amt) : $v_raw_amt;
+
+                $v_po_display = implode(', ', array_unique(array_filter($v_pos)));
+                $v_fbr_display = implode(', ', array_unique(array_filter($v_fbrs)));
+                $v_wht_pct_display = implode(', ', array_unique(array_filter($v_wht_pcts)));
+
+                $entries[] = [
+                  'type' => 'voucher',
+                  'date' => $v['voucher_date'],
+                  'sort_time' => strtotime($v['voucher_date'] . ' 12:00:00'),
+                  'id' => $v['voucher_id'],
+                  'fbr_no' => $v_fbr_display,
+                  'party_po' => $v_po_display,
+                  'days' => '',
+                  'items' => [],
+                  'prod_names' => [],
+                  'total_qty' => 0,
+                  'rate_display' => '-',
+                  'total_amount' => 0,
+                  'discount' => 0,
+                  'tax_amount' => 0,
+                  'voucher_hint' => $v['voucher_hint'],
+                  'check_no' => $v['td_check_no'],
+                  'bank_name' => $v['voucher_bank_name'],
+                  'check_date' => $v['td_check_date'],
+                  'check_type' => $v['check_type'],
+                  'credit' => 0,
+                  'debit' => $v_final_debit,
+                  'wht_percent' => $v_wht_pct_display,
+                  'wht_amount' => $sum_vi_wht,
+                ];
               }
 
-              // 4. Sort entries chronologically
+              // 4. Sort entries chronologically: same date shows invoice first, then voucher
               usort($entries, function($a, $b) {
-                if ($a['sort_time'] == $b['sort_time']) {
-                  if ($a['id'] == $b['id']) {
-                    return ($a['invoice_id'] ?? 0) <=> ($b['invoice_id'] ?? 0);
-                  }
-                  return $a['id'] <=> $b['id'];
+                if ($a['date'] != $b['date']) {
+                  return strcmp($a['date'], $b['date']);
                 }
-                return $a['sort_time'] <=> $b['sort_time'];
+                $order_a = ($a['type'] == 'invoice') ? 1 : 2;
+                $order_b = ($b['type'] == 'invoice') ? 1 : 2;
+                if ($order_a != $order_b) {
+                  return $order_a <=> $order_b;
+                }
+                return $a['id'] <=> $b['id'];
               });
             ?>
 
@@ -389,16 +401,21 @@ $to_date = $_REQUEST['to_date'] ?? '';
               <table class="table table-bordered ledger-table mb-2">
                 <thead>
                   <tr>
-                    <th style="width: 4%;">#</th>
-                    <th style="width: 10%;">Date</th>
-                    <th style="width: 10%;">Ref #</th>
-                    <th style="width: 8%;">PO #</th>
-                    <th style="width: 8%;">Terms</th>
-                    <th style="width: 32%; text-align: left;">Product / Description</th>
-                    <th style="width: 8%;">WHT Tax</th>
-                    <th style="width: 10%; text-align: right;">Debit (Rs)</th>
-                    <th style="width: 10%; text-align: right;">Credit (Rs)</th>
-                    <th style="width: 10%; text-align: right;">Balance (Rs)</th>
+                    <th style="width: 3%;">#</th>
+                    <th style="width: 8%;">Date</th>
+                    <th style="width: 7%;">Ref #</th>
+                    <th style="width: 6%;">PO #</th>
+                    <th style="width: 6%;">Terms</th>
+                    <th style="width: 17%; text-align: left;">Description</th>
+                    <th style="width: 7%; text-align: center;">QTY<br/>(WT)</th>
+                    <th style="width: 6%; text-align: right;">Rate</th>
+                    <th style="width: 7%; text-align: right;">Amount (Rs)</th>
+                    <th style="width: 5%; text-align: center;">Tax %</th>
+                    <th style="width: 6%; text-align: right;">Tax Amount (Rs)</th>
+                    <th style="width: 6%; text-align: center;">WHT Tax</th>
+                    <th style="width: 7%; text-align: right;">Debit (Rs)</th>
+                    <th style="width: 7%; text-align: right;">Credit (Rs)</th>
+                    <th style="width: 8%; text-align: right;">Balance (Rs)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,7 +424,9 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   $tot_credit = 0;
                   $tot_debit = 0;
                   $tot_wht = 0;
-                  $tot_rec = 0;
+                  $tot_qty = 0;
+                  $tot_subtotal = 0;
+                  $tot_tax_amt = 0;
                   $sr = 0;
 
                   // Render Opening Balance row if date filter applies
@@ -415,11 +434,16 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   ?>
                   <tr style="background: #fff3cd; font-weight: 700;">
                     <td class="text-center">-</td>
-                    <td><?=date('d-M-Y', strtotime($from_date))?></td>
-                    <td><strong>OPENING</strong></td>
+                    <td class="text-center"><?=date('d-M-Y', strtotime($from_date))?></td>
+                    <td class="text-center"><strong>OPENING</strong></td>
                     <td class="text-center">-</td>
                     <td class="text-center">-</td>
                     <td><strong>Opening Balance (Brought Forward)</strong></td>
+                    <td class="text-center">-</td>
+                    <td class="text-center">-</td>
+                    <td class="text-center">-</td>
+                    <td class="text-center">-</td>
+                    <td class="text-center">-</td>
                     <td class="text-center">-</td>
                     <td class="text-right text-primary font-weight-bold"><?=$opening_balance < 0 ? number_format(abs($opening_balance)) : '-'?></td>
                     <td class="text-right text-success font-weight-bold"><?=$opening_balance > 0 ? number_format($opening_balance) : '-'?></td>
@@ -436,7 +460,10 @@ $to_date = $_REQUEST['to_date'] ?? '';
                       $tot_credit += $e['credit'];
                       $tot_debit += $e['debit'];
                       $tot_wht += $e['wht_amount'];
-                      $tot_rec += $e['received_amount'];
+                      $tot_qty += $e['total_qty'];
+                      $tot_subtotal += $e['total_amount'];
+                      $tot_tax_amt += $e['tax_amount'];
+                      
                       $running_bal += ($e['credit'] - $e['debit'] - $e['wht_amount']);
                   ?>
                   <tr>
@@ -465,54 +492,22 @@ $to_date = $_REQUEST['to_date'] ?? '';
                       <?=htmlspecialchars($e['days'] ?: '-')?>
                     </td>
 
-                    <!-- Product / Description (Clean, Readable Typography) -->
+                    <!-- Description -->
                     <td>
                       <?php if ($e['type'] == 'invoice'): ?>
-                        <?php if (!empty($e['items'])): ?>
-                          <?php foreach ($e['items'] as $it): ?>
-                            <div class="mb-1">
-                              <div class="item-title">
-                                <?=htmlspecialchars($it['product_name'])?>
-                                <?php if (!empty($it['product_code'])): ?>
-                                  <small class="text-muted font-weight-normal">(<?=htmlspecialchars($it['product_code'])?>)</small>
-                                <?php endif; ?>
-                              </div>
-                              <div class="item-meta">
-                                Qty: <strong><?=number_format($it['quantity'])?></strong> &times; Rate: <strong><?=number_format($it['rate'])?> RS</strong> = <strong><?=number_format($it['total'])?> RS</strong>
-                              </div>
-                            </div>
-                          <?php endforeach; ?>
-
-                          <?php if (!empty($e['discount']) && floatval($e['discount']) > 0): 
-                            $tax_calc = ($e['total_amount'] * ($e['discount'] / 100));
-                          ?>
-                            <div class="text-muted" style="font-size: 12px; margin-top: 4px;">
-                              Subtotal: <?=number_format($e['total_amount'])?> RS &bull; Tax (<?=$e['discount']?>%): <?=number_format($tax_calc)?> RS
-                            </div>
-                          <?php endif; ?>
-
-                          <?php if (!empty($e['freight']) && floatval($e['freight']) > 0): ?>
-                            <div class="text-muted" style="font-size: 12px;">
-                              Freight: <?=number_format($e['freight'])?> RS
-                            </div>
-                          <?php endif; ?>
-
-                        <?php else: ?>
-                          <div class="item-title">Commercial Invoice #<?=$e['id']?></div>
-                        <?php endif; ?>
-
+                        <div class="item-title font-weight-bold"><?=!empty($e['prod_names']) ? htmlspecialchars(implode(', ', $e['prod_names'])) : 'Commercial Invoice #'.$e['id']?></div>
                         <?php if (!empty($e['narration'])): ?>
-                          <div class="text-muted mt-1" style="font-size: 12px;"><em><?=htmlspecialchars($e['narration'])?></em></div>
+                          <div class="text-muted mt-1" style="font-size: 11px;"><em><?=htmlspecialchars($e['narration'])?></em></div>
                         <?php endif; ?>
-
+                        <?php if (!empty($e['freight']) && floatval($e['freight']) > 0): ?>
+                          <div class="text-muted" style="font-size: 11px;">Freight: <?=number_format($e['freight'])?> RS</div>
+                        <?php endif; ?>
                       <?php else: ?>
                         <!-- Voucher Details -->
-                        <div class="item-title text-success font-weight-bold">
-                          Payment Received
-                        </div>
+                        <div class="item-title text-success font-weight-bold">Payment Received</div>
 
                         <?php if (!empty($e['check_no'])): ?>
-                          <div class="text-muted mt-1" style="font-size: 12px;">
+                          <div class="text-muted mt-1" style="font-size: 11px;">
                             Cheque #: <strong><?=htmlspecialchars($e['check_no'])?></strong>
                             <?php if (!empty($e['bank_name'])): ?> &bull; Bank: <?=htmlspecialchars($e['bank_name'])?><?php endif; ?>
                             <?php if (!empty($e['check_date'])): ?> &bull; Date: <?=htmlspecialchars($e['check_date'])?><?php endif; ?>
@@ -520,18 +515,45 @@ $to_date = $_REQUEST['to_date'] ?? '';
                         <?php endif; ?>
 
                         <?php if (!empty($e['voucher_hint'])): ?>
-                          <div class="text-muted mt-1" style="font-size: 12px;"><em><?=htmlspecialchars($e['voucher_hint'])?></em></div>
+                          <div class="text-muted mt-1" style="font-size: 11px;"><em><?=htmlspecialchars($e['voucher_hint'])?></em></div>
                         <?php endif; ?>
                       <?php endif; ?>
+                    </td>
+
+                    <!-- QTY (WT) -->
+                    <td class="text-right font-weight-bold">
+                      <?=$e['total_qty'] > 0 ? number_format($e['total_qty'], 2) : '-'?>
+                    </td>
+
+                    <!-- Rate -->
+                    <td class="text-right font-weight-bold">
+                      <?=$e['type'] == 'invoice' ? ($e['rate_display'] ?: '-') : '-'?>
+                    </td>
+
+                    <!-- Amount (Rs) -->
+                    <td class="text-right font-weight-bold">
+                      <?=$e['total_amount'] > 0 ? number_format($e['total_amount']) : '-'?>
+                    </td>
+
+                    <!-- Tax % -->
+                    <td class="text-center font-weight-bold">
+                      <?=$e['discount'] > 0 ? ($e['discount'] + 0) . '%' : '-'?>
+                    </td>
+
+                    <!-- Tax Amount (Rs) -->
+                    <td class="text-right font-weight-bold">
+                      <?=$e['tax_amount'] > 0 ? number_format($e['tax_amount']) : '-'?>
                     </td>
 
                     <!-- WHT Tax -->
                     <td class="text-center">
                       <?php if ($e['type'] == 'voucher' && $e['wht_amount'] > 0): ?>
-                        <div class="text-danger font-weight-bold" style="font-size: 14px;">
+                        <div class="text-danger font-weight-bold" style="font-size: 13px;">
                           <?=number_format($e['wht_amount'])?>
                         </div>
-                        <small class="text-muted font-weight-bold"><?=$e['wht_percent']?>%</small>
+                        <?php if (!empty($e['wht_percent'])): ?>
+                          <small class="text-muted font-weight-bold"><?=$e['wht_percent']?></small>
+                        <?php endif; ?>
                       <?php else: ?>
                         <span class="text-muted">-</span>
                       <?php endif; ?>
@@ -540,7 +562,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <!-- Debit (Rs) -->
                     <td class="text-right">
                       <?php if ($e['debit'] > 0): ?>
-                        <span class="text-primary font-weight-bold" style="font-size: 15px;">
+                        <span class="text-primary font-weight-bold" style="font-size: 14px;">
                           <?=number_format($e['debit'])?>
                         </span>
                       <?php else: ?>
@@ -551,7 +573,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <!-- Credit (Rs) -->
                     <td class="text-right">
                       <?php if ($e['credit'] > 0): ?>
-                        <span class="text-success font-weight-bold" style="font-size: 15px;">
+                        <span class="text-success font-weight-bold" style="font-size: 14px;">
                           <?=number_format($e['credit'])?>
                         </span>
                       <?php else: ?>
@@ -560,7 +582,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     </td>
 
                     <!-- Balance (Rs) -->
-                    <td class="text-right font-weight-bold" style="font-size: 15px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
+                    <td class="text-right font-weight-bold" style="font-size: 14px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
                       <?=number_format($running_bal)?>
                     </td>
                   </tr>
@@ -569,40 +591,52 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   else:
                   ?>
                   <tr>
-                    <td colspan="10" class="text-center py-4 text-muted">
+                    <td colspan="15" class="text-center py-4 text-muted">
                       <i class="fe fe-info fe-16 mr-1"></i> No Commercial Invoices or Vouchers found for this Customer Account in the selected period.
                     </td>
                   </tr>
                   <?php endif; ?>
                 </tbody>
                 <tfoot>
-                  <tr>
-                    <td colspan="6"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 16px; vertical-align: middle;">Opening Balance</td>
-                    <td colspan="2" class="h3 text-success font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($opening_balance)?></td>
+                  <tr style="background: #e9ecef; font-weight: 700; border-top: 2px solid #454d55;">
+                    <td colspan="6" class="text-right font-weight-bold" style="font-size: 13px;">Totals:</td>
+                    <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_qty > 0 ? number_format($tot_qty, 2) : '-' ?></td>
+                    <td class="text-center font-weight-bold" style="font-size: 13px;">-</td>
+                    <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_subtotal > 0 ? number_format($tot_subtotal) : '-' ?></td>
+                    <td class="text-center">-</td>
+                    <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_tax_amt > 0 ? number_format($tot_tax_amt) : '-' ?></td>
+                    <td class="text-center font-weight-bold text-danger" style="font-size: 13px;"><?= $tot_wht > 0 ? number_format($tot_wht) : '-' ?></td>
+                    <td class="text-right font-weight-bold text-primary" style="font-size: 14px;"><?= number_format($tot_debit) ?></td>
+                    <td class="text-right font-weight-bold text-success" style="font-size: 14px;"><?= number_format($tot_credit) ?></td>
+                    <td class="text-right font-weight-bold" style="font-size: 14px; color: <?= $running_bal > 0 ? '#dc3545' : '#28a745' ?>;"><?= number_format($running_bal) ?></td>
                   </tr>
                   <tr>
-                    <td colspan="6"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 16px; vertical-align: middle;">Total Debits</td>
-                    <td colspan="2" class="h3 text-info font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_debit)?></td>
+                    <td colspan="11"></td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Opening Balance</td>
+                    <td colspan="2" class="h4 text-success font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($opening_balance)?></td>
                   </tr>
                   <tr>
-                    <td colspan="6"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 16px; vertical-align: middle;">Total WHT</td>
-                    <td colspan="2" class="h3 text-danger font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_wht)?></td>
+                    <td colspan="11"></td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Debits</td>
+                    <td colspan="2" class="h4 text-info font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_debit)?></td>
                   </tr>
                   <tr>
-                    <td colspan="6"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 16px; vertical-align: middle;">Total Credits</td>
-                    <td colspan="2" class="h3 text-warning font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_credit)?></td>
+                    <td colspan="11"></td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total WHT</td>
+                    <td colspan="2" class="h4 text-danger font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_wht)?></td>
                   </tr>
                   <tr>
-                    <td colspan="6"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 16px; vertical-align: middle;">Closing Balance</td>
+                    <td colspan="11"></td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Credits</td>
+                    <td colspan="2" class="h4 text-warning font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_credit)?></td>
+                  </tr>
+                  <tr>
+                    <td colspan="11"></td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Closing Balance</td>
                     <?php if ($running_bal <= 0): ?>
-                      <td colspan="2" class="h3 text-danger font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
+                      <td colspan="2" class="h4 text-danger font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
                     <?php else: ?>
-                      <td colspan="2" class="h3 text-success font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
+                      <td colspan="2" class="h4 text-success font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
                     <?php endif; ?>
                   </tr>
                 </tfoot>

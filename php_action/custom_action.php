@@ -63,6 +63,7 @@
 
 			$data = [
 				'customer_id' => $_REQUEST['customer_account'],
+				'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
 				'invoice_date' => $_REQUEST['order_date'],
 				'total_amount' => $total_amount_val,
 				'discount' => $discount_val,
@@ -107,6 +108,7 @@
 			// Commercial invoice adds record only (no transaction created)
 			$data = [
 				'customer_id' => $_REQUEST['customer_account'],
+				'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
 				'invoice_date' => $_REQUEST['order_date'],
 				'total_amount' => $total_amount_val,
 				'discount' => $discount_val,
@@ -401,8 +403,10 @@ GROUP BY
 			while ($r = mysqli_fetch_assoc($q)) {
 				$inv_id = !empty($r['invoice_no']) ? $r['invoice_no'] : $r['tax_sale_id'];
 				$ts_id = $r['tax_sale_id'];
+				$fbr_inv = trim($r['fbr_invoice_no'] ?? '');
+				$fbr_clause = !empty($fbr_inv) ? " OR invoice_id = '".mysqli_real_escape_string($dbc, $fbr_inv)."'" : "";
 				$exclude_sql = $exclude_voucher > 0 ? " AND voucher_id != '$exclude_voucher'" : "";
-				$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(received_amount AS DECIMAL(15,2)) + CAST(COALESCE(tax_amount, 0) AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE invoice_id = '$inv_id' $exclude_sql");
+				$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(invoice_amount AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE (invoice_id = '$inv_id' OR invoice_id = '$ts_id' $fbr_clause) $exclude_sql");
 				$r_paid = mysqli_fetch_assoc($q_paid);
 				$paid = !empty($r_paid['total_paid']) ? floatval($r_paid['total_paid']) : 0;
 				$grand_total = floatval($r['grand_total']);
@@ -413,6 +417,7 @@ GROUP BY
 				$invoices[] = [
 					'invoice_id' => $inv_id,
 					'tax_sale_id' => $ts_id,
+					'fbr_invoice_no' => $fbr_inv,
 					'customer_id' => $r['customer_id'],
 					'customer_name' => $r['customer_name'],
 					'party_po' => !empty($r['po_no']) ? $r['po_no'] : '',
@@ -433,12 +438,14 @@ GROUP BY
 	if (isset($_REQUEST['get_single_invoice_info'])) {
 		$inv_id = mysqli_real_escape_string($dbc, $_REQUEST['get_single_invoice_info']);
 		$exclude_voucher = !empty($_REQUEST['voucher_id']) ? intval($_REQUEST['voucher_id']) : 0;
-		$q = mysqli_query($dbc, "SELECT ts.*, c.customer_name FROM tax_sales ts LEFT JOIN customers c ON ts.customer_id = c.customer_id WHERE ts.invoice_no = '$inv_id' OR ts.tax_sale_id = '$inv_id'");
+		$q = mysqli_query($dbc, "SELECT ts.*, c.customer_name FROM tax_sales ts LEFT JOIN customers c ON ts.customer_id = c.customer_id WHERE ts.invoice_no = '$inv_id' OR ts.tax_sale_id = '$inv_id' OR ts.fbr_invoice_no = '$inv_id'");
 		if ($r = mysqli_fetch_assoc($q)) {
 			$inv_num = !empty($r['invoice_no']) ? $r['invoice_no'] : $r['tax_sale_id'];
 			$ts_id = $r['tax_sale_id'];
+			$fbr_inv = trim($r['fbr_invoice_no'] ?? '');
+			$fbr_clause = !empty($fbr_inv) ? " OR invoice_id = '".mysqli_real_escape_string($dbc, $fbr_inv)."'" : "";
 			$exclude_sql = $exclude_voucher > 0 ? " AND voucher_id != '$exclude_voucher'" : "";
-			$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(received_amount AS DECIMAL(15,2)) + CAST(COALESCE(tax_amount, 0) AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE invoice_id = '$inv_num' $exclude_sql");
+			$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(invoice_amount AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE (invoice_id = '$inv_num' OR invoice_id = '$ts_id' $fbr_clause) $exclude_sql");
 			$r_paid = mysqli_fetch_assoc($q_paid);
 			$paid = !empty($r_paid['total_paid']) ? floatval($r_paid['total_paid']) : 0;
 			$grand_total = floatval($r['grand_total']);
@@ -448,6 +455,7 @@ GROUP BY
 				'sts' => 'success',
 				'invoice_id' => $inv_num,
 				'tax_sale_id' => $ts_id,
+				'fbr_invoice_no' => $fbr_inv,
 				'customer_id' => $r['customer_id'],
 				'customer_name' => $r['customer_name'],
 				'party_po' => !empty($r['po_no']) ? $r['po_no'] : '',
@@ -611,6 +619,7 @@ if (isset($_REQUEST['add_manually_user'])) {
 			'customer_phone'=>@$_REQUEST['customer_phone'],
 			'customer_email'=>@$_REQUEST['customer_email'],
 			'customer_address'=>@$_REQUEST['customer_address'],
+			'customer_fbr_address'=>@$_REQUEST['customer_fbr_address'],
 			'customer_strn'=>@$_REQUEST['customer_strn'],
 			'customer_ntn'=>@$_REQUEST['customer_ntn'],
 			'customer_province'=>@$_REQUEST['customer_province'],
@@ -656,17 +665,16 @@ if (isset($_REQUEST['new_voucher_date'])) {
 					if (!empty($_REQUEST['invoice_id']) && is_array($_REQUEST['invoice_id'])) {
 						foreach ($_REQUEST['invoice_id'] as $k => $inv_id) {
 							$inv_id = trim($inv_id);
-							$rec_amt = isset($_REQUEST['received_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['received_amount'][$k])) : 0;
 							$tax_amt = isset($_REQUEST['tax_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['tax_amount'][$k])) : 0;
 							$tax_pct = isset($_REQUEST['tax_percent'][$k]) ? floatval($_REQUEST['tax_percent'][$k]) : 0;
-							if ($inv_id !== '' && ($rec_amt > 0 || $tax_amt > 0)) {
+							$inv_amt = isset($_REQUEST['invoice_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['invoice_amount'][$k])) : 0;
+							if ($inv_id !== '' && ($tax_amt > 0 || $inv_amt > 0)) {
 								$voucher_details[] = [
 									'invoice_id' => $inv_id,
 									'party_po' => isset($_REQUEST['inv_party_po'][$k]) ? trim($_REQUEST['inv_party_po'][$k]) : '',
-									'invoice_amount' => isset($_REQUEST['invoice_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['invoice_amount'][$k])) : 0,
+									'invoice_amount' => $inv_amt,
 									'tax_percent' => $tax_pct,
 									'tax_amount' => $tax_amt,
-									'received_amount' => $rec_amt,
 								];
 							}
 						}
@@ -734,7 +742,6 @@ if (isset($_REQUEST['new_voucher_date'])) {
 						'invoice_amount' => $v_inv['invoice_amount'],
 						'tax_percent' => isset($v_inv['tax_percent']) ? $v_inv['tax_percent'] : 0,
 						'tax_amount' => isset($v_inv['tax_amount']) ? $v_inv['tax_amount'] : 0,
-						'received_amount' => $v_inv['received_amount'],
 					];
 					insert_data($dbc, "voucher_invoices", $inv_row);
 				}
@@ -780,17 +787,16 @@ if (isset($_REQUEST['new_voucher_date'])) {
 			if (!empty($_REQUEST['invoice_id']) && is_array($_REQUEST['invoice_id'])) {
 				foreach ($_REQUEST['invoice_id'] as $k => $inv_id) {
 					$inv_id = trim($inv_id);
-					$rec_amt = isset($_REQUEST['received_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['received_amount'][$k])) : 0;
 					$tax_amt = isset($_REQUEST['tax_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['tax_amount'][$k])) : 0;
 					$tax_pct = isset($_REQUEST['tax_percent'][$k]) ? floatval($_REQUEST['tax_percent'][$k]) : 0;
-					if ($inv_id !== '' && ($rec_amt > 0 || $tax_amt > 0)) {
+					$inv_amt = isset($_REQUEST['invoice_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['invoice_amount'][$k])) : 0;
+					if ($inv_id !== '' && ($tax_amt > 0 || $inv_amt > 0)) {
 						$voucher_details[] = [
 							'invoice_id' => $inv_id,
 							'party_po' => isset($_REQUEST['inv_party_po'][$k]) ? trim($_REQUEST['inv_party_po'][$k]) : '',
-							'invoice_amount' => isset($_REQUEST['invoice_amount'][$k]) ? floatval(str_replace(',', '', $_REQUEST['invoice_amount'][$k])) : 0,
+							'invoice_amount' => $inv_amt,
 							'tax_percent' => $tax_pct,
 							'tax_amount' => $tax_amt,
-							'received_amount' => $rec_amt,
 						];
 					}
 				}
@@ -865,7 +871,6 @@ if (isset($_REQUEST['new_voucher_date'])) {
 							'invoice_amount' => $v_inv['invoice_amount'],
 							'tax_percent' => isset($v_inv['tax_percent']) ? $v_inv['tax_percent'] : 0,
 							'tax_amount' => isset($v_inv['tax_amount']) ? $v_inv['tax_amount'] : 0,
-							'received_amount' => $v_inv['received_amount'],
 						];
 						insert_data($dbc, "voucher_invoices", $inv_row);
 					}
@@ -2306,6 +2311,7 @@ if (isset($_REQUEST['tax_sale_action']) && $_REQUEST['tax_sale_action'] == 'save
         'header_description' => $header_description,
         'po_no' => $po_no,
         'customer_id' => $customer_id,
+        'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
         'company_id' => $company_id,
         'total_qty' => $total_qty,
         'total_value_excl_tax' => $total_value_excl_tax,
@@ -2344,7 +2350,15 @@ if (isset($_REQUEST['tax_sale_action']) && $_REQUEST['tax_sale_action'] == 'save
         $existing_ts = fetchRecord($dbc, 'tax_sales', 'tax_sale_id', $tax_sale_id);
         $transaction_id = !empty($existing_ts['transaction_id']) ? intval($existing_ts['transaction_id']) : 0;
 
+        $trans_exists = false;
         if ($transaction_id > 0) {
+            $chk_tr = mysqli_query($dbc, "SELECT transaction_id FROM transactions WHERE transaction_id = '$transaction_id'");
+            if ($chk_tr && mysqli_num_rows($chk_tr) > 0) {
+                $trans_exists = true;
+            }
+        }
+
+        if ($trans_exists) {
             update_data($dbc, "transactions", $trans_record, "transaction_id", $transaction_id);
         } else if (!empty($customer_id) && $trans_amount > 0) {
             insert_data($dbc, "transactions", $trans_record);
@@ -2594,6 +2608,7 @@ if (isset($_REQUEST['fetch_customer_details'])) {
             'customer_email' => $cdata['customer_email'],
             'customer_phone' => $cdata['customer_phone'],
             'customer_address' => $cdata['customer_address'],
+            'customer_fbr_address' => $cdata['customer_fbr_address'] ?? '',
             'customer_strn' => $cdata['customer_strn'],
             'customer_ntn' => $cdata['customer_ntn'],
             'customer_province' => $cdata['customer_province'],

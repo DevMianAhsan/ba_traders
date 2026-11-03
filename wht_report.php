@@ -101,7 +101,7 @@ if (isset($_REQUEST['export']) && $_REQUEST['export'] === 'csv') {
         $sr++;
         $g = floatval(str_replace(',', '', $r['invoice_amount'] ?? 0));
         $w = floatval(str_replace(',', '', $r['tax_amount'] ?? 0));
-        $n = floatval(str_replace(',', '', $r['received_amount'] ?? 0));
+        $n = $g - $w;
         $sum_gross += $g;
         $sum_wht += $w;
         $sum_net += $n;
@@ -174,7 +174,7 @@ if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         $g_amt = floatval(str_replace(',', '', $row['invoice_amount'] ?? 0));
         $w_amt = floatval(str_replace(',', '', $row['tax_amount'] ?? 0));
-        $n_amt = floatval(str_replace(',', '', $row['received_amount'] ?? 0));
+        $n_amt = $g_amt - $w_amt;
         $t_pct = floatval(str_replace(',', '', $row['tax_percent'] ?? 0));
 
         $total_gross += $g_amt;
@@ -241,7 +241,7 @@ $ann_sql = "SELECT
     COUNT(vi.id) AS inv_count,
     SUM(CAST(REPLACE(COALESCE(vi.invoice_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_gross,
     SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_wht,
-    SUM(CAST(REPLACE(COALESCE(vi.received_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_net
+    SUM(CAST(REPLACE(COALESCE(vi.invoice_amount, '0'), ',', '') AS DECIMAL(15,2)) - CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_net
   FROM voucher_invoices vi
   JOIN vouchers v ON vi.voucher_id = v.voucher_id
   LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id)
@@ -878,7 +878,7 @@ if ($q_ann) {
                       $v_date = !empty($t['voucher_date']) ? date('d-M-Y', strtotime($t['voucher_date'])) : date('d-M-Y', strtotime($t['timestamp']));
                       $g = floatval(str_replace(',', '', $t['invoice_amount'] ?? 0));
                       $w = floatval(str_replace(',', '', $t['tax_amount'] ?? 0));
-                      $n = floatval(str_replace(',', '', $t['received_amount'] ?? 0));
+                      $n = $g - $w;
                       $p = floatval(str_replace(',', '', $t['tax_percent'] ?? 0));
                   ?>
                     <tr>

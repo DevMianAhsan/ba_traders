@@ -35,7 +35,7 @@ if ($customer_id > 0) {
     $get_customer = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT * FROM customers WHERE customer_id = '$customer_id'"));
 }
 $customer_name = $get_customer['customer_name'] ?? '';
-$customer_address = $get_customer['customer_address'] ?? '';
+$customer_address = !empty($sale['customer_address']) ? $sale['customer_address'] : (!empty($get_customer['customer_fbr_address']) ? $get_customer['customer_fbr_address'] : ($get_customer['customer_address'] ?? ''));
 $customer_province = $get_customer['customer_province'] ?? '';
 $customer_phone = $get_customer['customer_phone'] ?? '';
 $customer_strn = $get_customer['customer_strn'] ?? '';
@@ -318,6 +318,12 @@ $inv_net_amount = $total_val_incl + $itax_amount;
           <span class="lbl">Invoice No. :</span>
           <strong><?=$sale['invoice_no']?></strong>
         </div>
+        <?php if (!empty($sale['fbr_invoice_no'])): ?>
+        <div class="meta-item">
+          <span class="lbl">FBR Inv No. :</span>
+          <strong><?=htmlspecialchars($sale['fbr_invoice_no'])?></strong>
+        </div>
+        <?php endif; ?>
         <div class="meta-item">
           <span class="lbl">Date :</span>
           <strong><?=date('d/m/Y', strtotime($sale['invoice_date']))?></strong>
@@ -503,10 +509,10 @@ $inv_net_amount = $total_val_incl + $itax_amount;
     <div class="footer-dual">
       <div>
         <?php if (!empty($sale['fbr_invoice_no'])): ?>
-          <div class="fbr-qr-box">
+          <!-- <div class="fbr-qr-box">
             <div>FBR INVOICE NO. : &nbsp; <strong><?=$sale['fbr_invoice_no']?></strong></div>
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=<?=urlencode($sale['fbr_invoice_no'])?>" alt="FBR QR">
-          </div>
+          </div> -->
         <?php endif; ?>
       </div>
 

@@ -368,6 +368,10 @@ if (e.altKey && e.which == 80) {
     var payment_type= $('#payment_type').val();
  	 $('#customer_account').val(value || '');
  	 $('#client_contact').val(contact || '');
+  	 if ($('#customer_address').length && $('#page_type').val() === 'invoice') {
+  	     var address = $(this).find(':selected').data('address');
+  	     $('#customer_address').val(address || '');
+  	 }
 
    //alert(payment_type);
 

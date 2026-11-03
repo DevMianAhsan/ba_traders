@@ -154,12 +154,12 @@ if (isset($_REQUEST['id'])) {
                         <table class="table table-sm table-bordered mb-1" id="voucher_invoices_table" style="background:#fff;">
                           <thead class="thead-light">
                             <tr>
-                              <th style="width: 22%; padding: 4px 8px;">Invoice #</th>
-                              <th style="width: 11%; padding: 4px 8px;">Party PO</th>
-                              <th style="width: 18%; padding: 4px 8px;">Total Amount</th>
-                              <th style="width: 12%; padding: 4px 8px;">WHT %</th>
-                              <th style="width: 16%; padding: 4px 8px;">WHT Amount</th>
-                              <th style="width: 16%; padding: 4px 8px;">Amount Received <small class="text-muted">(After WHT)</small></th>
+                              <th style="width: 28%; padding: 4px 8px;">Invoice #</th>
+                              <th style="width: 16%; padding: 4px 8px;">Party PO</th>
+                              <th style="width: 22%; padding: 4px 8px;">Total Amount</th>
+                              <th style="width: 14%; padding: 4px 8px;">WHT %</th>
+                              <th style="width: 15%; padding: 4px 8px;">WHT Amount</th>
+                              
                               <th style="width: 5%; padding: 4px 8px; text-align: center;">
                                 <button type="button" class="btn btn-sm btn-admin py-0 px-2" style="font-size:11px;" onclick="addInvoiceRow()" title="Add another invoice">
                                   <i class="fa fa-plus"></i> Add
@@ -172,7 +172,7 @@ if (isset($_REQUEST['id'])) {
                             $existing_invoices = [];
                             if (isset($_REQUEST['id']) && !empty($voucher['voucher_id'])) {
                               $v_id = $voucher['voucher_id'];
-                              $q_v_inv = mysqli_query($dbc, "SELECT vi.*, COALESCE(c.customer_name, c2.customer_name) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '$v_id'");
+                              $q_v_inv = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no, COALESCE(c.customer_name, c2.customer_name) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '$v_id'");
                               while ($row_vi = mysqli_fetch_assoc($q_v_inv)) {
                                 $existing_invoices[] = $row_vi;
                               }
@@ -182,14 +182,14 @@ if (isset($_REQUEST['id'])) {
                             ?>
                             <tr class="v_inv_row">
                               <td>
-                                <input type="text" class="form-control form-control-sm" name="invoice_id[]" value="<?=$ei['invoice_id']?>" readonly>
+                                <input type="text" class="form-control form-control-sm font-weight-bold" name="invoice_id[]" value="<?=(!empty($ei['fbr_invoice_no']) ? $ei['fbr_invoice_no'] : $ei['invoice_id'])?>" readonly>
                               </td>
                               <td>
                                 <input type="text" name="inv_party_po[]" class="form-control form-control-sm v_inv_po" value="<?=$ei['party_po']?>" readonly placeholder="PO">
                               </td>
                               <td>
                                 <div class="input-group input-group-sm">
-                                  <input type="text" name="invoice_amount[]" value="<?=!empty($ei['invoice_amount']) ? number_format(floatval($ei['invoice_amount'])) : ''?>" class="form-control form-control-sm v_inv_amount" readonly placeholder="0" onblur="formatInputOnBlur(this)" oninput="onTotalAmountChange(this)">
+                                  <input type="text" name="invoice_amount[]" value="<?=!empty($ei['invoice_amount']) ? number_format(floatval($ei['invoice_amount'])) : ''?>" class="form-control form-control-sm v_inv_amount" placeholder="0" onblur="formatInputOnBlur(this)" oninput="onTotalAmountChange(this)">
                                   <div class="input-group-append">
                                     <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
                                   </div>
@@ -211,14 +211,7 @@ if (isset($_REQUEST['id'])) {
                                   </div>
                                 </div>
                               </td>
-                              <td>
-                                <div class="input-group input-group-sm">
-                                  <input type="text" name="received_amount[]" value="<?=!empty($ei['received_amount']) ? number_format(floatval($ei['received_amount'])) : ''?>" class="form-control form-control-sm v_inv_received font-weight-bold text-success" placeholder="0" onblur="formatInputOnBlur(this)" oninput="onRowReceivedChange(this)">
-                                  <div class="input-group-append">
-                                    <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
-                                  </div>
-                                </div>
-                              </td>
+
                               <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="removeInvoiceRow(this)" title="Remove"><i class="fa fa-trash"></i></button>
                               </td>
@@ -240,8 +233,12 @@ if (isset($_REQUEST['id'])) {
                                         $inv_num = !empty($r_inv['invoice_no']) ? $r_inv['invoice_no'] : $r_inv['tax_sale_id'];
                                         $pName = !empty($r_inv['po_no']) ? ' (PO: ' . htmlspecialchars($r_inv['po_no']) . ')' : '';
                                       ?>
-                                      <option value="<?=$inv_num?>" data-customer="<?=htmlspecialchars($r_inv['customer_name'] ?? '')?>" data-po="<?=htmlspecialchars($r_inv['po_no'] ?? '')?>" data-total="<?=$r_inv['grand_total']?>" data-due="<?=$r_inv['grand_total']?>">
-                                        Invoice #<?=$inv_num?><?=$pName?> - Due: <?=number_format($r_inv['grand_total'])?>
+                                      <?php 
+                                        $inv_label = !empty($r_inv['fbr_invoice_no']) ? htmlspecialchars($r_inv['fbr_invoice_no']) : ('Invoice #' . $inv_num); 
+                                        $inv_val = !empty($r_inv['fbr_invoice_no']) ? htmlspecialchars($r_inv['fbr_invoice_no']) : $inv_num;
+                                      ?>
+                                      <option value="<?=$inv_val?>" data-fbr="<?=htmlspecialchars($r_inv['fbr_invoice_no'] ?? '')?>" data-customer="<?=htmlspecialchars($r_inv['customer_name'] ?? '')?>" data-po="<?=htmlspecialchars($r_inv['po_no'] ?? '')?>" data-total="<?=$r_inv['grand_total']?>" data-due="<?=$r_inv['grand_total']?>">
+                                        <?=$inv_label?><?=$pName?> - Due: <?=number_format($r_inv['grand_total'])?>
                                       </option>
                                       <?php endwhile;
                                     endif;
@@ -260,7 +257,7 @@ if (isset($_REQUEST['id'])) {
                               </td>
                               <td>
                                 <div class="input-group input-group-sm">
-                                  <input type="text" name="invoice_amount[]" class="form-control form-control-sm v_inv_amount" readonly placeholder="0" onblur="formatInputOnBlur(this)" oninput="onTotalAmountChange(this)">
+                                  <input type="text" name="invoice_amount[]" class="form-control form-control-sm v_inv_amount" placeholder="0" onblur="formatInputOnBlur(this)" oninput="onTotalAmountChange(this)">
                                   <div class="input-group-append">
                                     <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
                                   </div>
@@ -282,14 +279,7 @@ if (isset($_REQUEST['id'])) {
                                   </div>
                                 </div>
                               </td>
-                              <td>
-                                <div class="input-group input-group-sm">
-                                  <input type="text" name="received_amount[]" class="form-control form-control-sm v_inv_received font-weight-bold text-success" placeholder="0" onblur="formatInputOnBlur(this)" oninput="onRowReceivedChange(this)">
-                                  <div class="input-group-append">
-                                    <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
-                                  </div>
-                                </div>
-                              </td>
+
                               <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="removeInvoiceRow(this)" title="Remove"><i class="fa fa-trash"></i></button>
                               </td>
@@ -316,14 +306,7 @@ if (isset($_REQUEST['id'])) {
                                   </div>
                                 </div>
                               </td>
-                              <td style="padding: 4px 8px;">
-                                <div class="input-group input-group-sm">
-                                  <input type="text" id="v_inv_received_sum" class="form-control form-control-sm font-weight-bold text-success" readonly style="background:#e9ecef;" value="0">
-                                  <div class="input-group-append">
-                                    <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
-                                  </div>
-                                </div>
-                              </td>
+
                               <td></td>
                             </tr>
                           </tfoot>
@@ -681,10 +664,11 @@ if (isset($_REQUEST['id'])) {
                           <td><?=$r['voucher_amount']?></td>
                           <td>
                             <?php
-                            $q_vi_list = mysqli_query($dbc, "SELECT invoice_id, received_amount FROM voucher_invoices WHERE voucher_id = '".$r['voucher_id']."'");
+                            $q_vi_list = mysqli_query($dbc, "SELECT vi.invoice_id, vi.invoice_amount, ts.fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '".$r['voucher_id']."'");
                             $vi_badges = [];
                             while ($vi_row = mysqli_fetch_assoc($q_vi_list)) {
-                              $vi_badges[] = '<span class="badge badge-info">#' . $vi_row['invoice_id'] . ' (' . number_format(floatval($vi_row['received_amount'])) . ')</span>';
+                              $badge_lbl = !empty($vi_row['fbr_invoice_no']) ? $vi_row['fbr_invoice_no'] : ('#' . $vi_row['invoice_id']);
+                              $vi_badges[] = '<span class="badge badge-info">' . htmlspecialchars($badge_lbl) . ' (' . number_format(floatval($vi_row['invoice_amount'])) . ')</span>';
                             }
                             echo !empty($vi_badges) ? implode(' ', $vi_badges) : '<span class="text-muted">-</span>';
                             ?>
@@ -751,7 +735,6 @@ function checkCustomerRole(isInit) {
           $(this).find('.v_inv_select').val('');
           $(this).find('.v_inv_po').val('');
           $(this).find('.v_inv_amount').val('');
-          $(this).find('.v_inv_received').val('').data('base-val', 0);
           $(this).find('.btn_deduct_tax').removeClass('active btn-info text-white').addClass('btn-outline-info');
         } else {
           $(this).remove();
@@ -794,10 +777,13 @@ function loadCustomerInvoices(customerId) {
         if (res.data && res.data.length > 0) {
           for (var i = 0; i < res.data.length; i++) {
             var inv = res.data[i];
+            var invVal = (inv.fbr_invoice_no && inv.fbr_invoice_no.trim() !== '') ? inv.fbr_invoice_no : inv.invoice_id;
             customerInvoicesData[inv.invoice_id] = inv;
+            customerInvoicesData[invVal] = inv;
             var poText = inv.party_po ? ' (PO: ' + inv.party_po + ')' : '';
-            options += '<option value="' + inv.invoice_id + '" data-customer="' + (inv.customer_name || '') + '" data-po="' + (inv.party_po || '') + '" data-total="' + inv.grand_total + '" data-due="' + inv.due + '">';
-            options += 'Invoice #' + inv.invoice_id + poText + ' - Due: ' + Number(inv.due).toLocaleString();
+            var invLabel = (inv.fbr_invoice_no && inv.fbr_invoice_no.trim() !== '') ? inv.fbr_invoice_no : ('Invoice #' + inv.invoice_id);
+            options += '<option value="' + invVal + '" data-fbr="' + (inv.fbr_invoice_no || '') + '" data-customer="' + (inv.customer_name || '') + '" data-po="' + (inv.party_po || '') + '" data-total="' + inv.grand_total + '" data-due="' + inv.due + '">';
+            options += invLabel + poText + ' - Due: ' + Number(inv.due).toLocaleString();
             options += '</option>';
           }
         } else {
@@ -849,10 +835,7 @@ function onTaxPercentChange(input) {
   var totalVal = cleanNumber($row.find('.v_inv_amount').val());
   var pctVal = parseFloat($(input).val()) || 0;
   var tax = parseFloat((totalVal * (pctVal / 100)).toFixed(2));
-  var netReceived = parseFloat((totalVal - tax).toFixed(2));
-  if (netReceived < 0) netReceived = 0;
-  $row.find('.v_inv_tax').val(formatNumberWithCommas(tax));
-  $row.find('.v_inv_received').val(formatNumberWithCommas(netReceived));
+  $row.find('.v_inv_tax').val(tax > 0 ? formatNumberWithCommas(tax) : '0');
   calcVoucherInvoicesTotal();
 }
 
@@ -862,10 +845,7 @@ function onTaxAmountChange(input) {
   var taxVal = cleanNumber($(input).val());
   if (totalVal > 0) {
     var pct = parseFloat(((taxVal / totalVal) * 100).toFixed(2));
-    var netReceived = parseFloat((totalVal - taxVal).toFixed(2));
-    if (netReceived < 0) netReceived = 0;
     $row.find('.v_inv_tax_percent').val(pct);
-    $row.find('.v_inv_received').val(formatNumberWithCommas(netReceived));
   }
   calcVoucherInvoicesTotal();
 }
@@ -875,10 +855,7 @@ function onTotalAmountChange(input) {
   var totalVal = cleanNumber($(input).val());
   var pctVal = parseFloat($row.find('.v_inv_tax_percent').val()) || 0;
   var tax = parseFloat((totalVal * (pctVal / 100)).toFixed(2));
-  var netReceived = parseFloat((totalVal - tax).toFixed(2));
-  if (netReceived < 0) netReceived = 0;
-  $row.find('.v_inv_tax').val(formatNumberWithCommas(tax));
-  $row.find('.v_inv_received').val(formatNumberWithCommas(netReceived));
+  $row.find('.v_inv_tax').val(tax > 0 ? formatNumberWithCommas(tax) : '0');
   calcVoucherInvoicesTotal();
 }
 
@@ -908,7 +885,7 @@ function addInvoiceRow() {
     '</td>' +
     '<td>' +
       '<div class="input-group input-group-sm">' +
-        '<input type="text" name="invoice_amount[]" class="form-control form-control-sm v_inv_amount" readonly placeholder="0" onblur="formatInputOnBlur(this)" oninput="onTotalAmountChange(this)">' +
+        '<input type="text" name="invoice_amount[]" class="form-control form-control-sm v_inv_amount" placeholder="0" onblur="formatInputOnBlur(this)" oninput="onTotalAmountChange(this)">' +
         '<div class="input-group-append">' +
           '<span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>' +
         '</div>' +
@@ -930,14 +907,7 @@ function addInvoiceRow() {
         '</div>' +
       '</div>' +
     '</td>' +
-    '<td>' +
-      '<div class="input-group input-group-sm">' +
-        '<input type="text" name="received_amount[]" class="form-control form-control-sm v_inv_received font-weight-bold text-success" placeholder="0" onblur="formatInputOnBlur(this)" oninput="onRowReceivedChange(this)">' +
-        '<div class="input-group-append">' +
-          '<span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>' +
-        '</div>' +
-      '</div>' +
-    '</td>' +
+
     '<td class="text-center">' +
       '<button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="removeInvoiceRow(this)" title="Remove"><i class="fa fa-trash"></i></button>' +
     '</td>' +
@@ -965,7 +935,7 @@ function toggleManualRow(btn) {
     $input.hide().removeAttr('name');
     $select.show().attr('name', 'invoice_id[]');
     $poInput.prop('readonly', true);
-    $amountInput.prop('readonly', true);
+    $amountInput.prop('readonly', false);
     $icon.removeClass('fa-list').addClass('fa-pencil-alt');
     onRowInvoiceChange($select[0]);
   }
@@ -983,25 +953,23 @@ function onRowInvoiceChange(sel) {
     $row.find('.v_inv_po').val('');
     $row.find('.v_inv_amount').val('');
     $row.find('.v_inv_tax').val('0');
-    $row.find('.v_inv_received').val('').data('base-val', 0);
     calcVoucherInvoicesTotal();
     return;
   }
   
   var $opt = $(sel).find(':selected');
   var po = $opt.data('po') || '';
-  var total = cleanNumber($opt.data('total'));
-  var pct = parseFloat($row.find('.v_inv_tax_percent').val()) || 5.5;
-  var tax = parseFloat((total * (pct / 100)).toFixed(2));
-  var netReceived = parseFloat((total - tax).toFixed(2));
-  if (netReceived < 0) netReceived = 0;
   
   $row.find('.v_inv_po').val(po);
-  $row.find('.v_inv_amount').val(formatNumberWithCommas(total));
-  $row.find('.v_inv_tax').val(formatNumberWithCommas(tax));
-  $row.find('.v_inv_received').val(formatNumberWithCommas(netReceived)).data('base-val', netReceived);
+  // Do not auto-load amounts: user enters manually
+  $row.find('.v_inv_amount').val('');
+  if (!$row.find('.v_inv_tax_percent').val()) {
+    $row.find('.v_inv_tax_percent').val('5.5');
+  }
+  $row.find('.v_inv_tax').val('0');
   
   calcVoucherInvoicesTotal();
+  $row.find('.v_inv_amount').focus();
 }
 
 function removeInvoiceRow(btn) {
@@ -1016,7 +984,6 @@ function removeInvoiceRow(btn) {
     $row.find('.v_inv_amount').val('');
     $row.find('.v_inv_tax_percent').val('5.5');
     $row.find('.v_inv_tax').val('0');
-    $row.find('.v_inv_received').val('').data('base-val', 0);
   }
   calcVoucherInvoicesTotal();
 }
@@ -1080,20 +1047,17 @@ function onSingleCreditBlur(input) {
 function calcVoucherInvoicesTotal() {
   var sumTotal = 0;
   var sumTax = 0;
-  var sumReceived = 0;
   var hasActiveInvoices = false;
   
   $('.v_inv_row').each(function() {
     var invId = $(this).find('input[name="invoice_id[]"]').val() || $(this).find('select[name="invoice_id[]"]').val();
     var totalAmt = cleanNumber($(this).find('.v_inv_amount').val());
     var taxAmt = cleanNumber($(this).find('.v_inv_tax').val());
-    var recAmt = cleanNumber($(this).find('.v_inv_received').val());
     
     if (invId) {
       sumTotal += totalAmt;
       sumTax += taxAmt;
-      sumReceived += recAmt;
-      if (totalAmt > 0 || recAmt > 0) {
+      if (totalAmt > 0) {
         hasActiveInvoices = true;
       }
     }
@@ -1101,21 +1065,13 @@ function calcVoucherInvoicesTotal() {
   
   $('#v_inv_total_sum').val(formatNumberWithCommas(sumTotal));
   $('#v_inv_tax_sum').val(formatNumberWithCommas(sumTax));
-  $('#v_inv_received_sum').val(formatNumberWithCommas(sumReceived));
   
   if (hasActiveInvoices) {
-    var finalAmount = sumTotal > 0 ? sumTotal : sumReceived;
+    var finalAmount = sumTotal;
     if (finalAmount > 0) {
       var formattedVal = formatNumberWithCommas(finalAmount);
       $('#voucher_debit').val(formattedVal).data('base-val', finalAmount);
       $('#voucher_credit1').val(formattedVal);
-    }
-  } else {
-    var $fromSel = $('#voucher_from_account');
-    var role = ($fromSel.find(':selected').data('type') || '').toString().toLowerCase();
-    if (role === 'customer') {
-      $('#voucher_debit').val('').data('base-val', 0);
-      $('#voucher_credit1').val('');
     }
   }
 }
@@ -1149,6 +1105,7 @@ $(document).ready(function() {
   var hasExistingInvoices = <?= (!empty($existing_invoices) ? 'true' : 'false') ?>;
   
   if ((role === 'customer' && accountId) || hasExistingInvoices) {
+    $fromSel.data('prev-account', accountId);
     $('#voucher_invoices_section').show();
     $('#voucher_invoices_section :input').prop('disabled', false);
     loadCustomerInvoices(accountId);

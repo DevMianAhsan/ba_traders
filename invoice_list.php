@@ -60,7 +60,7 @@
                             if (!empty($party_po)) {
                               $po_escaped = mysqli_real_escape_string($dbc, $party_po);
                               $q_vi_paid = mysqli_query($dbc, "
-                                SELECT SUM(CAST(vi.received_amount AS DECIMAL(15,2)) + CAST(COALESCE(vi.tax_amount, 0) AS DECIMAL(15,2))) AS total_paid 
+                                SELECT SUM(CAST(vi.invoice_amount AS DECIMAL(15,2))) AS total_paid 
                                 FROM voucher_invoices vi
                                 LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id
                                 WHERE (vi.party_po = '$po_escaped' AND (v.customer_id1 = '$cust_id' OR v.customer_id1 IS NULL OR v.customer_id1 = '' OR v.customer_id1 = '0'))
@@ -68,7 +68,7 @@
                               ");
                             } else {
                               $q_vi_paid = mysqli_query($dbc, "
-                                SELECT SUM(CAST(vi.received_amount AS DECIMAL(15,2)) + CAST(COALESCE(vi.tax_amount, 0) AS DECIMAL(15,2))) AS total_paid 
+                                SELECT SUM(CAST(vi.invoice_amount AS DECIMAL(15,2))) AS total_paid 
                                 FROM voucher_invoices vi
                                 WHERE vi.invoice_id = '$inv_id'
                               ");

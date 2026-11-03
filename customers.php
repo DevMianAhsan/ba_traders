@@ -90,9 +90,17 @@ if (empty($_REQUEST['type'])) {
 				  
 				 
 				   
-				   <div class="form-group">
-				   	<label for="address">Address:</label>
-				   <textarea name="customer_address" id="customer_address" cols="30" rows="4" placeholder="Address" class="form-control"><?=@$Getdata['customer_address']?></textarea>
+				   <div class="form-group row">
+				   	<div class="<?=$_REQUEST['type'] == 'customer' ? 'col-sm-6' : 'col-sm-12'?>">
+				   		<label for="customer_address">Address:</label>
+				   		<textarea name="customer_address" id="customer_address" cols="30" rows="3" placeholder="Address" class="form-control"><?=@$Getdata['customer_address']?></textarea>
+				   	</div>
+				   	<?php if ($_REQUEST['type'] == 'customer'): ?>
+				   	<div class="col-sm-6">
+				   		<label for="customer_fbr_address">FBR Address:</label>
+				   		<textarea name="customer_fbr_address" id="customer_fbr_address" cols="30" rows="3" placeholder="FBR Address" class="form-control"><?=@$Getdata['customer_fbr_address']?></textarea>
+				   	</div>
+				   	<?php endif; ?>
 				   </div>
 				  
 				 <div class="modal-footer">
@@ -219,6 +227,7 @@ if (empty($_REQUEST['type'])) {
 					$('#customer_province').val(response.customer_province || '');
 					$('#customer_cnic').val(response.customer_cnic || '');
 					$('#customer_address').val(response.customer_address || '');
+					$('#customer_fbr_address').val(response.customer_fbr_address || '');
 
 					$('#formData_btn').text('Update').removeClass('btn-admin').addClass('btn-admin2');
 					$('#cancel_btn').show();

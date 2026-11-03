@@ -652,6 +652,10 @@ if (!empty($tax_sale['customer_id'])) {
                 <input type="text" name="invoice_no" id="invoice_no" readonly class="inv-input font-weight-bold text-danger" style="width: 120px;" required value="<?=$next_invoice_no?>">
               </div>
               <div class="meta-field">
+                <span class="lbl">FBR Inv No. :</span>
+                <input type="text" name="fbr_invoice_no" id="fbr_invoice_no" inputmode="numeric" class="inv-input font-weight-bold text-primary" style="width: 250px;" placeholder="Enter FBR Invoice Number" value="<?=@$tax_sale['fbr_invoice_no']?>">
+              </div>
+              <div class="meta-field">
                 <span class="lbl">Date :</span>
                 <input type="date" name="invoice_date" id="invoice_date" class="inv-input" style="width: 140px;" required value="<?=@$tax_sale['invoice_date'] ?: date('Y-m-d')?>">
               </div>
@@ -741,11 +745,12 @@ if (!empty($tax_sale['customer_id'])) {
                     while ($rc = mysqli_fetch_assoc($qc)) {
                         $sel = (!empty($tax_sale['customer_id']) && $tax_sale['customer_id'] == $rc['customer_id']) ? "selected" : "";
                     ?>
+                      <?php $rc_addr = !empty($rc['customer_fbr_address']) ? $rc['customer_fbr_address'] : $rc['customer_address']; ?>
                       <option value="<?=$rc['customer_id']?>" <?=$sel?>
                         data-id="<?=$rc['customer_id']?>"
                         data-name="<?=htmlspecialchars($rc['customer_name'])?>"
                         data-phone="<?=htmlspecialchars($rc['customer_phone'])?>"
-                        data-address="<?=htmlspecialchars($rc['customer_address'])?>"
+                        data-address="<?=htmlspecialchars($rc_addr)?>"
                         data-strn="<?=htmlspecialchars($rc['customer_strn'] ?? '')?>"
                         data-ntn="<?=htmlspecialchars($rc['customer_ntn'] ?? '')?>"
                         data-province="<?=htmlspecialchars($rc['customer_province'] ?? '')?>"
@@ -763,7 +768,7 @@ if (!empty($tax_sale['customer_id'])) {
               <div class="party-row">
                 <div class="party-lbl">Address :</div>
                 <div class="party-val">
-                  <textarea name="customer_address" id="customer_address" rows="2" class="inv-input w-100" placeholder="Customer Address..."><?=htmlspecialchars(@$edit_customer['customer_address'] ?: @$tax_sale['customer_address'])?></textarea>
+                  <textarea name="customer_address" id="customer_address" rows="2" class="inv-input w-100" placeholder="Customer Address..."><?=htmlspecialchars(!empty($tax_sale['customer_address']) ? $tax_sale['customer_address'] : (!empty($edit_customer['customer_fbr_address']) ? $edit_customer['customer_fbr_address'] : (@$edit_customer['customer_address'] ?: '')))?></textarea>
                 </div>
               </div>
 
@@ -923,23 +928,24 @@ if (!empty($tax_sale['customer_id'])) {
           </div>
 
           <!-- Bottom Section: FBR and Signature -->
-          
-            <!-- <div class="fbr-box-inner">
+          <div class="footer-dual-box">
+            <div class="fbr-box-inner">
               <div class="d-flex align-items-center mb-1">
                 <strong class="mr-2">FBR INVOICE NO. :</strong>
-                <input type="text" name="fbr_invoice_no" id="fbr_invoice_no" class="inv-input" style="width: 250px;" placeholder="e.g. 3310004541981DI15EZNB651146" value="<?=@$tax_sale['fbr_invoice_no']?>">
+                <input type="text" id="fbr_invoice_no_bottom" inputmode="numeric" class="inv-input font-weight-bold" style="width: 260px;" placeholder="Enter FBR Invoice Number" value="<?=@$tax_sale['fbr_invoice_no']?>">
                 <button type="button" class="btn btn-sm btn-outline-secondary ml-1" onclick="generateFBRNumber()" title="Generate Random FBR No">
                   <i class="fe fe-refresh-cw"></i>
                 </button>
               </div>
               <small class="text-muted">THIS IS SYSTEM GENERATED SALESTAX INVOICE</small>
-            </div> -->
+            </div>
 
-            <div class="signature-area">
+            <div class="signature-area" style="margin-top: 0;">
               <div class="signature-line">
                 Authorised Signature
               </div>
             </div>
+          </div>
           
         </div>
 
@@ -1332,10 +1338,19 @@ if (!empty($tax_sale['customer_id'])) {
       });
     }
 
+    // Two-way sync for FBR Invoice Number inputs
+    $('#fbr_invoice_no').on('input', function() {
+      $('#fbr_invoice_no_bottom').val($(this).val());
+    });
+    $('#fbr_invoice_no_bottom').on('input', function() {
+      $('#fbr_invoice_no').val($(this).val());
+    });
+
     function generateFBRNumber() {
-      var rand = Math.floor(100000000000 + Math.random() * 900000000000);
-      var code = '331000454' + rand.toString().substring(0, 4) + 'DI15EZNB' + Math.floor(100000 + Math.random() * 900000);
-      $('#fbr_invoice_no').val(code);
+      var rand1 = Math.floor(100000000 + Math.random() * 900000000);
+      var rand2 = Math.floor(100000000 + Math.random() * 900000000);
+      var code = '' + rand1 + rand2;
+      $('#fbr_invoice_no, #fbr_invoice_no_bottom').val(code);
     }
 
     function autoUpdateHeaderDesc() {
@@ -1628,6 +1643,10 @@ if (!empty($tax_sale['customer_id'])) {
 
       if ($('#po_no').val() === '__custom__') {
         $('#po_no').val('');
+      }
+
+      if ($('#fbr_invoice_no_bottom').length && $('#fbr_invoice_no_bottom').val()) {
+        $('#fbr_invoice_no').val($('#fbr_invoice_no_bottom').val());
       }
 
       var form = $(this);

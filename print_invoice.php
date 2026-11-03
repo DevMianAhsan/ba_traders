@@ -172,9 +172,12 @@ $freight = !empty($saleorder['freight']) ? floatval($saleorder['freight']) : (!e
             }
           	?>
           </h5>
-          <?php if (!empty($customer['customer_address'])): ?>
+          <?php 
+          $display_address = !empty($invoice['customer_address']) ? $invoice['customer_address'] : (!empty($customer['customer_fbr_address']) ? $customer['customer_fbr_address'] : ($customer['customer_address'] ?? ''));
+          if (!empty($display_address)): 
+          ?>
           <h5 style="margin-top: 8px;">
-            <?=nl2br(htmlspecialchars(ucwords(strtolower($customer['customer_address']))))?>
+            <?=nl2br(htmlspecialchars(ucwords(strtolower($display_address))))?>
           </h5>
           <?php endif; ?>
         </div>

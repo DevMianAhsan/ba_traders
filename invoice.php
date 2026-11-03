@@ -7,7 +7,9 @@ if (!empty($_REQUEST['edit_order_id'])) {
     if (!empty($fetchOrder['transaction_id'])) {
         $fetchTransaction = fetchRecord($dbc, "transactions", "transaction_id", $fetchOrder['transaction_id']);
     }
-  }
+    $fetchCustomer = !empty($fetchOrder['customer_id']) ? fetchRecord($dbc, "customers", "customer_id", $fetchOrder['customer_id']) : null;
+    $customer_address_val = !empty($fetchOrder['customer_address']) ? $fetchOrder['customer_address'] : (!empty($fetchCustomer['customer_fbr_address']) ? $fetchCustomer['customer_fbr_address'] : ($fetchCustomer['customer_address'] ?? ''));
+}
  
 ?>
   <body class="horizontal light  ">
@@ -35,86 +37,68 @@ if (!empty($_REQUEST['edit_order_id'])) {
               <input type="hidden" name="page_type" id="page_type" value="invoice">
               <div class="col-md-2">
                 <label>Invoice ID#</label>
-                <?php $result = mysqli_query($dbc,"
-    SHOW TABLE STATUS LIKE 'invoices'
-");
-$data = mysqli_fetch_assoc($result);
-$next_increment = $data['Auto_increment']; ?>
+                <?php $result = mysqli_query($dbc,"SHOW TABLE STATUS LIKE 'invoices'");
+                $data = mysqli_fetch_assoc($result);
+                $next_increment = $data['Auto_increment']; ?>
                 <input type="text" name="next_increment" id="next_increment" value="<?=@empty($_REQUEST['edit_order_id'])?$next_increment:$fetchOrder['invoice_id']?>" readonly class="form-control">
               </div>
               <div class="col-md-2">
                 <label>Invoice Date</label>
-              
-               
-                   <input type="text" name="order_date" id="order_date" value="<?=@empty($_REQUEST['edit_order_id'])?date('Y-m-d'):$fetchOrder['invoice_date']?>" readonly class="form-control">
+                <input type="text" name="order_date" id="order_date" value="<?=@empty($_REQUEST['edit_order_id'])?date('Y-m-d'):$fetchOrder['invoice_date']?>" readonly class="form-control">
               </div>
               <input type="hidden" name="credit_sale_type" value="<?=@$credit_sale_type?>" id="credit_sale_type">
-                      <div class="col-sm-3">
-                        <label>Customer Account</label>
-                        <div class="input-group">
-                       
-                          <select class="form-control searchableSelect" onchange="getBalance(this.value,'customer_account_exp')" name="invoice_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
-                       <option value="">Customer Account</option>
-                          <?php
-                            $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer' ORDER BY customer_name ASC");
-                                 while($r=mysqli_fetch_assoc($q)){
-                          ?>
-                              <option <?=@($fetchOrder['customer_id']==$r['customer_id'] || @$fetchOrder['customer_account']==$r['customer_id'])?"selected":""?> data-id="<?=$r['customer_id']?>" data-contact="<?=$r['customer_phone']?>"  value="<?=$r['customer_name']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
-                         <?php   } ?>
+              <div class="col-sm-4">
+                <label>Customer Account</label>
+                <div class="input-group">
+                  <select class="form-control searchableSelect" onchange="getBalance(this.value,'customer_account_exp')" name="invoice_client_name" id="credit_order_client_name" required aria-label="Username" aria-describedby="basic-addon1">
+                    <option value="">Customer Account</option>
+                    <?php
+                      $q=mysqli_query($dbc,"SELECT * FROM customers WHERE customer_status =1 AND customer_type='customer' ORDER BY customer_name ASC");
+                      while($r=mysqli_fetch_assoc($q)){
+                        $cust_addr_opt = !empty($r['customer_fbr_address']) ? $r['customer_fbr_address'] : $r['customer_address'];
+                    ?>
+                      <option <?=@($fetchOrder['customer_id']==$r['customer_id'] || @$fetchOrder['customer_account']==$r['customer_id'])?"selected":""?> data-id="<?=$r['customer_id']?>" data-contact="<?=$r['customer_phone']?>" data-address="<?=htmlspecialchars($cust_addr_opt)?>" value="<?=$r['customer_name']?>"><?=getCustomerDisplayName($r['customer_name'], $r['customer_phone'])?></option>
+                    <?php } ?>
+                  </select>
+                  <div class="input-group-prepend">
+                    <span class="input-group-text" id="basic-addon1">Balance : <span id="customer_account_exp">0</span></span>
+                  </div>
+                </div>
+                <input type="hidden" name="customer_account" id="customer_account" value="<?=@$fetchOrder['customer_id'] ?? @$fetchOrder['customer_account']?>">
+                <input type="hidden" name="client_contact" id="client_contact" value="<?=@$fetchOrder['client_contact']?>">
+                <input type="hidden" name="R_Limit" id="R_LimitInput" />
+              </div>
+              <div class="col-sm-4">
+                <label>Party PO</label>
+                <div class="input-group">
+                  <?php if(@$fetchOrder['party_po']){ ?>
+                    <input type="text" readonly id="party_po" name="party_po" value="<?=$fetchOrder['party_po']?>" class="form-control">
+                  <?php } else { ?>
+                    <select id="party_po" name="party_po" class="form-control searchableSelect">
+                      <option> Select Customer first </option>
                     </select>
-                                              
-                                              <div class="input-group-prepend">
-                          <span class="input-group-text" id="basic-addon1">Balance : <span id="customer_account_exp">0</span>
-                          <!-- <span class="input-group-text" id="basic-addon1">Limit : <span id="customer_Limit">0</span> </span>
-                           <span class="input-group-text" id="basic-addon1">R Limit : <span id="R_Limit">0</span> </span> -->
-                        </div>    
-</div>
-                      
-               
-                    <input type="hidden" name="customer_account" id="customer_account" value="<?=@$fetchOrder['customer_id'] ?? @$fetchOrder['customer_account']?>" >
-                    <input type="hidden" name="client_contact" id="client_contact" value="<?=@$fetchOrder['client_contact']?>" >
-                    <input type="hidden" name="R_Limit" id="R_LimitInput" />
-
-                   </div>
-
-                     <div class="col-sm-3">
-                       
-                     <label>Party PO</label>
-                      <div class="input-group">
-                     <!--  <input type="text" id="voucher_no" value="<?=@$fetchOrder['voucher_no']?>" class="form-control" autocomplete="off" name="voucher_no" required> -->
-                     
-
-                     <?php
-                      if(@$fetchOrder['party_po']){
-                        ?>
-                        <input type="text" readonly  id="party_po" name="party_po" value="<?=$fetchOrder['party_po']?>" class="form-control">
-                        <?php
-                      }else{
-                        ?>
-                        <select id="party_po" name="party_po" class="form-control searchableSelect">
-                       <option > Select Customer first </option>
-                     </select>
-                      <?php
-                    }
-                      ?>
-                       <div class="input-group-prepend">
-                   <button type="button" class="btn-sm btn-admin float-right" onclick="getpoDetails()">
-                     <span class="fa fa-eye "  ></span>
-                   </button>
+                  <?php } ?>
+                  <div class="input-group-prepend">
+                    <button type="button" class="btn-sm btn-admin float-right" onclick="getpoDetails()">
+                      <span class="fa fa-eye"></span>
+                    </button>
                     <button type="button" class="btn-sm btn-admin float-right" onclick="addpoDetails()">
-                     <span class="fa fa-plus "  ></span>
-                   </button>
-                 </div>
-                 </div>
-                   </div>
-
-                    <div class="col-sm-2">
-                 <label>Remarks</label>
-                    <input type="text" autocomplete="off" name="order_narration" id="order_narration" value="<?=@$fetchOrder['order_narration'] ?: @$fetchTransaction['transaction_remarks']?>" class="form-control" >
-                  
-                   </div>
-
-              </div> <!-- end of form-group -->
+                      <span class="fa fa-plus"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div> <!-- end row 1 -->
+            <div class="row form-group">
+              <div class="col-sm-6">
+                <label>Address</label>
+                <input type="text" name="customer_address" id="customer_address" value="<?=htmlspecialchars($customer_address_val ?? '')?>" class="form-control" placeholder="Address">
+              </div>
+              <div class="col-sm-6">
+                <label>Remarks</label>
+                <input type="text" autocomplete="off" name="order_narration" id="order_narration" value="<?=@$fetchOrder['order_narration'] ?: @$fetchTransaction['transaction_remarks']?>" class="form-control" placeholder="Remarks">
+              </div>
+            </div> <!-- end of form-group -->
              
               <div class="row">
                 <div class="col-12">
@@ -213,6 +197,10 @@ $next_increment = $data['Auto_increment']; ?>
     if (typeof getinvoiceTotal === 'function') {
       getinvoiceTotal();
     }
+    $('#credit_order_client_name').on('change', function() {
+      var addr = $(this).find(':selected').data('address') || '';
+      $('#customer_address').val(addr);
+    });
   });
 </script>
 

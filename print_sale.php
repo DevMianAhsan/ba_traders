@@ -167,7 +167,6 @@ if($_REQUEST['type'] == 'dc'){
     <div class="top-sec">
       <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px">
       <h5 style="margin-top: 5px; text-align: center;"><?=$get_company['address']?></h5>
-      <h5 style="margin-top: 5px; text-align: center;">Phone: <?=$get_company['company_phone']?></h5>
     </div>
     <div class="order-det">
       <div class="order-data">
@@ -227,6 +226,7 @@ if($_REQUEST['type'] == 'dc'){
         <tbody>
           <?php
           $totalQTY = 0;
+          $totalPackage = 0;
           $order_item=mysqli_query($dbc,"SELECT order_item.*,product.* FROM order_item INNER JOIN product ON order_item.product_id=product.product_id WHERE order_item.order_id='".$_REQUEST['id']."'");
           while($d = mysqli_fetch_assoc($order_item)):
           ?>
@@ -241,7 +241,8 @@ if($_REQUEST['type'] == 'dc'){
             <th><?=$d['p_pckg']?></th>
           </tr>
           <?php
-          $totalQTY +=$d['quantity']; 
+          $totalQTY += floatval($d['quantity']); 
+          $totalPackage += floatval($d['pckg']);
       endwhile;
           ?>
         </tbody>
@@ -250,7 +251,10 @@ if($_REQUEST['type'] == 'dc'){
           <tr>
            
             <td colspan="2">TOTAL:</td>
-            <td> <?=number_format($totalQTY)?></td>
+            <td style="text-align: center;"> <?=number_format($totalQTY)?></td>
+            <td></td>
+            <td style="text-align: center;"> <?=($totalPackage > 0) ? ((floatval($totalPackage) == intval($totalPackage)) ? number_format($totalPackage) : number_format($totalPackage, 2)) : ''?></td>
+            <td></td>
           </tr>
         </tfoot>
       </table>

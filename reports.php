@@ -6,20 +6,20 @@ $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
 ?>
 <style type="text/css">
   .ledger-table thead th {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #fff;
     background-color: #2b3035;
     vertical-align: middle;
     border: 1px solid #454d55;
-    padding: 8px 6px;
+    padding: 6px 4px;
     text-align: center;
   }
   .ledger-table tbody td {
-    font-size: 13px;
+    font-size: 12px;
     vertical-align: middle;
     border: 1px solid #dee2e6;
-    padding: 8px 8px;
+    padding: 6px 4px;
     color: #212529;
   }
   .ledger-table tbody tr:nth-of-type(even) {
@@ -29,19 +29,19 @@ $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
     background-color: #f4f6f9;
   }
   .item-title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #111;
   }
   .item-meta {
-    font-size: 12px;
+    font-size: 11px;
     color: #555;
     margin-top: 2px;
   }
 
   @page {
     size: auto;
-    margin: 8mm 0mm !important;
+    margin: 8mm 4mm !important;
   }
 
   @media print {
@@ -53,8 +53,8 @@ $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
     }
 
     .container, .container-fluid {
-      padding-left: 20mm !important;
-      padding-right: 20mm !important;
+      padding-left: 5mm !important;
+      padding-right: 5mm !important;
       padding-top: 0 !important;
       padding-bottom: 0 !important;
       margin-left: auto !important;
@@ -92,6 +92,23 @@ $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
 
     .table-responsive {
       overflow: visible !important;
+    }
+
+    .ledger-table thead th {
+      font-size: 10.5px !important;
+      padding: 4px 2px !important;
+      background-color: #222 !important;
+      color: #fff !important;
+      border: 1px solid #000 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .ledger-table tbody td, .ledger-table tfoot td {
+      font-size: 10px !important;
+      padding: 4px 2px !important;
+      border: 1px solid #000 !important;
+      color: #000 !important;
     }
   }
 </style>
@@ -171,7 +188,7 @@ $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
 
         <button class="mt-2 ml-1 btn btn-admin float-right" name="genealledger" type="submit">Ledger Detials</button>
 
-        <button class="mt-2  btn btn-admin2 float-right" name="fullledger" type="submit">Full Details</button>
+        <!-- <button class="mt-2  btn btn-admin2 float-right" name="fullledger" type="submit">Full Details</button> -->
         <?php 
     if (isset($_POST['genealledger']) OR isset($_POST['fullledger'])):  ?>
         <button class="mt-2 btn btn-primary float-right" onclick="window.print();" style="margin-right: 15px;">Print Report</button>
@@ -235,26 +252,48 @@ include 'includes/report_header.php';
             // ==========================================
             // CUSTOMER LEDGER: NEW DESIGN & LOGIC
             // ==========================================
+            // Ensure all tax_sales for this customer have a valid transaction in transactions table
+            $sync_ts = mysqli_query($dbc, "SELECT ts.* FROM tax_sales ts LEFT JOIN transactions t ON ts.transaction_id = t.transaction_id WHERE ts.customer_id = '$customer' AND t.transaction_id IS NULL");
+            if ($sync_ts && mysqli_num_rows($sync_ts) > 0) {
+                while ($ts_row = mysqli_fetch_assoc($sync_ts)) {
+                    $trans_amount = floatval($ts_row['grand_total'] ?? 0);
+                    $trans_remarks = !empty($ts_row['remarks']) ? $ts_row['remarks'] : ("Sales Tax Invoice #" . ($ts_row['invoice_no'] ?: $ts_row['tax_sale_id']));
+                    $trans_record = [
+                        'credit' => $trans_amount,
+                        'debit' => 0,
+                        'customer_id' => $customer,
+                        'transaction_from' => 'invoice',
+                        'transaction_type' => 'credit_sale',
+                        'transaction_remarks' => $trans_remarks,
+                        'transaction_date' => $ts_row['invoice_date'],
+                    ];
+                    if (insert_data($dbc, "transactions", $trans_record)) {
+                        $new_tid = mysqli_insert_id($dbc);
+                        mysqli_query($dbc, "UPDATE tax_sales SET transaction_id = '$new_tid' WHERE tax_sale_id = '{$ts_row['tax_sale_id']}'");
+                    }
+                }
+            }
+            $order_clause = "ORDER BY transaction_date ASC, (CASE WHEN transaction_type = 'credit_sale' OR transaction_from IN ('invoice', 'tax_sale', 'order') THEN 1 ELSE 2 END) ASC, transaction_id ASC";
             if (!empty($_REQUEST['from_date']) AND !empty($_REQUEST['to_date'])) {
                 $from_date = $_REQUEST['from_date'];
                 $to_date = $_REQUEST['to_date'];
-                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' AND transaction_date BETWEEN '$from_date' AND '$to_date' ORDER BY transaction_date ASC, transaction_id ASC";
+                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' AND transaction_date BETWEEN '$from_date' AND '$to_date' $order_clause";
                 $date_comment = "<h6>FROM : " . date('d-M-Y', strtotime($from_date)) . " TO : " . date('d-M-Y', strtotime($to_date)) . "</h6>";
             } elseif (!empty($_REQUEST['from_date']) AND empty($_REQUEST['to_date'])) {
                 $from_date = $_REQUEST['from_date'];
                 $to_date = '';
-                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' AND transaction_date >= '$from_date' ORDER BY transaction_date ASC, transaction_id ASC";
+                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' AND transaction_date >= '$from_date' $order_clause";
                 $date_comment = "<h6>FROM : " . date('d-M-Y', strtotime($from_date)) . " ONWARDS</h6>";
             } elseif (empty($_REQUEST['from_date']) AND !empty($_REQUEST['to_date'])) {
                 $from_date = '';
                 $to_date = $_REQUEST['to_date'];
-                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' AND transaction_date <= '$to_date' ORDER BY transaction_date ASC, transaction_id ASC";
+                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' AND transaction_date <= '$to_date' $order_clause";
                 $date_comment = "<h6>UP TO : " . date('d-M-Y', strtotime($to_date)) . "</h6>";
             } else {
                 $from_date = '';
                 $to_date = '';
                 $date_comment = "<h6>Overall</h6>";
-                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' ORDER BY transaction_date ASC, transaction_id ASC";
+                $sql = "SELECT * FROM transactions WHERE customer_id='$customer' $order_clause";
             }
 
             // Calculate opening balance if from_date is set
@@ -263,6 +302,10 @@ include 'includes/report_header.php';
                 $pre_bal_res = mysqli_query($dbc, "SELECT SUM(credit - debit) AS pre_net FROM transactions WHERE customer_id = '$customer' AND transaction_date < '$from_date'");
                 if ($pre_bal_row = mysqli_fetch_assoc($pre_bal_res)) {
                     $opening_balance = floatval($pre_bal_row['pre_net'] ?? 0);
+                }
+                $pre_wht_res = mysqli_query($dbc, "SELECT SUM(CAST(vi.tax_amount AS DECIMAL(15,2))) AS pre_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.customer_id1 = '$customer' AND v.voucher_date < '$from_date'");
+                if ($pre_wht_row = mysqli_fetch_assoc($pre_wht_res)) {
+                    $opening_balance -= floatval($pre_wht_row['pre_wht'] ?? 0);
                 }
             }
 
@@ -275,16 +318,22 @@ include 'includes/report_header.php';
         <table class="table table-bordered ledger-table mb-2" style="width: 100%;">
           <thead>
             <tr>
-              <th style="width: 4%;">#</th>
-              <th style="width: 10%;">Date</th>
-              <th style="width: 10%;">Ref #</th>
-              <th style="width: 8%;">PO #</th>
-              <th style="width: 8%;">Terms</th>
-              <th style="width: 32%; text-align: left;">Product / Description</th>
-              <th style="width: 8%;">WHT Tax</th>
-              <th style="width: 10%; text-align: right;">Debit (Rs)</th>
-              <th style="width: 10%; text-align: right;">Credit (Rs)</th>
-              <th style="width: 10%; text-align: right;">Balance (Rs)</th>
+              <th style="width: 3%;">#</th>
+              <th style="width: 7%;">Date</th>
+              <th style="width: 6%;">Ref #</th>
+              <th style="width: 7%;">FBR Inv #</th>
+              <th style="width: 6%;">PO #</th>
+              <th style="width: 5%;">Terms</th>
+              <th style="width: 16%; text-align: left;">Description</th>
+              <th style="width: 6%; text-align: center;">QTY<br/>(WT)</th>
+              <th style="width: 6%; text-align: right;">Rate</th>
+              <th style="width: 7%; text-align: right;">Amount (Rs)</th>
+              <th style="width: 5%; text-align: center;">Tax %</th>
+              <th style="width: 6%; text-align: right;">Tax Amount (Rs)</th>
+              <th style="width: 6%; text-align: center;">WHT Tax</th>
+              <th style="width: 6%; text-align: right;">Debit (Rs)</th>
+              <th style="width: 6%; text-align: right;">Credit (Rs)</th>
+              <th style="width: 8%; text-align: right;">Balance (Rs)</th>
             </tr>
           </thead>
           <tbody>
@@ -293,6 +342,9 @@ include 'includes/report_header.php';
             $total_credit = 0;
             $total_debit = 0;
             $total_wht = 0;
+            $tot_qty = 0;
+            $tot_subtotal = 0;
+            $tot_tax_amt = 0;
             $sr = 0;
 
             if (!empty($from_date) && $opening_balance != 0):
@@ -303,7 +355,13 @@ include 'includes/report_header.php';
                 <td class="text-center"><strong>OPENING</strong></td>
                 <td class="text-center">-</td>
                 <td class="text-center">-</td>
+                <td class="text-center">-</td>
                 <td><strong>Opening Balance (Brought Forward)</strong></td>
+                <td class="text-center">-</td>
+                <td class="text-center">-</td>
+                <td class="text-center">-</td>
+                <td class="text-center">-</td>
+                <td class="text-center">-</td>
                 <td class="text-center">-</td>
                 <td class="text-right text-primary font-weight-bold"><?=$opening_balance < 0 ? number_format(abs($opening_balance)) : '-'?></td>
                 <td class="text-right text-success font-weight-bold"><?=$opening_balance > 0 ? number_format($opening_balance) : '-'?></td>
@@ -353,50 +411,75 @@ include 'includes/report_header.php';
                       }
                   }
 
-                  // Items breakdown
-                  $items = [];
+                  $inv_total_qty = 0;
+                  $inv_subtotal = 0;
+                  $inv_tax_rate = 0;
+                  $inv_tax_amount = 0;
+                  $prod_names = [];
+                  $inv_pos = [];
+                  $inv_rates = [];
+                  if (!empty($po_no)) {
+                      $inv_pos[] = trim($po_no);
+                  }
+
                   if (!empty($fetchTax)) {
-                      $tax_items_q = mysqli_query($dbc, "SELECT tsi.*, p.product_name, p.product_code 
-                          FROM tax_sale_items tsi 
-                          LEFT JOIN product p ON tsi.product_id = p.product_id 
-                          WHERE tsi.tax_sale_id = '{$fetchTax['tax_sale_id']}'");
+                      $inv_total_qty = floatval($fetchTax['total_qty'] ?? 0);
+                      $inv_subtotal = floatval($fetchTax['total_value_excl_tax'] ?? 0);
+                      $inv_tax_amount = floatval($fetchTax['total_sales_tax'] ?? 0);
+
+                      $tax_items_q = mysqli_query($dbc, "SELECT tsi.*, p.product_name FROM tax_sale_items tsi LEFT JOIN product p ON tsi.product_id = p.product_id WHERE tsi.tax_sale_id = '{$fetchTax['tax_sale_id']}'");
                       while ($it = mysqli_fetch_assoc($tax_items_q)) {
-                          $items[] = [
-                              'name' => !empty($it['description_of_goods']) ? $it['description_of_goods'] : ($it['product_name'] ?? 'Product #' . $it['product_id']),
-                              'code' => $it['product_code'] ?? '',
-                              'qty' => floatval($it['quantity']),
-                              'rate' => floatval($it['rate']),
-                              'total' => floatval($it['value_excl_tax']),
-                              'tax_rate' => floatval($it['tax_rate']),
-                              'tax_amount' => floatval($it['tax_amount']),
-                          ];
+                          if ($inv_total_qty <= 0) $inv_total_qty += floatval($it['quantity']);
+                          if ($inv_subtotal <= 0) $inv_subtotal += floatval($it['value_excl_tax']);
+                          if ($inv_tax_amount <= 0) $inv_tax_amount += floatval($it['tax_amount']);
+                          if ($inv_tax_rate <= 0 && floatval($it['tax_rate']) > 0) $inv_tax_rate = floatval($it['tax_rate']);
+                          $p_name = !empty($it['description_of_goods']) ? trim($it['description_of_goods']) : (!empty($it['product_name']) ? trim($it['product_name']) : '');
+                          if (!empty($p_name) && !in_array($p_name, $prod_names)) {
+                              $prod_names[] = $p_name;
+                          }
+                          $r_val = floatval($it['rate'] ?? 0);
+                          if ($r_val > 0) {
+                              $inv_rates[] = number_format($r_val, 2);
+                          }
+                      }
+                      if ($inv_tax_rate <= 0 && $inv_subtotal > 0 && $inv_tax_amount > 0) {
+                          $inv_tax_rate = round(($inv_tax_amount / $inv_subtotal) * 100, 1);
+                      }
+                      if ($inv_tax_rate <= 0 && $inv_tax_amount > 0) {
+                          $inv_tax_rate = 18;
                       }
                   } elseif (!empty($fetchInv)) {
+                      $inv_subtotal = floatval($fetchInv['total_amount'] ?? 0);
+                      $inv_tax_rate = floatval($fetchInv['discount'] ?? 0);
+                      $inv_tax_amount = ($inv_subtotal * ($inv_tax_rate / 100));
+
                       $invDetails = json_decode($fetchInv['invoice_details'], true);
                       if (!empty($invDetails['data']) && is_array($invDetails['data'])) {
                           foreach ($invDetails['data'] as $d) {
+                              if (!empty($d['party_po'])) {
+                                  $inv_pos[] = trim($d['party_po']);
+                              }
                               if (!empty($d['dc_no'])) {
                                   $dc_no = intval($d['dc_no']);
-                                  $q_items = mysqli_query($dbc, "SELECT oi.*, p.product_name, p.product_code 
-                                      FROM order_item oi 
-                                      LEFT JOIN product p ON oi.product_id = p.product_id 
-                                      WHERE oi.order_id = '$dc_no'");
-                                  if ($q_items) {
-                                      while ($it = mysqli_fetch_assoc($q_items)) {
-                                          $items[] = [
-                                              'name' => $it['product_name'] ?? ('Product #' . $it['product_id']),
-                                              'code' => $it['product_code'] ?? '',
-                                              'qty' => floatval($it['quantity']),
-                                              'rate' => floatval($it['rate']),
-                                              'total' => floatval($it['total'] ?? ($it['quantity'] * $it['rate'])),
-                                              'tax_rate' => floatval($fetchInv['discount'] ?? 0),
-                                              'tax_amount' => (floatval($it['total'] ?? ($it['quantity'] * $it['rate'])) * (floatval($fetchInv['discount'] ?? 0) / 100)),
-                                          ];
+                                  $q_oi = mysqli_query($dbc, "SELECT oi.quantity, oi.rate, p.product_name FROM order_item oi LEFT JOIN product p ON oi.product_id = p.product_id WHERE oi.order_id = '$dc_no'");
+                                  if ($q_oi) {
+                                      while ($r_oi = mysqli_fetch_assoc($q_oi)) {
+                                          $inv_total_qty += floatval($r_oi['quantity'] ?? 0);
+                                          $p_name = !empty($r_oi['product_name']) ? trim($r_oi['product_name']) : '';
+                                          if (!empty($p_name) && !in_array($p_name, $prod_names)) {
+                                              $prod_names[] = $p_name;
+                                          }
+                                          $r_val = floatval($r_oi['rate'] ?? 0);
+                                          if ($r_val > 0) {
+                                              $inv_rates[] = number_format($r_val, 2);
+                                          }
                                       }
                                   }
                               }
                           }
                       }
+                  } else {
+                      $inv_subtotal = (float)($row['credit'] ?? 0);
                   }
 
                   $row_credit = (float)($row['credit'] ?? 0);
@@ -404,6 +487,14 @@ include 'includes/report_header.php';
                   $total_credit += $row_credit;
                   $total_debit += $row_debit;
                   $running_bal += ($row_credit - $row_debit);
+
+                  $tot_qty += $inv_total_qty;
+                  $tot_subtotal += $inv_subtotal;
+                  $tot_tax_amt += $inv_tax_amount;
+
+                  $po_display = implode(', ', array_unique(array_filter($inv_pos)));
+                  $fbr_inv_no = !empty($fetchTax['fbr_invoice_no']) ? $fetchTax['fbr_invoice_no'] : '';
+                  $inv_rate_display = !empty($inv_rates) ? implode(', ', array_unique($inv_rates)) : '-';
                   ?>
                   <tr>
                     <td class="text-center font-weight-bold"><?=$sr?></td>
@@ -412,51 +503,66 @@ include 'includes/report_header.php';
                       <strong class="text-primary font-weight-bold"><?=$ref_label?></strong>
                     </td>
                     <td class="text-center font-weight-bold">
-                      <?=htmlspecialchars($po_no ?: '-')?>
+                      <?=htmlspecialchars($fbr_inv_no ?: '-')?>
+                    </td>
+                    <td class="text-center font-weight-bold">
+                      <?=htmlspecialchars($po_display ?: '-')?>
                     </td>
                     <td class="text-center">
                       <?=htmlspecialchars($terms ?: '-')?>
                     </td>
                     <td>
-                      <?php if (!empty($items)): ?>
-                        <?php foreach ($items as $it): ?>
-                          <div class="mb-1">
-                            <div class="item-title">
-                              <?=htmlspecialchars($it['name'])?>
-                              <?php if (!empty($it['code'])): ?>
-                                <small class="text-muted font-weight-normal">(<?=htmlspecialchars($it['code'])?>)</small>
-                              <?php endif; ?>
-                            </div>
-                            <div class="item-meta">
-                              Qty: <strong><?=number_format($it['qty'])?></strong> &times; Rate: <strong><?=number_format($it['rate'])?> RS</strong> = <strong><?=number_format($it['total'])?> RS</strong>
-                            </div>
-                            <?php if (!empty($it['tax_amount']) && $it['tax_amount'] > 0): ?>
-                              <div class="text-muted" style="font-size: 12px; margin-top: 2px;">
-                                Subtotal: <?=number_format($it['total'])?> RS &bull; Tax (<?=$it['tax_rate']?>%): <?=number_format($it['tax_amount'])?> RS
-                              </div>
-                            <?php endif; ?>
-                          </div>
-                        <?php endforeach; ?>
+                      <?php if (!empty($prod_names)): ?>
+                        <div class="item-title font-weight-bold"><?=htmlspecialchars(implode(', ', $prod_names))?></div>
+                      <?php elseif (!empty($fetchTax)): ?>
+                        <div class="item-title font-weight-bold">Sales Tax Invoice</div>
+                      <?php elseif (!empty($fetchInv)): ?>
+                        <div class="item-title font-weight-bold">Commercial Invoice</div>
                       <?php else: ?>
-                        <div class="item-title"><?=str_replace("=", "<br/>", $row['transaction_remarks'])?></div>
+                        <div class="item-title font-weight-bold"><?=str_replace("=", "<br/>", $row['transaction_remarks'])?></div>
                       <?php endif; ?>
+
+                      <?php if (!empty($fetchTax['remarks'])): ?>
+                        <div class="text-muted" style="font-size: 11px;"><em><?=htmlspecialchars($fetchTax['remarks'])?></em></div>
+                      <?php endif; ?>
+                      <?php if (!empty($fetchInv['order_narration'])): ?>
+                        <div class="text-muted" style="font-size: 11px;"><em><?=htmlspecialchars($fetchInv['order_narration'])?></em></div>
+                      <?php endif; ?>
+                      <?php if (!empty($fetchInv['freight']) && floatval($fetchInv['freight']) > 0): ?>
+                        <div class="text-muted" style="font-size: 11px;">Freight: <?=number_format($fetchInv['freight'])?> RS</div>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-right font-weight-bold">
+                      <?=$inv_total_qty > 0 ? number_format($inv_total_qty, 2) : '-'?>
+                    </td>
+                    <td class="text-right font-weight-bold">
+                      <?=$inv_rate_display?>
+                    </td>
+                    <td class="text-right font-weight-bold">
+                      <?=$inv_subtotal > 0 ? number_format($inv_subtotal) : '-'?>
+                    </td>
+                    <td class="text-center font-weight-bold">
+                      <?=$inv_tax_rate > 0 ? ($inv_tax_rate + 0) . '%' : '-'?>
+                    </td>
+                    <td class="text-right font-weight-bold">
+                      <?=$inv_tax_amount > 0 ? number_format($inv_tax_amount) : '-'?>
                     </td>
                     <td class="text-center"><span class="text-muted">-</span></td>
                     <td class="text-right">
                       <?php if ($row_debit > 0): ?>
-                        <span class="text-primary font-weight-bold" style="font-size: 15px;"><?=number_format($row_debit)?></span>
+                        <span class="text-primary font-weight-bold" style="font-size: 14px;"><?=number_format($row_debit)?></span>
                       <?php else: ?>
                         <span class="text-muted">-</span>
                       <?php endif; ?>
                     </td>
                     <td class="text-right">
                       <?php if ($row_credit > 0): ?>
-                        <span class="text-success font-weight-bold" style="font-size: 15px;"><?=number_format($row_credit)?></span>
+                        <span class="text-success font-weight-bold" style="font-size: 14px;"><?=number_format($row_credit)?></span>
                       <?php else: ?>
                         <span class="text-muted">-</span>
                       <?php endif; ?>
                     </td>
-                    <td class="text-right font-weight-bold" style="font-size: 15px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
+                    <td class="text-right font-weight-bold" style="font-size: 14px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
                       <?=number_format($running_bal)?>
                     </td>
                   </tr>
@@ -466,167 +572,109 @@ include 'includes/report_header.php';
                   $invoice_type2 = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT * FROM vouchers WHERE transaction_id1 = '{$row['transaction_id']}' OR transaction_id2 = '{$row['transaction_id']}' LIMIT 1"));
                   $v_id = !empty($invoice_type2['voucher_id']) ? $invoice_type2['voucher_id'] : $row['transaction_id'];
 
-                  $voucher_invoices = [];
+                  $sum_vi_amt = 0;
+                  $sum_vi_wht = 0;
+                  $v_pos = [];
+                  $v_fbrs = [];
+                  $v_wht_pcts = [];
+
                   if (!empty($invoice_type2['voucher_id'])) {
-                      $q_vi = mysqli_query($dbc, "SELECT * FROM voucher_invoices WHERE voucher_id = '{$invoice_type2['voucher_id']}' ORDER BY id ASC");
+                      $q_vi = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '{$invoice_type2['voucher_id']}' ORDER BY vi.id ASC");
                       if ($q_vi && mysqli_num_rows($q_vi) > 0) {
                           while ($vi_row = mysqli_fetch_assoc($q_vi)) {
-                              $v_rec = floatval(str_replace(',', '', $vi_row['received_amount'] ?? 0));
+                              $v_inv_amt = floatval(str_replace(',', '', $vi_row['invoice_amount'] ?? 0));
                               $v_tax = floatval(str_replace(',', '', $vi_row['tax_amount'] ?? 0));
-                              if ($v_rec > 0 || $v_tax > 0) {
-                                  $voucher_invoices[] = [
-                                      'id' => $vi_row['id'],
-                                      'invoice_id' => $vi_row['invoice_id'],
-                                      'party_po' => $vi_row['party_po'] ?? '',
-                                      'invoice_amount' => floatval(str_replace(',', '', $vi_row['invoice_amount'] ?? 0)),
-                                      'tax_percent' => $vi_row['tax_percent'] ?? '',
-                                      'tax_amount' => $v_tax,
-                                      'received_amount' => $v_rec,
-                                  ];
+                              $sum_vi_amt += $v_inv_amt;
+                              $sum_vi_wht += $v_tax;
+                              if (!empty($vi_row['party_po'])) {
+                                  $v_pos[] = trim($vi_row['party_po']);
+                              }
+                              $fbr_val = !empty($vi_row['fbr_invoice_no']) ? trim($vi_row['fbr_invoice_no']) : (!empty($vi_row['invoice_id']) ? trim($vi_row['invoice_id']) : '');
+                              if (!empty($fbr_val) && !in_array($fbr_val, $v_fbrs)) {
+                                  $v_fbrs[] = $fbr_val;
+                              }
+                              if (!empty($vi_row['tax_percent']) && floatval($vi_row['tax_percent']) > 0) {
+                                  $pct_str = ($vi_row['tax_percent'] + 0) . '%';
+                                  if (!in_array($pct_str, $v_wht_pcts)) {
+                                      $v_wht_pcts[] = $pct_str;
+                                  }
                               }
                           }
                       }
                   }
 
-                  if (!empty($voucher_invoices)) {
-                      $sum_vi_settled = 0;
-                      foreach ($voucher_invoices as $vi) {
-                          $sr++;
-                          $v_rec = $vi['received_amount'];
-                          $v_tax = $vi['tax_amount'];
-                          $v_settled = $v_rec + $v_tax;
-                          $sum_vi_settled += $v_settled;
+                  $v_total_raw = (float)($row['debit'] ?? 0);
+                  $v_final_debit = ($sum_vi_amt > 0) ? max($v_total_raw, $sum_vi_amt) : $v_total_raw;
 
-                          $total_debit += $v_rec;
-                          $total_wht += $v_tax;
-                          $running_bal -= $v_settled;
-                          ?>
-                          <tr>
-                            <td class="text-center font-weight-bold"><?=$sr?></td>
-                            <td class="text-center font-weight-bold"><?=date('d-M-Y', strtotime($row['transaction_date']))?></td>
-                            <td class="text-center">
-                              <strong class="text-success font-weight-bold">VOU #<?=$v_id?></strong>
-                            </td>
-                            <td class="text-center font-weight-bold">
-                              <?=htmlspecialchars($vi['party_po'] ?: '-')?>
-                            </td>
-                            <td class="text-center">-</td>
-                            <td>
-                              <div class="item-title text-success font-weight-bold">Payment Received</div>
-                              <?php if (!empty($invoice_type2['td_check_no'])): ?>
-                                <div class="text-muted mt-1" style="font-size: 12px;">
-                                  Cheque #: <strong><?=htmlspecialchars($invoice_type2['td_check_no'])?></strong>
-                                  <?php if (!empty($invoice_type2['voucher_bank_name'])): ?> &bull; Bank: <?=htmlspecialchars($invoice_type2['voucher_bank_name'])?><?php endif; ?>
-                                  <?php if (!empty($invoice_type2['td_check_date'])): ?> &bull; Date: <?=htmlspecialchars($invoice_type2['td_check_date'])?><?php endif; ?>
-                                </div>
-                              <?php endif; ?>
-                              <?php if (!empty($invoice_type2['voucher_hint'])): ?>
-                                <div class="text-muted mt-1" style="font-size: 12px;"><em><?=htmlspecialchars($invoice_type2['voucher_hint'])?></em></div>
-                              <?php endif; ?>
-                            </td>
-                            <td class="text-center">
-                              <?php if ($v_tax > 0): ?>
-                                <div class="text-danger font-weight-bold" style="font-size: 14px;">
-                                  <?=number_format($v_tax)?>
-                                </div>
-                                <?php if (!empty($vi['tax_percent']) && floatval($vi['tax_percent']) > 0): ?>
-                                  <small class="text-muted font-weight-bold"><?=$vi['tax_percent']?>%</small>
-                                <?php endif; ?>
-                              <?php else: ?>
-                                <span class="text-muted">-</span>
-                              <?php endif; ?>
-                            </td>
-                            <td class="text-right">
-                              <?php if ($v_rec > 0): ?>
-                                <span class="text-primary font-weight-bold" style="font-size: 15px;">
-                                  <?=number_format($v_rec)?>
-                                </span>
-                              <?php else: ?>
-                                <span class="text-muted">-</span>
-                              <?php endif; ?>
-                            </td>
-                            <td class="text-right"><span class="text-muted">-</span></td>
-                            <td class="text-right font-weight-bold" style="font-size: 15px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
-                              <?=number_format($running_bal)?>
-                            </td>
-                          </tr>
-                          <?php
-                      }
+                  $sr++;
+                  $total_debit += $v_final_debit;
+                  $total_wht += $sum_vi_wht;
+                  $running_bal -= ($v_final_debit + $sum_vi_wht);
 
-                      // Unallocated voucher remainder
-                      $v_total_raw = (float)($row['debit'] ?? 0);
-                      $rem_voucher_debit = $v_total_raw - $sum_vi_settled;
-                      if ($rem_voucher_debit > 0.01) {
-                          $sr++;
-                          $total_debit += $rem_voucher_debit;
-                          $running_bal -= $rem_voucher_debit;
-                          ?>
-                          <tr>
-                            <td class="text-center font-weight-bold"><?=$sr?></td>
-                            <td class="text-center font-weight-bold"><?=date('d-M-Y', strtotime($row['transaction_date']))?></td>
-                            <td class="text-center">
-                              <strong class="text-success font-weight-bold">VOU #<?=$v_id?></strong>
-                            </td>
-                            <td class="text-center font-weight-bold">-</td>
-                            <td class="text-center">-</td>
-                            <td>
-                              <div class="item-title text-success font-weight-bold">Payment Received (Unallocated)</div>
-                              <?php if (!empty($invoice_type2['voucher_hint'])): ?>
-                                <div class="text-muted mt-1" style="font-size: 12px;"><em><?=htmlspecialchars($invoice_type2['voucher_hint'])?></em></div>
-                              <?php endif; ?>
-                            </td>
-                            <td class="text-center"><span class="text-muted">-</span></td>
-                            <td class="text-right">
-                              <span class="text-primary font-weight-bold" style="font-size: 15px;">
-                                <?=number_format($rem_voucher_debit)?>
-                              </span>
-                            </td>
-                            <td class="text-right"><span class="text-muted">-</span></td>
-                            <td class="text-right font-weight-bold" style="font-size: 15px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
-                              <?=number_format($running_bal)?>
-                            </td>
-                          </tr>
-                          <?php
-                      }
-                  } else {
-                      // Voucher with no breakdown
-                      $sr++;
-                      $v_amt = (float)($row['debit'] ?? 0);
-                      $total_debit += $v_amt;
-                      $running_bal -= $v_amt;
-                      ?>
-                      <tr>
-                        <td class="text-center font-weight-bold"><?=$sr?></td>
-                        <td class="text-center font-weight-bold"><?=date('d-M-Y', strtotime($row['transaction_date']))?></td>
-                        <td class="text-center">
-                          <strong class="text-success font-weight-bold">VOU #<?=$v_id?></strong>
-                        </td>
-                        <td class="text-center font-weight-bold">-</td>
-                        <td class="text-center">-</td>
-                        <td>
-                          <div class="item-title text-success font-weight-bold">Payment Received</div>
-                          <?php if (!empty($invoice_type2['td_check_no'])): ?>
-                            <div class="text-muted mt-1" style="font-size: 12px;">
-                              Cheque #: <strong><?=htmlspecialchars($invoice_type2['td_check_no'])?></strong>
-                              <?php if (!empty($invoice_type2['voucher_bank_name'])): ?> &bull; Bank: <?=htmlspecialchars($invoice_type2['voucher_bank_name'])?><?php endif; ?>
-                              <?php if (!empty($invoice_type2['td_check_date'])): ?> &bull; Date: <?=htmlspecialchars($invoice_type2['td_check_date'])?><?php endif; ?>
-                            </div>
-                          <?php endif; ?>
-                          <?php if (!empty($row['transaction_remarks'])): ?>
-                            <div class="text-muted mt-1" style="font-size: 12px;"><?=str_replace("=", "<br/>", $row['transaction_remarks'])?></div>
-                          <?php endif; ?>
-                        </td>
-                        <td class="text-center"><span class="text-muted">-</span></td>
-                        <td class="text-right">
-                          <span class="text-primary font-weight-bold" style="font-size: 15px;"><?=number_format($v_amt)?></span>
-                        </td>
-                        <td class="text-right"><span class="text-muted">-</span></td>
-                        <td class="text-right font-weight-bold" style="font-size: 15px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
-                          <?=number_format($running_bal)?>
-                        </td>
-                      </tr>
-                      <?php
-                  }
+                  $v_po_display = implode(', ', array_unique(array_filter($v_pos)));
+                  $v_fbr_display = implode(', ', array_unique(array_filter($v_fbrs)));
+                  $v_wht_pct_display = implode(', ', array_unique(array_filter($v_wht_pcts)));
+                  ?>
+                  <tr>
+                    <td class="text-center font-weight-bold"><?=$sr?></td>
+                    <td class="text-center font-weight-bold"><?=date('d-M-Y', strtotime($row['transaction_date']))?></td>
+                    <td class="text-center">
+                      <strong class="text-success font-weight-bold">VOU #<?=$v_id?></strong>
+                    </td>
+                    <td class="text-center font-weight-bold">
+                      <?=htmlspecialchars($v_fbr_display ?: '-')?>
+                    </td>
+                    <td class="text-center font-weight-bold">
+                      <?=htmlspecialchars($v_po_display ?: '-')?>
+                    </td>
+                    <td class="text-center">-</td>
+                    <td>
+                      <div class="item-title text-success font-weight-bold">Payment Received</div>
+                      <?php if (!empty($invoice_type2['td_check_no'])): ?>
+                        <div class="text-muted mt-1" style="font-size: 11px;">
+                          Cheque #: <strong><?=htmlspecialchars($invoice_type2['td_check_no'])?></strong>
+                          <?php if (!empty($invoice_type2['voucher_bank_name'])): ?> &bull; Bank: <?=htmlspecialchars($invoice_type2['voucher_bank_name'])?><?php endif; ?>
+                          <?php if (!empty($invoice_type2['td_check_date'])): ?> &bull; Date: <?=htmlspecialchars($invoice_type2['td_check_date'])?><?php endif; ?>
+                        </div>
+                      <?php endif; ?>
+                      <?php if (!empty($invoice_type2['voucher_hint'])): ?>
+                        <div class="text-muted mt-1" style="font-size: 11px;"><em><?=htmlspecialchars($invoice_type2['voucher_hint'])?></em></div>
+                      <?php elseif (!empty($row['transaction_remarks'])): ?>
+                        <div class="text-muted mt-1" style="font-size: 11px;"><?=str_replace("=", "<br/>", $row['transaction_remarks'])?></div>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center">
+                      <?php if ($sum_vi_wht > 0): ?>
+                        <div class="text-danger font-weight-bold" style="font-size: 13px;">
+                          <?=number_format($sum_vi_wht)?>
+                        </div>
+                        <?php if (!empty($v_wht_pct_display)): ?>
+                          <small class="text-muted font-weight-bold"><?=$v_wht_pct_display?></small>
+                        <?php endif; ?>
+                      <?php else: ?>
+                        <span class="text-muted">-</span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-right">
+                      <?php if ($v_final_debit > 0): ?>
+                        <span class="text-primary font-weight-bold" style="font-size: 14px;">
+                          <?=number_format($v_final_debit)?>
+                        </span>
+                      <?php else: ?>
+                        <span class="text-muted">-</span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-right"><span class="text-muted">-</span></td>
+                    <td class="text-right font-weight-bold" style="font-size: 14px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
+                      <?=number_format($running_bal)?>
+                    </td>
+                  </tr>
+                  <?php
 
                 else:
                   $sr++;
@@ -641,24 +689,30 @@ include 'includes/report_header.php';
                     <td class="text-center font-weight-bold"><?=date('d-M-Y', strtotime($row['transaction_date']))?></td>
                     <td class="text-center font-weight-bold">#<?=$row['transaction_id']?></td>
                     <td class="text-center font-weight-bold">-</td>
+                    <td class="text-center font-weight-bold">-</td>
                     <td class="text-center">-</td>
                     <td><?=str_replace("=", "<br/>", $row['transaction_remarks'])?></td>
                     <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
+                    <td class="text-center"><span class="text-muted">-</span></td>
                     <td class="text-right">
                       <?php if ($row_debit > 0): ?>
-                        <span class="text-primary font-weight-bold" style="font-size: 15px;"><?=number_format($row_debit)?></span>
+                        <span class="text-primary font-weight-bold" style="font-size: 14px;"><?=number_format($row_debit)?></span>
                       <?php else: ?>
                         <span class="text-muted">-</span>
                       <?php endif; ?>
                     </td>
                     <td class="text-right">
                       <?php if ($row_credit > 0): ?>
-                        <span class="text-success font-weight-bold" style="font-size: 15px;"><?=number_format($row_credit)?></span>
+                        <span class="text-success font-weight-bold" style="font-size: 14px;"><?=number_format($row_credit)?></span>
                       <?php else: ?>
                         <span class="text-muted">-</span>
                       <?php endif; ?>
                     </td>
-                    <td class="text-right font-weight-bold" style="font-size: 15px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
+                    <td class="text-right font-weight-bold" style="font-size: 14px; color: <?=$running_bal > 0 ? '#dc3545' : '#28a745'?>;">
                       <?=number_format($running_bal)?>
                     </td>
                   </tr>
@@ -668,34 +722,46 @@ include 'includes/report_header.php';
             else:
             ?>
               <tr>
-                <td colspan="10" class="text-center py-4 text-muted">No Transaction Found</td>
+                <td colspan="16" class="text-center py-4 text-muted">No Transaction Found</td>
               </tr>
             <?php endif; ?>
           </tbody>
           <tfoot>
+            <tr style="background: #e9ecef; font-weight: 700; border-top: 2px solid #454d55;">
+              <td colspan="7" class="text-right font-weight-bold" style="font-size: 13px;">Totals:</td>
+              <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_qty > 0 ? number_format($tot_qty, 2) : '-' ?></td>
+              <td class="text-center font-weight-bold" style="font-size: 13px;">-</td>
+              <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_subtotal > 0 ? number_format($tot_subtotal) : '-' ?></td>
+              <td class="text-center">-</td>
+              <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_tax_amt > 0 ? number_format($tot_tax_amt) : '-' ?></td>
+              <td class="text-center font-weight-bold text-danger" style="font-size: 13px;"><?= $total_wht > 0 ? number_format($total_wht) : '-' ?></td>
+              <td class="text-right font-weight-bold text-primary" style="font-size: 14px;"><?= number_format($total_debit) ?></td>
+              <td class="text-right font-weight-bold text-success" style="font-size: 14px;"><?= number_format($total_credit) ?></td>
+              <td class="text-right font-weight-bold" style="font-size: 14px; color: <?= $running_bal > 0 ? '#dc3545' : '#28a745' ?>;"><?= number_format($running_bal) ?></td>
+            </tr>
             <tr>
-              <td colspan="6"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 15px; vertical-align: middle;">Opening Balance</td>
+              <td colspan="12"></td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Opening Balance</td>
               <td colspan="2" class="h4 text-success font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($opening_balance)?></td>
             </tr>
             <tr>
-              <td colspan="6"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 15px; vertical-align: middle;">Total Debits</td>
+              <td colspan="12"></td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Debits</td>
               <td colspan="2" class="h4 text-info font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($total_debit)?></td>
             </tr>
             <tr>
-              <td colspan="6"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 15px; vertical-align: middle;">Total WHT</td>
+              <td colspan="12"></td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total WHT</td>
               <td colspan="2" class="h4 text-danger font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($total_wht)?></td>
             </tr>
             <tr>
-              <td colspan="6"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 15px; vertical-align: middle;">Total Credits</td>
+              <td colspan="12"></td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Credits</td>
               <td colspan="2" class="h4 text-warning font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($total_credit)?></td>
             </tr>
             <tr>
-              <td colspan="6"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 15px; vertical-align: middle;">Closing Balance</td>
+              <td colspan="12"></td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Closing Balance</td>
               <td colspan="2" class="h4 font-weight-bold mb-0 <?=$running_bal > 0 ? 'text-danger' : 'text-success'?>" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
             </tr>
           </tfoot>

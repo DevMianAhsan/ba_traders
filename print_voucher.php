@@ -4,7 +4,7 @@
   $customer_id2=fetchRecord($dbc,"customers","customer_id",$vouchers['customer_id2']);
 
 $voucher_invoices_list = [];
-$q_vi_check = mysqli_query($dbc, "SELECT vi.*, COALESCE(c.customer_name, c2.customer_name) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '".$vouchers['voucher_id']."'");
+$q_vi_check = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no, COALESCE(c.customer_name, c2.customer_name) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '".$vouchers['voucher_id']."'");
 while ($vi_row = mysqli_fetch_assoc($q_vi_check)) {
     $voucher_invoices_list[] = $vi_row;
 }
@@ -169,7 +169,7 @@ body{
                                   <th style="padding: 4px; text-align: right;">Total Amount</th>
                                   <th style="padding: 4px; text-align: center;">WHT %</th>
                                   <th style="padding: 4px; text-align: right;">WHT Amount</th>
-                                  <th style="padding: 4px; text-align: right;">Amount Received</th>
+                                  
                               </tr>
                           </thead>
                           <tbody>
@@ -177,25 +177,26 @@ body{
                               $v_idx = 0; 
                               $v_sum_total = 0;
                               $v_sum_tax = 0;
-                              $v_sum_rec = 0; 
+                               
                               foreach ($voucher_invoices_list as $vi_item): 
                                   $v_idx++; 
                                   $v_inv_amt = floatval($vi_item['invoice_amount']);
                                   $v_tax_amt = floatval(!empty($vi_item['tax_amount']) ? $vi_item['tax_amount'] : 0);
-                                  $v_rec_amt = floatval($vi_item['received_amount']);
+                                  
                                   $v_sum_total += $v_inv_amt;
                                   $v_sum_tax += $v_tax_amt;
-                                  $v_sum_rec += $v_rec_amt;
+                                  
                               ?>
                               <tr>
                                   <td style="padding: 4px; text-align: center;"><?=$v_idx?></td>
-                                  <td style="padding: 4px; text-align: center;"><strong>Invoice #<?=$vi_item['invoice_id']?></strong></td>
+                                  <?php $d_inv = !empty($vi_item['fbr_invoice_no']) ? $vi_item['fbr_invoice_no'] : ('Invoice #' . $vi_item['invoice_id']); ?>
+                                  <td style="padding: 4px; text-align: center;"><strong><?=$d_inv?></strong></td>
                                   <td style="padding: 4px; text-align: center;"><?=$vi_item['customer_name']?></td>
                                   <td style="padding: 4px; text-align: center;"><?=$vi_item['party_po']?></td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_inv_amt)?> RS</td>
                                   <td style="padding: 4px; text-align: center;"><?=!empty($vi_item['tax_percent']) ? $vi_item['tax_percent'].'%' : '-'?></td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_tax_amt)?> RS</td>
-                                  <td style="padding: 4px; text-align: right;"><strong><?=number_format($v_rec_amt)?> RS</strong></td>
+                                  
                               </tr>
                               <?php endforeach; ?>
                               <tr style="background-color: #fafafa; font-weight: bold;">
@@ -203,7 +204,7 @@ body{
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_total)?> RS</td>
                                   <td style="padding: 4px; text-align: center;">-</td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_tax)?> RS</td>
-                                  <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_rec)?> RS</td>
+                                  
                               </tr>
                           </tbody>
                       </table>
@@ -288,7 +289,7 @@ body{
                                   <th style="padding: 4px; text-align: right;">Total Amount</th>
                                   <th style="padding: 4px; text-align: center;">WHT %</th>
                                   <th style="padding: 4px; text-align: right;">WHT Amount</th>
-                                  <th style="padding: 4px; text-align: right;">Amount Received</th>
+                                  
                               </tr>
                           </thead>
                           <tbody>
@@ -296,25 +297,26 @@ body{
                               $v_idx = 0; 
                               $v_sum_total = 0;
                               $v_sum_tax = 0;
-                              $v_sum_rec = 0; 
+                               
                               foreach ($voucher_invoices_list as $vi_item): 
                                   $v_idx++; 
                                   $v_inv_amt = floatval($vi_item['invoice_amount']);
                                   $v_tax_amt = floatval(!empty($vi_item['tax_amount']) ? $vi_item['tax_amount'] : 0);
-                                  $v_rec_amt = floatval($vi_item['received_amount']);
+                                  
                                   $v_sum_total += $v_inv_amt;
                                   $v_sum_tax += $v_tax_amt;
-                                  $v_sum_rec += $v_rec_amt;
+                                  
                               ?>
                               <tr>
                                   <td style="padding: 4px; text-align: center;"><?=$v_idx?></td>
-                                  <td style="padding: 4px; text-align: center;"><strong>Invoice #<?=$vi_item['invoice_id']?></strong></td>
+                                  <?php $d_inv = !empty($vi_item['fbr_invoice_no']) ? $vi_item['fbr_invoice_no'] : ('Invoice #' . $vi_item['invoice_id']); ?>
+                                  <td style="padding: 4px; text-align: center;"><strong><?=$d_inv?></strong></td>
                                   <td style="padding: 4px; text-align: center;"><?=$vi_item['customer_name']?></td>
                                   <td style="padding: 4px; text-align: center;"><?=$vi_item['party_po']?></td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_inv_amt)?> RS</td>
                                   <td style="padding: 4px; text-align: center;"><?=!empty($vi_item['tax_percent']) ? $vi_item['tax_percent'].'%' : '-'?></td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_tax_amt)?> RS</td>
-                                  <td style="padding: 4px; text-align: right;"><strong><?=number_format($v_rec_amt)?> RS</strong></td>
+                                  
                               </tr>
                               <?php endforeach; ?>
                               <tr style="background-color: #fafafa; font-weight: bold;">
@@ -322,7 +324,7 @@ body{
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_total)?> RS</td>
                                   <td style="padding: 4px; text-align: center;">-</td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_tax)?> RS</td>
-                                  <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_rec)?> RS</td>
+                                  
                               </tr>
                           </tbody>
                       </table>
