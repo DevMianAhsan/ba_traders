@@ -12,16 +12,64 @@
 			echo json_encode(['sts' => 'error', 'msg' => 'Please select a Customer Account']);
 			exit;
 		}
-		$res = ['data' => []];
-		if (!empty($_REQUEST['dc_no'])) {
-			for ($i = 0; $i < count($_REQUEST['dc_no']); $i++) { 
-				$res['data'][$i] = [
-					'sr' => $i,
-					'party_po' => is_array($_REQUEST['party_po']) ? ($_REQUEST['party_po'][$i] ?? $_REQUEST['party_po'][0]) : $_REQUEST['party_po'],
-					'dc_no' => $_REQUEST['dc_no'][$i],
-					'po_amount' => $_REQUEST['po_amount'][$i]
-				];
+
+		// Date validation: invoice date cannot be less than purchase order date
+		$inv_order_date = !empty($_REQUEST['order_date']) ? trim($_REQUEST['order_date']) : '';
+		$inv_order_ts = !empty($inv_order_date) ? strtotime($inv_order_date) : false;
+		if ($inv_order_ts !== false) {
+			$check_pos = [];
+			if (!empty($_REQUEST['party_po'])) {
+				if (is_array($_REQUEST['party_po'])) {
+					foreach ($_REQUEST['party_po'] as $p) {
+						$p = trim($p);
+						if ($p !== '' && !in_array($p, $check_pos)) $check_pos[] = $p;
+					}
+				} else {
+					$p = trim($_REQUEST['party_po']);
+					if ($p !== '') $check_pos[] = $p;
+				}
 			}
+			if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
+				foreach ($_REQUEST['dc_no'] as $dc_id) {
+					$dc_id = intval($dc_id);
+					if ($dc_id > 0) {
+						$dc_q = mysqli_query($dbc, "SELECT party_po FROM orders WHERE order_id = '$dc_id' LIMIT 1");
+						if ($dc_r = mysqli_fetch_assoc($dc_q)) {
+							$p = trim($dc_r['party_po']);
+							if ($p !== '' && !in_array($p, $check_pos)) $check_pos[] = $p;
+						}
+					}
+				}
+			}
+			foreach ($check_pos as $p) {
+				$p_clean = mysqli_real_escape_string($dbc, $p);
+				$po_date_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '$p_clean' LIMIT 1");
+				if ($po_date_r = mysqli_fetch_assoc($po_date_q)) {
+					$po_date = trim($po_date_r['po_date']);
+					$po_ts = !empty($po_date) ? strtotime($po_date) : false;
+					if ($po_ts !== false && $inv_order_ts < $po_ts) {
+						echo json_encode([
+							'msg' => "Invoice date (" . date('d/m/Y', $inv_order_ts) . ") cannot be earlier than Purchase Order date (" . date('d/m/Y', $po_ts) . ")",
+							'sts' => 'error'
+						]);
+						exit;
+					}
+				}
+			}
+		}
+		if (empty($_REQUEST['dc_no']) || !is_array($_REQUEST['dc_no']) || count($_REQUEST['dc_no']) === 0) {
+			echo json_encode(['sts' => 'error', 'msg' => 'Please add at least one Delivery Challan to the Invoice']);
+			exit;
+		}
+
+		$res = ['data' => []];
+		for ($i = 0; $i < count($_REQUEST['dc_no']); $i++) { 
+			$res['data'][$i] = [
+				'sr' => $i,
+				'party_po' => is_array($_REQUEST['party_po']) ? ($_REQUEST['party_po'][$i] ?? $_REQUEST['party_po'][0]) : $_REQUEST['party_po'],
+				'dc_no' => $_REQUEST['dc_no'][$i],
+				'po_amount' => $_REQUEST['po_amount'][$i]
+			];
 		}
 
 		$party_po_val = '';
@@ -54,7 +102,10 @@
 		$discount_val = isset($_REQUEST['ordered_discount']) ? $_REQUEST['ordered_discount'] : 0;
 		$freight_val = isset($_REQUEST['freight']) ? $_REQUEST['freight'] : 0;
 		$total_amount_val = !empty($_REQUEST['total_amount']) ? $_REQUEST['total_amount'] : $sub_total;
-		$order_narration = !empty($_REQUEST['order_narration']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['order_narration'])) : '';
+		$grand_total_val = (isset($_REQUEST['grand_total']) && $_REQUEST['grand_total'] !== '') ? floatval($_REQUEST['grand_total']) : $total_amount_val;
+		$order_narration = !empty($_REQUEST['order_narration']) ? trim($_REQUEST['order_narration']) : '';
+		$customer_address = !empty($_REQUEST['customer_address']) ? trim($_REQUEST['customer_address']) : '';
+		$user_id_val = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
 
 		if (!empty($_REQUEST['product_order_id'])) {
 			$invoice_id = intval($_REQUEST['product_order_id']);
@@ -63,14 +114,14 @@
 
 			$data = [
 				'customer_id' => $_REQUEST['customer_account'],
-				'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
+				'customer_address' => $customer_address,
 				'invoice_date' => $_REQUEST['order_date'],
 				'total_amount' => $total_amount_val,
 				'discount' => $discount_val,
 				'freight' => $freight_val,
-				'grand_total' => $_REQUEST['grand_total'],
+				'grand_total' => $grand_total_val,
 				'order_narration' => $order_narration,
-				'user_id' => @$_SESSION['userId'],
+				'user_id' => $user_id_val,
 				'party_po' => $party_po_val,
 				'credit_sale_type' => $credit_sale_type,
 				'invoice_details' => json_encode($res),
@@ -108,14 +159,14 @@
 			// Commercial invoice adds record only (no transaction created)
 			$data = [
 				'customer_id' => $_REQUEST['customer_account'],
-				'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
+				'customer_address' => $customer_address,
 				'invoice_date' => $_REQUEST['order_date'],
 				'total_amount' => $total_amount_val,
 				'discount' => $discount_val,
 				'freight' => $freight_val,
-				'grand_total' => $_REQUEST['grand_total'],
+				'grand_total' => $grand_total_val,
 				'order_narration' => $order_narration,
-				'user_id' => @$_SESSION['userId'],
+				'user_id' => $user_id_val,
 				'party_po' => $party_po_val,
 				'credit_sale_type' => $credit_sale_type,
 				'invoice_details' => json_encode($res),
@@ -160,34 +211,38 @@
 	/*Invocie end*/
 	/*parrtypo detil for invice*/
 	if (isset($_REQUEST['getpodinvoice'])) {
-		$party_po = $_REQUEST['party_po'];
+		$party_po = !empty($_REQUEST['party_po']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['party_po'])) : '';
 		if(!empty($party_po)){
+			$po_date_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '$party_po' LIMIT 1");
+			$po_date = '';
+			if ($po_date_r = mysqli_fetch_assoc($po_date_q)) {
+				$po_date = trim($po_date_r['po_date']);
+			}
 
 			$q = mysqli_query($dbc,"SELECT party_po, grand_total as totalamount , order_id as dc_no FROM orders WHERE party_po = '$party_po'  ");
-			//echo mysqli_num_rows($q); 
 			
 			if(mysqli_num_rows($q) > 0){
-			while($r4 = mysqli_fetch_assoc($q)):
-				$data[] = $r4;
-
-			endwhile;
+				$data_rows = [];
+				while($r4 = mysqli_fetch_assoc($q)):
+					$data_rows[] = $r4;
+				endwhile;
 				
-			$data = [
-				'sts' => 'success',
-				'msg' => 'Get Data',
-				'data' => $data
-				
-			];
-		}else{
-			$data = [
-				'sts' => 'false',
-				'msg' => 'DC Not Found',
-				'data' => ''
-			];
-		}
+				$data = [
+					'sts' => 'success',
+					'msg' => 'Get Data',
+					'data' => $data_rows,
+					'po_date' => $po_date
+				];
+			}else{
+				$data = [
+					'sts' => 'false',
+					'msg' => 'DC Not Found',
+					'data' => '',
+					'po_date' => $po_date
+				];
+			}
 			echo json_encode($data);
-		
-
+			exit;
 		}
 	}
 
@@ -325,7 +380,8 @@ GROUP BY
 					continue;
 				}
 				$emitted[] = $po;
-				echo '<option data-paymentdays="'.$r['po_paymentdays'].'" value="'.$po.'">'.$po.'</option>';
+				$po_dt = trim($r['po_date']);
+				echo '<option data-paymentdays="'.$r['po_paymentdays'].'" data-date="'.$po_dt.'" value="'.$po.'">'.$po.'</option>';
 			}
 			if (empty($emitted)) {
 				echo '<option value="">Not Found</option>';
@@ -1477,7 +1533,22 @@ GROUP BY
 if (!empty($_REQUEST['product_ids'])) {
  		# code...
 		if (!empty($_REQUEST['party_po'])) {
-			$party_po_clean = mysqli_real_escape_string($dbc, $_REQUEST['party_po']);
+			$party_po_clean = mysqli_real_escape_string($dbc, trim($_REQUEST['party_po']));
+			if (!empty($_REQUEST['order_date'])) {
+				$dc_order_ts = strtotime($_REQUEST['order_date']);
+				$po_date_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '{$party_po_clean}' LIMIT 1");
+				if ($po_date_r = mysqli_fetch_assoc($po_date_q)) {
+					$po_date = trim($po_date_r['po_date']);
+					$po_ts = !empty($po_date) ? strtotime($po_date) : false;
+					if ($dc_order_ts !== false && $po_ts !== false && $dc_order_ts < $po_ts) {
+						echo json_encode([
+							'msg' => "Delivery Challan date (" . date('d/m/Y', $dc_order_ts) . ") cannot be earlier than Purchase Order date (" . date('d/m/Y', $po_ts) . ")",
+							'sts' => 'error'
+						]);
+						exit;
+					}
+				}
+			}
 			$excludeOrder = "";
 			if (!empty($_REQUEST['product_order_id'])) {
 				$excludeOrder = " AND o.order_id != '".mysqli_real_escape_string($dbc, $_REQUEST['product_order_id'])."' ";

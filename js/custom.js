@@ -238,6 +238,23 @@ if (e.altKey && e.which == 80) {
         e.preventDefault();
         var form = $('#sale_order_fm');
 
+        var minPoDate = (typeof getMinPoDate === 'function') ? getMinPoDate() : null;
+        if (minPoDate && $('#order_date').length && $('#order_date').val()) {
+            var orderDateVal = $('#order_date').val();
+            if (orderDateVal < minPoDate) {
+                var docLabel = ($('#page_type').val() === 'invoice') ? 'Invoice' : 'Delivery Challan';
+                sweeetalert(docLabel + " date (" + orderDateVal + ") cannot be earlier than Purchase Order date (" + minPoDate + ")", "error", 2500);
+                return false;
+            }
+        }
+
+        if ($('#page_type').val() == 'invoice') {
+            if ($('#invoice_list tr').length === 0) {
+                sweeetalert("Please add at least one Delivery Challan to the Invoice", "error", 2000);
+                return false;
+            }
+        }
+
         if ($('#payment_type').val() == 'credit_sale') {
             if ($('#purchase_product_tb tr').length === 0) {
                 sweeetalert("Please add at least one product to the Delivery Challan", "error", 2000);
@@ -272,6 +289,9 @@ if (e.altKey && e.which == 80) {
                 return false;
             }
         }        
+        var isInvoiceSubmit = ($('#page_type').val() == 'invoice');
+        var isEditInvoiceSubmit = (isInvoiceSubmit && $('input[name="product_order_id"]').val() != '');
+
         $.ajax({
             type: 'POST',
             url: form.attr('action'),
@@ -283,81 +303,87 @@ if (e.altKey && e.which == 80) {
                  },
                success:function (response) {
               if (response.sts=="success") {
-                  $('#sale_order_fm').each(function(){
-                    this.reset();
-                });
-                  $('#purchase_product_tb').html('');
-                  $('#product_grand_total_amount').html('');
-                  $('#product_total_amount').html('');
-
-                  if (response.type == 'invoice' || $('#page_type').val() == 'invoice') {
-                      $('#invoice_list').html('');
-                      $('#sale_order_fm input[type="text"], #sale_order_fm input[type="number"]').val('');
-                      $('#sale_order_fm input[type="hidden"]').not('#page_type').val('');
-                      $('#customer_account_exp').html('0');
-                      $('#credit_order_client_name').val('');
-                      $('#ordered_discount').val('0');
-                      $('#with_tax').prop('checked', false);
-                      $('#freight').val('');
-                      $('#product_total_amount').html('');
-                      $('#product_grand_total_amount').html('');
-                      $('#sale_order_btn').text('Save and Print');
-                      $('.card-text').first().text('Invoice');
-                      if (window.history && window.history.replaceState) {
-                          window.history.replaceState({}, document.title, 'invoice.php');
+                  if (response.type == 'invoice' || isInvoiceSubmit) {
+                      if (!isEditInvoiceSubmit) {
+                          $('#sale_order_fm').each(function(){
+                            this.reset();
+                          });
+                          $('#invoice_list').html('');
+                          $('#sale_order_fm input[type="text"], #sale_order_fm input[type="number"]').val('');
+                          $('#sale_order_fm input[type="hidden"]').not('#page_type').val('');
+                          $('#customer_account_exp').html('0');
+                          $('#credit_order_client_name').val('').trigger('change.select2');
+                          $('#party_po').val('').trigger('change.select2');
+                          $('#ordered_discount').val('0');
+                          $('#with_tax').prop('checked', false);
+                          $('#freight').val('');
+                          $('#product_total_amount').html('');
+                          $('#product_grand_total_amount').html('');
+                          $('#sale_order_btn').text('Save and Print');
+                          $('.card-text').first().text('Commercial Invoice');
+                          if (window.history && window.history.replaceState) {
+                              window.history.replaceState({}, document.title, 'invoice.php');
+                          }
                       }
+                  } else {
+                      $('#sale_order_fm').each(function(){
+                        this.reset();
+                      });
+                      $('#purchase_product_tb').html('');
+                      $('#product_grand_total_amount').html('');
+                      $('#product_total_amount').html('');
                   }
 
-                 // 	window.location.assign('print_order.php?order_id='+response.order_id);
-                  
-                  //$("#tableData").load(location.href+" #tableData"); 
-                        Swal.fire({
-  title: response.msg,
-  showDenyButton: true,
-  showCancelButton: true,
-  confirmButtonText: `Print`,
-  denyButtonText: `Add New`,
-}).then((result) => {
-  /* Read more about isConfirmed, isDenied below */
-  if (result.isConfirmed) {
-       var printUrl = "";
-       if(response.type == 'purchase_order'){
-         printUrl = 'print_po.php?id='+response.order_id;
-       }else if(response.type == 'dc' || response.subtype == 'credit_sale'){
-         printUrl = 'print_sale.php?type=dc&id='+response.order_id;
-       }else if(response.type == 'invoice'){
-         printUrl = 'print_invoice.php?invoice='+response.order_id;
-       }else{
-         printUrl = 'print_sale.php?id='+response.order_id+'&type='+response.type;
-       }
-       var win = window.open(printUrl, '_blank');
-       if (!win || win.closed || typeof win.closed == 'undefined') {
-         window.location.assign(printUrl);
-       } else if (response.type == 'invoice' || $('#page_type').val() == 'invoice') {
-         window.location.href = 'invoice.php';
-       }
-       if ($("#next_increment").length && response.order_id) {
-         $("#next_increment").val(parseInt(response.order_id) + 1);
-       }
-  } else if (result.isDenied) {
-       if (response.type == 'invoice' || $('#page_type').val() == 'invoice') {
-         window.location.href = 'invoice.php';
-       } else {
-         location.reload();
-       }
-  } else {
-       if (response.type == 'invoice' || $('#page_type').val() == 'invoice') {
-         window.location.href = 'invoice.php';
-       }
-  }
-})
+                  Swal.fire({
+                    title: response.msg,
+                    showDenyButton: true,
+                    showCancelButton: true,
+                    confirmButtonText: `Print`,
+                    denyButtonText: isEditInvoiceSubmit ? `Invoice List` : `Add New`,
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                         var printUrl = "";
+                         if(response.type == 'purchase_order'){
+                           printUrl = 'print_po.php?id='+response.order_id;
+                         }else if(response.type == 'dc' || response.subtype == 'credit_sale'){
+                           printUrl = 'print_sale.php?type=dc&id='+response.order_id;
+                         }else if(response.type == 'invoice'){
+                           printUrl = 'print_invoice.php?invoice='+response.order_id;
+                         }else{
+                           printUrl = 'print_sale.php?id='+response.order_id+'&type='+response.type;
+                         }
+                         var win = window.open(printUrl, '_blank');
+                         if (!win || win.closed || typeof win.closed == 'undefined') {
+                           window.location.assign(printUrl);
+                         } else if (response.type == 'invoice' || isInvoiceSubmit) {
+                           window.location.href = isEditInvoiceSubmit ? 'invoice_list.php' : 'invoice.php';
+                         }
+                         if ($("#next_increment").length && response.order_id) {
+                           $("#next_increment").val(parseInt(response.order_id) + 1);
+                         }
+                    } else if (result.isDenied) {
+                         if (response.type == 'invoice' || isInvoiceSubmit) {
+                           window.location.href = isEditInvoiceSubmit ? 'invoice_list.php' : 'invoice.php';
+                         } else {
+                           location.reload();
+                         }
+                    } else {
+                         if (response.type == 'invoice' || isInvoiceSubmit) {
+                           window.location.href = isEditInvoiceSubmit ? 'invoice_list.php' : 'invoice.php';
+                         }
+                    }
+                  });
               }
-            if (response.sts=="error") {
-              sweeetalert(response.msg,response.sts,1500);
-            }   
+              if (response.sts=="error") {
+                sweeetalert(response.msg,response.sts,2500);
+              }   
               $('#sale_order_btn').prop("disabled",false); 
-     			//
-    
+              $('#sale_order_print').prop("disabled",false);
+            },
+            error: function(xhr, status, error) {
+              $('#sale_order_btn').prop("disabled",false);
+              $('#sale_order_print').prop("disabled",false);
+              sweeetalert("An unexpected error occurred: " + error, "error", 2500);
             }
         });//ajax call
     });//main
@@ -390,11 +416,12 @@ if (e.altKey && e.which == 80) {
               var res=msg.trim();
                $("#party_po").empty().html(res);
                 $("#party_po").trigger("change.select2");
+                 $("#party_po").trigger("change");
                var pDays = $("#party_po").find(':selected').data('paymentdays');
                if (pDays) {
                    $('#credit_sale_type').val(pDays + 'days');
                }
-               if( payment_type == 'credit_sale' && $("#party_po").val() ){
+               if( $("#party_po").val() ){
                    getpoDetails();
                }
             }
@@ -1142,9 +1169,15 @@ if(payment_type !="credit_sale"){
 function removeByid(id){
 
   $(id).remove();
-  getOrderTotal();
-  if (typeof getinvoiceTotal === 'function') {
-    getinvoiceTotal();
+  if ($('#page_type').val() === 'invoice' || $('#invoice_list').length) {
+    if (typeof getinvoiceTotal === 'function') {
+      getinvoiceTotal();
+    }
+  } else {
+    getOrderTotal();
+  }
+  if (typeof syncPoDateValidation === 'function') {
+    syncPoDateValidation(false);
   }
 }
 function getOrderTotal() {
@@ -1576,21 +1609,28 @@ $('#'+read_it_id).prop("readonly",true);
                                 })
  }
 
-function getpoDetails(){
+function getpoDetails(showModal){
  var party_po= $('#party_po :selected').val();
  if(!(party_po)){
    var party_po= $('#party_po').val();
  } 
- if(!party_po){
+ if(!party_po || party_po.indexOf('Select') !== -1){
+   if (showModal !== false) {
+     sweeetalert('Please select a Party PO first', 'warning', 1500);
+   }
    $('#TablicaRacuni tbody').empty().append('<tr><td colspan="5" class="text-center text-danger">No PO Details Found</td></tr>');
    var $select = $('#get_product_name');
-   $select.empty().prepend('<option value="" selected>Select Party PO</option>');
-   if ($select.hasClass('searchableSelect')) {
-       $select.trigger('change.select2');
+   if ($select.length) {
+     $select.empty().prepend('<option value="" selected>Select Party PO</option>');
+     if ($select.hasClass('searchableSelect')) {
+         $select.trigger('change.select2');
+     }
    }
    return;
  }
- $("#myModal").modal('show');
+ if (showModal !== false) {
+   $("#myModal").modal('show');
+ }
  var order_id = $('input[name="product_order_id"]').val() || '';
  var customer_id = $('#customer_account').val() || $('#credit_order_client_name :selected').data('id') || '';
   $.ajax({
@@ -1599,57 +1639,43 @@ function getpoDetails(){
       data: {getpoDetails: 'getpoDetails',party_po:party_po,order_id:order_id,customer_id:customer_id},
       dataType: 'text',
       success:function (msg) {
-    var res = msg.trim();
-       $('#TablicaRacuni tbody').empty().append(res);
-    var $select = $('#get_product_name'); // Select element
-
-    // Clear existing options
-    $select.empty();
-
-    // Split the response by <tr> elements
-    var rows = res.split('</tr>');
-
-    // Iterate through each row (excluding the last empty one)
-    for (var i = 0; i < rows.length - 1; i++) {
-        // Create a temporary <tr> element to extract data
-        var tempRow = $('<table>').html(rows[i]).find('tr');
-
-        // Find the <td> elements within the <tr>
-        var $tds = tempRow.find('td');
-
-        if ($tds.length >= 2) {
-            var prodId = $tds.eq(0).text().trim();
-            var prodName = $tds.eq(1).text().trim();
-            var remQty = $tds.length >= 5 ? $tds.eq(4).text().trim() : '';
-
-            var labelText = prodName;
-            if (remQty !== '') {
-                labelText += ' (Rem: ' + remQty + ')';
+        var res = msg.trim();
+        $('#TablicaRacuni tbody').empty().append(res);
+        var $select = $('#get_product_name'); // Select element
+        if ($select.length) {
+            $select.empty();
+            var rows = res.split('</tr>');
+            for (var i = 0; i < rows.length - 1; i++) {
+                var tempRow = $('<table>').html(rows[i]).find('tr');
+                var $tds = tempRow.find('td');
+                if ($tds.length >= 2) {
+                    var prodId = $tds.eq(0).text().trim();
+                    var prodName = $tds.eq(1).text().trim();
+                    var remQty = $tds.length >= 5 ? $tds.eq(4).text().trim() : '';
+                    var labelText = prodName;
+                    if (remQty !== '') {
+                        labelText += ' (Rem: ' + remQty + ')';
+                    }
+                    var $option = $('<option>', {
+                        value: prodId,
+                        text: labelText
+                    });
+                    $option.attr('data-name', prodName);
+                    if (remQty !== '') {
+                        $option.attr('data-remaining', remQty);
+                    }
+                    $select.append($option);
+                }
             }
-
-            var $option = $('<option>', {
-                value: prodId,
-                text: labelText
-            });
-            $option.attr('data-name', prodName);
-            if (remQty !== '') {
-                $option.attr('data-remaining', remQty);
+            $select.prepend('<option value="" selected>Select Product</option>');
+            if ($select.hasClass('searchableSelect')) {
+                $select.trigger('change.select2');
             }
-
-            // Append the option to the select element
-            $select.append($option);
         }
-    }
+      }
+  });
+}
 
-    // Add a default option (optional)
-    $select.prepend('<option value="" selected>Select Product</option>');
-    if ($select.hasClass('searchableSelect')) {
-        $select.trigger('change.select2');
-    }
-}
-});     
-}
- 
 function PartyPOorSTM(column , value , id){
 
    $.ajax({
@@ -1714,11 +1740,18 @@ function applyFormula(){
           $('#credit_sale_type').val(pDays + 'days');
       }
       getpoDetails();
+      if (typeof syncPoDateValidation === 'function') {
+          syncPoDateValidation(true);
+      }
   });
 
 
  function addpoDetails() {
   var party_po = $("#party_po :selected").val() || $("#party_po").val();
+  if (!party_po || party_po.indexOf('Select') !== -1) {
+    sweeetalert('Please select a Party PO first', 'warning', 1500);
+    return;
+  }
 
   $.ajax({
     url: 'php_action/custom_action.php',
@@ -1726,70 +1759,48 @@ function applyFormula(){
     data: { getpodinvoice: 'getpodinvoice', party_po: party_po },
     dataType: 'json',
     success: function (res) {
-      if (res.sts === "success") {
-      
-          var id = Math.floor(Math.random() * 100);
-        
-
-          // Check if a row with the same party_po value already exists
-          const existingRow = document.querySelector(
-            'input[name="party_po[]"][value="' + party_po + '"]'
-          );
-
-          if (existingRow) {
-            sweeetalert(
-              'A row with the same party_po already exists. Duplicates are not allowed',
-              'error',
-              1500
-            );
-          } else {
-            console.log(res.data.length);
-              for (var i = 0; i < res.data.length; i++) {
-                  var row = res.data[i];
-            $("#invoice_list").append(
-              '<tr id="product_idN_' +
-                id +
-                '">\
-                <input type="hidden" id="product_rate_' +
-                id +
-                '" name="party_po[]" value="' +
-                row.party_po +
-                '">\
-                 <input type="hidden" id="product_rate_' +
-                id +
-                '" name="dc_no[]" value="' +
-                row.dc_no +
-                '">\
-                <input type="hidden" id="product_totalrate_' +
-                id +
-                '" name="po_amount[]" value="' +
-                row.totalamount +
-                '">\
-                <td>' +
-                row.party_po +
-                ' </td>\
-                  <td><a target="_blank" href="print_sale.php?type=order&id='+row.dc_no+'">' +
-                row.dc_no +
-                ' </a></td>\
-                <td>' +
-                row.totalamount +
-                '</td>\
-                <td>\
-                  <button type="button" onclick="removeByid(`#product_idN_' +
-                id +
-                '`)" class="fa fa-trash text-danger" href="#" ></button>\
-                </td>\
-              </tr>'
-            );
+      if (res.sts === "success" && res.data && res.data.length > 0) {
+        var addedCount = 0;
+        for (var i = 0; i < res.data.length; i++) {
+          var row = res.data[i];
+          // Check if this Delivery Challan is already present
+          var exists = $('input[name="dc_no[]"][value="' + row.dc_no + '"]').length > 0;
+          if (exists) {
+            continue;
           }
+          var rowId = 'dc_row_' + row.dc_no + '_' + Math.floor(Math.random() * 10000);
+          $("#invoice_list").append(
+            '<tr id="' + rowId + '" data-po-date="' + (res.po_date || '') + '">\
+              <input type="hidden" class="row_po_date" value="' + (res.po_date || '') + '">\
+              <input type="hidden" name="party_po[]" value="' + row.party_po + '">\
+              <input type="hidden" name="dc_no[]" value="' + row.dc_no + '">\
+              <input type="hidden" name="po_amount[]" value="' + row.totalamount + '">\
+              <td>' + row.party_po + '</td>\
+              <td><a target="_blank" href="print_sale.php?type=order&id=' + row.dc_no + '">' + row.dc_no + '</a></td>\
+              <td>' + row.totalamount + '</td>\
+              <td>\
+                <button type="button" onclick="removeByid(\'#' + rowId + '\')" class="btn btn-sm btn-danger fa fa-trash"></button>\
+              </td>\
+            </tr>'
+          );
+          addedCount++;
+        }
+        if (addedCount === 0) {
+          sweeetalert('All Delivery Challans for Party PO ' + party_po + ' are already added', 'info', 2000);
+        } else {
+          getinvoiceTotal();
+        }
+        if (typeof syncPoDateValidation === 'function') {
+          syncPoDateValidation(true);
         }
       } else {
-        sweeetalert(res.msg, 'error', 1500);
+        sweeetalert(res.msg || 'No Delivery Challans found for this PO', 'error', 1500);
       }
     },
+    error: function(xhr, status, error) {
+      sweeetalert('Error fetching PO details: ' + error, 'error', 2000);
+    }
   });
-
-  setTimeout(getinvoiceTotal, 2000);
 }
 
 
@@ -1817,7 +1828,7 @@ var discount = $("#ordered_discount").val();
 var freight = $("#freight").val();
 discount = (discount == '' || isNaN(discount)) ? 0 : parseFloat(discount);
 freight = (freight == '' || isNaN(freight)) ? 0 : parseFloat(freight);
-var grand_total = freight + totalAmount + (totalAmount * (discount / 100));
+var grand_total = Math.round(freight + totalAmount + (totalAmount * (discount / 100)));
 
 $("#product_total_amount").html(totalAmount);
 $("#total_amount").val(totalAmount);
@@ -1828,3 +1839,90 @@ $("#grand_total").val(grand_total);
 
 
 }
+
+
+function getMinPoDate() {
+    var minDate = null;
+    var pageType = $('#page_type').val();
+    var paymentType = $('#payment_type').val();
+
+    if (pageType === 'invoice') {
+        $('#invoice_list tr').each(function() {
+            var d = $(this).attr('data-po-date') || $(this).data('po-date') || $(this).find('.row_po_date').val();
+            if (d && d !== 'null' && d !== 'undefined') {
+                d = $.trim(d);
+                if (d && (!minDate || d > minDate)) {
+                    minDate = d;
+                }
+            }
+        });
+        var selDate = '';
+        if ($('#party_po').is('select')) {
+            selDate = $('#party_po').find(':selected').data('date') || $('#party_po').find(':selected').attr('data-date');
+        } else if ($('#party_po').length) {
+            selDate = $('#party_po').data('date') || $('#party_po').attr('data-date');
+        }
+        if (selDate && selDate !== 'null' && selDate !== 'undefined') {
+            selDate = $.trim(selDate);
+            if (selDate && (!minDate || selDate > minDate)) {
+                minDate = selDate;
+            }
+        }
+    } else if (paymentType === 'credit_sale') {
+        var poDate = '';
+        if ($('#party_po').is('select')) {
+            poDate = $('#party_po').find(':selected').data('date') || $('#party_po').find(':selected').attr('data-date');
+        } else if ($('#party_po').length) {
+            poDate = $('#party_po').data('date') || $('#party_po').attr('data-date');
+        }
+        if (poDate && poDate !== 'null' && poDate !== 'undefined') {
+            poDate = $.trim(poDate);
+            if (poDate) {
+                minDate = poDate;
+            }
+        }
+    }
+    return minDate;
+}
+
+function syncPoDateValidation(notifyUser) {
+    var minDate = getMinPoDate();
+    var $orderDate = $('#order_date');
+    if ($orderDate.length === 0) return;
+
+    if (minDate) {
+        $orderDate.attr('min', minDate);
+        var currentVal = $orderDate.val();
+        if (currentVal && currentVal < minDate) {
+            $orderDate.val(minDate);
+            if (notifyUser) {
+                var docLabel = ($('#page_type').val() === 'invoice') ? 'Invoice' : 'Delivery Challan';
+                sweeetalert(docLabel + ' date cannot be earlier than Purchase Order date (' + minDate + '). Date has been updated to ' + minDate, 'info', 2500);
+            }
+        }
+    } else {
+        var hasPo = $('#party_po').val();
+        var hasRows = $('#invoice_list tr').length > 0;
+        if (!hasPo && !hasRows) {
+            $orderDate.removeAttr('min');
+        }
+    }
+}
+
+$(document).on('change blur', '#order_date', function() {
+    var minDate = getMinPoDate();
+    if (minDate && $(this).val()) {
+        var val = $(this).val();
+        if (val < minDate) {
+            $(this).val(minDate);
+            var docLabel = ($('#page_type').val() === 'invoice') ? 'Invoice' : 'Delivery Challan';
+            sweeetalert(docLabel + ' date (' + val + ') cannot be earlier than Purchase Order date (' + minDate + ')', 'error', 2500);
+        }
+    }
+});
+
+$(document).ready(function() {
+    if (typeof syncPoDateValidation === 'function') {
+        syncPoDateValidation(false);
+    }
+});

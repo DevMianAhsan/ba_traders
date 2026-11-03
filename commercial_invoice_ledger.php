@@ -598,7 +598,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   <?php endif; ?>
                 </tbody>
                 <tfoot>
-                  <tr style="background: #e9ecef; font-weight: 700; border-top: 2px solid #454d55;">
+                  <!-- <tr style="background: #e9ecef; font-weight: 700; border-top: 2px solid #454d55;">
                     <td colspan="6" class="text-right font-weight-bold" style="font-size: 13px;">Totals:</td>
                     <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_qty > 0 ? number_format($tot_qty, 2) : '-' ?></td>
                     <td class="text-center font-weight-bold" style="font-size: 13px;">-</td>
@@ -609,7 +609,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <td class="text-right font-weight-bold text-primary" style="font-size: 14px;"><?= number_format($tot_debit) ?></td>
                     <td class="text-right font-weight-bold text-success" style="font-size: 14px;"><?= number_format($tot_credit) ?></td>
                     <td class="text-right font-weight-bold" style="font-size: 14px; color: <?= $running_bal > 0 ? '#dc3545' : '#28a745' ?>;"><?= number_format($running_bal) ?></td>
-                  </tr>
+                  </tr> -->
                   <tr>
                     <td colspan="11"></td>
                     <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Opening Balance</td>

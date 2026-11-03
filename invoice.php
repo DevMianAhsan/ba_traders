@@ -9,6 +9,11 @@ if (!empty($_REQUEST['edit_order_id'])) {
     }
     $fetchCustomer = !empty($fetchOrder['customer_id']) ? fetchRecord($dbc, "customers", "customer_id", $fetchOrder['customer_id']) : null;
     $customer_address_val = !empty($fetchOrder['customer_address']) ? $fetchOrder['customer_address'] : (!empty($fetchCustomer['customer_fbr_address']) ? $fetchCustomer['customer_fbr_address'] : ($fetchCustomer['customer_address'] ?? ''));
+    $inv_po_date_val = '';
+    if (!empty($fetchOrder['party_po'])) {
+        $po_rec = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '".mysqli_real_escape_string($dbc, $fetchOrder['party_po'])."' LIMIT 1"));
+        $inv_po_date_val = $po_rec['po_date'] ?? '';
+    }
 }
  
 ?>
@@ -25,7 +30,8 @@ if (!empty($_REQUEST['edit_order_id'])) {
                 <b class="text-center card-text pb-3"><?=!empty($_REQUEST['edit_order_id']) ? "Edit Commercial Invoice" : "Commercial Invoice"?></b>
            
              
-                 <a href="invoice.php" class="btn btn-admin float-right btn-sm">Add New</a>
+                 <a href="invoice.php" class="btn btn-admin float-right btn-sm ml-2">Add New</a>
+                 <a href="invoice_list.php" class="btn btn-admin2 float-right btn-sm"><i class="fe fe-list"></i> Invoice List</a>
               </div>
             </div>
   
@@ -44,9 +50,9 @@ if (!empty($_REQUEST['edit_order_id'])) {
               </div>
               <div class="col-md-2">
                 <label>Invoice Date</label>
-                <input type="text" name="order_date" id="order_date" value="<?=@empty($_REQUEST['edit_order_id'])?date('Y-m-d'):$fetchOrder['invoice_date']?>" readonly class="form-control">
+                <input type="date" name="order_date" id="order_date" value="<?=@empty($_REQUEST['edit_order_id'])?date('Y-m-d'):$fetchOrder['invoice_date']?>" <?=(!empty($inv_po_date_val)?'min="'.htmlspecialchars($inv_po_date_val).'"':'')?>  class="form-control">
               </div>
-              <input type="hidden" name="credit_sale_type" value="<?=@$credit_sale_type?>" id="credit_sale_type">
+              <input type="hidden" name="credit_sale_type" value="<?=@$fetchOrder['credit_sale_type'] ?: '30days'?>" id="credit_sale_type">
               <div class="col-sm-4">
                 <label>Customer Account</label>
                 <div class="input-group">
@@ -71,15 +77,40 @@ if (!empty($_REQUEST['edit_order_id'])) {
               <div class="col-sm-4">
                 <label>Party PO</label>
                 <div class="input-group">
-                  <?php if(@$fetchOrder['party_po']){ ?>
-                    <input type="text" readonly id="party_po" name="party_po" value="<?=$fetchOrder['party_po']?>" class="form-control">
-                  <?php } else { ?>
-                    <select id="party_po" name="party_po" class="form-control searchableSelect">
-                      <option> Select Customer first </option>
-                    </select>
-                  <?php } ?>
+                  <select id="party_po" name="party_po" class="form-control searchableSelect">
+                    <?php if (!empty($fetchOrder['customer_id'])): ?>
+                      <option value="">Select Party PO</option>
+                      <?php
+                        $cid = intval($fetchOrder['customer_id']);
+                        $pos_list = [];
+                        $qp = mysqli_query($dbc, "SELECT DISTINCT po_partypo, po_paymentdays, po_date FROM purchase_order WHERE po_customer = '$cid' ORDER BY po_id DESC");
+                        while ($rp = mysqli_fetch_assoc($qp)) {
+                          $p = trim($rp['po_partypo']);
+                          if ($p !== '') {
+                            $pos_list[$p] = ['days' => $rp['po_paymentdays'] ?? '30', 'date' => trim($rp['po_date'] ?? '')];
+                          }
+                        }
+                        $qo = mysqli_query($dbc, "SELECT DISTINCT party_po, credit_sale_type FROM orders WHERE customer_account = '$cid' AND party_po IS NOT NULL AND party_po != ''");
+                        while ($ro = mysqli_fetch_assoc($qo)) {
+                          $p = trim($ro['party_po']);
+                          if ($p !== '' && !isset($pos_list[$p])) {
+                            $pos_list[$p] = ['days' => !empty($ro['credit_sale_type']) ? intval($ro['credit_sale_type']) : '30', 'date' => ''];
+                          }
+                        }
+                        if (!empty($fetchOrder['party_po']) && !isset($pos_list[$fetchOrder['party_po']])) {
+                          $pos_list[$fetchOrder['party_po']] = ['days' => '30', 'date' => ''];
+                        }
+                        foreach ($pos_list as $po_val => $po_info):
+                          $sel = (!empty($fetchOrder['party_po']) && $fetchOrder['party_po'] == $po_val) ? 'selected' : '';
+                      ?>
+                        <option data-paymentdays="<?=$po_info['days']?>" data-date="<?=htmlspecialchars($po_info['date'])?>" value="<?=$po_val?>" <?=$sel?>><?=$po_val?></option>
+                      <?php endforeach; ?>
+                    <?php else: ?>
+                      <option value="">Select Customer first</option>
+                    <?php endif; ?>
+                  </select>
                   <div class="input-group-prepend">
-                    <button type="button" class="btn-sm btn-admin float-right" onclick="getpoDetails()">
+                    <button type="button" class="btn-sm btn-admin float-right" onclick="getpoDetails(true)">
                       <span class="fa fa-eye"></span>
                     </button>
                     <button type="button" class="btn-sm btn-admin float-right" onclick="addpoDetails()">
@@ -119,7 +150,17 @@ if (!empty($_REQUEST['edit_order_id'])) {
                         foreach ($invDetails['data'] as $k => $item):
                           $rowId = $k + 1;
                       ?>
-                      <tr id="product_idN_<?=$rowId?>">
+                      <?php
+                          $item_po_date = '';
+                          if (!empty($item['party_po'])) {
+                            $po_item_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '".mysqli_real_escape_string($dbc, $item['party_po'])."' LIMIT 1");
+                            if ($po_item_r = mysqli_fetch_assoc($po_item_q)) {
+                              $item_po_date = trim($po_item_r['po_date']);
+                            }
+                          }
+                      ?>
+                      <tr id="product_idN_<?=$rowId?>" data-po-date="<?=htmlspecialchars($item_po_date)?>">
+                        <input type="hidden" class="row_po_date" value="<?=htmlspecialchars($item_po_date)?>">
                         <input type="hidden" id="product_rate_<?=$rowId?>" name="party_po[]" value="<?=$item['party_po']?>">
                         <input type="hidden" id="product_rate_<?=$rowId?>" name="dc_no[]" value="<?=$item['dc_no']?>">
                         <input type="hidden" id="product_totalrate_<?=$rowId?>" name="po_amount[]" value="<?=$item['po_amount']?>">
@@ -196,6 +237,9 @@ if (!empty($_REQUEST['edit_order_id'])) {
   $(document).ready(function() {
     if (typeof getinvoiceTotal === 'function') {
       getinvoiceTotal();
+    }
+    if (typeof syncPoDateValidation === 'function') {
+      syncPoDateValidation(false);
     }
     $('#credit_order_client_name').on('change', function() {
       var addr = $(this).find(':selected').data('address') || '';

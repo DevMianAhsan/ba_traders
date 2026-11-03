@@ -5,6 +5,11 @@
 if (!empty($_REQUEST['edit_order_id'])) {
     # code...
     $fetchOrder=fetchRecord($dbc,"orders","order_id",base64_decode($_REQUEST['edit_order_id']));
+    $po_date_val = '';
+    if (!empty($fetchOrder['party_po'])) {
+        $po_rec = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '".mysqli_real_escape_string($dbc, $fetchOrder['party_po'])."' LIMIT 1"));
+        $po_date_val = $po_rec['po_date'] ?? '';
+    }
   }
  
 ?>
@@ -45,7 +50,7 @@ $next_increment = $data['Auto_increment']; ?>
                 <label>Order Date</label>
               
                
-                   <input type="text" name="order_date" id="order_date" value="<?=@empty($_REQUEST['edit_order_id'])?date('Y-m-d'):$fetchOrder['order_date']?>" readonly class="form-control">
+                   <input type="date" name="order_date" id="order_date" value="<?=@empty($_REQUEST['edit_order_id'])?date('Y-m-d'):$fetchOrder['order_date']?>" <?=(!empty($po_date_val)?'min="'.htmlspecialchars($po_date_val).'"':'')?>  class="form-control">
               </div>
               <input type="hidden" name="credit_sale_type" value="<?=@$credit_sale_type?>" id="credit_sale_type">
                       <div class="col-sm-3">
@@ -86,7 +91,7 @@ $next_increment = $data['Auto_increment']; ?>
                      <?php
                       if(@$fetchOrder['party_po']){
                         ?>
-                        <input type="text" readonly  id="party_po" name="party_po" value="<?=$fetchOrder['party_po']?>" class="form-control">
+                        <input type="text" readonly  id="party_po" name="party_po" value="<?=$fetchOrder['party_po']?>" data-date="<?=@htmlspecialchars($po_date_val)?>" class="form-control">
                         <?php
                       }else{
                         ?>
@@ -331,6 +336,14 @@ $next_increment = $data['Auto_increment']; ?>
 </html>
 
 <?php include_once 'includes/foot.php'; ?>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    if (typeof syncPoDateValidation === 'function') {
+      syncPoDateValidation(false);
+    }
+  });
+</script>
 
 
 <?php

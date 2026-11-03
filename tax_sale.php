@@ -930,14 +930,14 @@ if (!empty($tax_sale['customer_id'])) {
           <!-- Bottom Section: FBR and Signature -->
           <div class="footer-dual-box">
             <div class="fbr-box-inner">
-              <div class="d-flex align-items-center mb-1">
+              <!-- <div class="d-flex align-items-center mb-1">
                 <strong class="mr-2">FBR INVOICE NO. :</strong>
                 <input type="text" id="fbr_invoice_no_bottom" inputmode="numeric" class="inv-input font-weight-bold" style="width: 260px;" placeholder="Enter FBR Invoice Number" value="<?=@$tax_sale['fbr_invoice_no']?>">
                 <button type="button" class="btn btn-sm btn-outline-secondary ml-1" onclick="generateFBRNumber()" title="Generate Random FBR No">
                   <i class="fe fe-refresh-cw"></i>
                 </button>
               </div>
-              <small class="text-muted">THIS IS SYSTEM GENERATED SALESTAX INVOICE</small>
+              <small class="text-muted">THIS IS SYSTEM GENERATED SALESTAX INVOICE</small> -->
             </div>
 
             <div class="signature-area" style="margin-top: 0;">
