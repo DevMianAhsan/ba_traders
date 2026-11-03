@@ -180,6 +180,9 @@ if (empty($_REQUEST['type'])) {
 			  <?php if (@$userPrivileges['nav_edit']==1 || $fetchedUserRole=="admin"): ?>
                             <button type="button" class="btn btn-admin btn-sm" onclick="editCustomer(<?=$r['customer_id']?>)">Edit</button>
                <?php   endif ?>
+			  <?php if (@$userPrivileges['nav_delete']==1 || $fetchedUserRole=="admin"): ?>
+                            <button type="button" class="btn btn-danger btn-sm m-1" onclick="deleteAlert('<?=$r['customer_id']?>','customers','customer_id','tableData')">Delete</button>
+               <?php   endif ?>
 
               </td>            
 			
@@ -221,7 +224,7 @@ if (empty($_REQUEST['type'])) {
 					$('#customer_name').val(response.customer_name);
 					$('#customer_email').val(response.customer_email || '');
 					$('#customer_phone').val(response.customer_phone || '');
-					$('#customer_status').val(response.customer_status !== undefined ? response.customer_status : '1');
+					$('#customer_status').val(response.customer_status !== undefined ? response.customer_status : '1').trigger('change');
 					$('#customer_strn').val(response.customer_strn || '');
 					$('#customer_ntn').val(response.customer_ntn || '');
 					$('#customer_province').val(response.customer_province || '');
@@ -254,7 +257,7 @@ if (empty($_REQUEST['type'])) {
 		form[0].reset();
 		form.find('input[type="text"], input[type="number"], input[type="email"], textarea').val('');
 		$('#customer_id').val('');
-		$('#customer_status').val('1');
+		$('#customer_status').val('1').trigger('change');
 		$('#formData_btn').text('ADD').removeClass('btn-admin2').addClass('btn-admin');
 		$('#cancel_btn').hide();
 

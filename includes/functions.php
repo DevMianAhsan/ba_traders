@@ -258,6 +258,22 @@ return  mysqli_num_rows(mysqli_query($dbc,"SELECT * FROM $table WHERE $fld1='$da
 
 }  
 
+// Helper function to cache and get table columns safely
+function get_table_columns_list($dbc, $table) {
+  static $columns_cache = [];
+  $clean_table = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+  if (!isset($columns_cache[$clean_table])) {
+    $columns_cache[$clean_table] = [];
+    $res = @mysqli_query($dbc, "SHOW COLUMNS FROM `$clean_table`");
+    if ($res) {
+      while ($row = mysqli_fetch_assoc($res)) {
+        $columns_cache[$clean_table][$row['Field']] = true;
+      }
+    }
+  }
+  return $columns_cache[$clean_table];
+}
+
 //Insert Data Function
 
 function insert_data($dbc,$table,$data){
@@ -265,6 +281,12 @@ function insert_data($dbc,$table,$data){
   global $msg;
 
   global $sts;
+
+  // Filter out any columns that don't exist in the table schema to prevent MySQL 1054 Unknown column errors
+  $valid_cols = get_table_columns_list($dbc, $table);
+  if (!empty($valid_cols)) {
+    $data = array_intersect_key($data, $valid_cols);
+  }
 
   $fld=$values="";
 
@@ -315,6 +337,12 @@ function insert_data($dbc,$table,$data){
 //Update Data Function
 
 function update_data($dbc,$table,$data,$col,$val){
+
+  // Filter out any columns that don't exist in the table schema to prevent MySQL 1054 Unknown column errors
+  $valid_cols = get_table_columns_list($dbc, $table);
+  if (!empty($valid_cols)) {
+    $data = array_intersect_key($data, $valid_cols);
+  }
 
 $set_data="";
 

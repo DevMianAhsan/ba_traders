@@ -709,44 +709,82 @@ if (!empty($_REQUEST['product_ids'])) {
 
 	/*Purchase Order End*/
 if (isset($_REQUEST['add_manually_user'])) {
-		$data=[
-			'customer_name'=>@$_REQUEST['customer_name'],
-			'customer_phone'=>@$_REQUEST['customer_phone'],
-			'customer_email'=>@$_REQUEST['customer_email'],
-			'customer_address'=>@$_REQUEST['customer_address'],
-			'customer_fbr_address'=>@$_REQUEST['customer_fbr_address'],
-			'customer_strn'=>@$_REQUEST['customer_strn'],
-			'customer_ntn'=>@$_REQUEST['customer_ntn'],
-			'customer_province'=>@$_REQUEST['customer_province'],
-			'customer_cnic'=>@$_REQUEST['customer_cnic'],
-			'customer_status'=>@$_REQUEST['customer_status'],
-			'customer_type'=>@$_REQUEST['add_manually_user'],
+	try {
+		// Schema auto-migration: ensure customer_fbr_address, customer_strn, customer_ntn, customer_province, customer_cnic exist
+		$check_col = mysqli_query($dbc, "SHOW COLUMNS FROM `customers` LIKE 'customer_fbr_address'");
+		if ($check_col && mysqli_num_rows($check_col) == 0) {
+			@mysqli_query($dbc, "ALTER TABLE `customers` ADD COLUMN `customer_fbr_address` TEXT NULL AFTER `customer_address`");
+		}
+		$check_col2 = mysqli_query($dbc, "SHOW COLUMNS FROM `customers` LIKE 'customer_strn'");
+		if ($check_col2 && mysqli_num_rows($check_col2) == 0) {
+			@mysqli_query($dbc, "ALTER TABLE `customers` ADD COLUMN `customer_strn` VARCHAR(100) NULL");
+		}
+		$check_col3 = mysqli_query($dbc, "SHOW COLUMNS FROM `customers` LIKE 'customer_ntn'");
+		if ($check_col3 && mysqli_num_rows($check_col3) == 0) {
+			@mysqli_query($dbc, "ALTER TABLE `customers` ADD COLUMN `customer_ntn` VARCHAR(100) NULL");
+		}
+		$check_col4 = mysqli_query($dbc, "SHOW COLUMNS FROM `customers` LIKE 'customer_province'");
+		if ($check_col4 && mysqli_num_rows($check_col4) == 0) {
+			@mysqli_query($dbc, "ALTER TABLE `customers` ADD COLUMN `customer_province` VARCHAR(100) NULL");
+		}
+		$check_col5 = mysqli_query($dbc, "SHOW COLUMNS FROM `customers` LIKE 'customer_cnic'");
+		if ($check_col5 && mysqli_num_rows($check_col5) == 0) {
+			@mysqli_query($dbc, "ALTER TABLE `customers` ADD COLUMN `customer_cnic` VARCHAR(100) NULL");
+		}
+
+		$cust_type = !empty($_REQUEST['add_manually_user']) ? trim($_REQUEST['add_manually_user']) : 'customer';
+		$customer_name = !empty($_REQUEST['customer_name']) ? trim($_REQUEST['customer_name']) : '';
+		if ($customer_name === '') {
+			echo json_encode(['sts' => 'error', 'msg' => ucfirst($cust_type) . ' name is required']);
+			exit;
+		}
+
+		$data = [
+			'customer_name' => $customer_name,
+			'customer_phone' => isset($_REQUEST['customer_phone']) ? trim($_REQUEST['customer_phone']) : '',
+			'customer_email' => isset($_REQUEST['customer_email']) ? trim($_REQUEST['customer_email']) : '',
+			'customer_address' => isset($_REQUEST['customer_address']) ? trim($_REQUEST['customer_address']) : '',
+			'customer_fbr_address' => isset($_REQUEST['customer_fbr_address']) ? trim($_REQUEST['customer_fbr_address']) : '',
+			'customer_strn' => isset($_REQUEST['customer_strn']) ? trim($_REQUEST['customer_strn']) : '',
+			'customer_ntn' => isset($_REQUEST['customer_ntn']) ? trim($_REQUEST['customer_ntn']) : '',
+			'customer_province' => isset($_REQUEST['customer_province']) ? trim($_REQUEST['customer_province']) : '',
+			'customer_cnic' => isset($_REQUEST['customer_cnic']) ? trim($_REQUEST['customer_cnic']) : '',
+			'customer_status' => isset($_REQUEST['customer_status']) ? intval($_REQUEST['customer_status']) : 1,
+			'customer_type' => $cust_type,
 		];
-	if ($_REQUEST['customer_id']=="") {
 
+		if (empty($_REQUEST['customer_id'])) {
 			if (insert_data($dbc, "customers", $data)) {
-
-			
-				$res=['msg'=>ucfirst($_REQUEST['add_manually_user'])." Added Successfully",'sts'=>'success'];
-
-				}else{
-
-					$res=['msg'=>mysqli_error($dbc),'sts'=>'error'];
-				}
-
-	}else{
-				if (update_data($dbc,"customers", $data, "customer_id", $_REQUEST['customer_id'])) {
-
-				
-					$res=['msg'=>ucfirst($_REQUEST['add_manually_user'])." Updated Successfully",'sts'=>'success'];
-
-				}else{
-
-					$res=['msg'=>mysqli_error($dbc),'sts'=>'error'];
-				}
-
+				$last_id = mysqli_insert_id($dbc);
+				$res = [
+					'msg' => ucfirst($cust_type) . " Added Successfully",
+					'sts' => 'success',
+					'id' => $last_id
+				];
+			} else {
+				$res = ['msg' => mysqli_error($dbc) ?: 'Failed to add ' . $cust_type, 'sts' => 'error'];
+			}
+		} else {
+			$cid = intval($_REQUEST['customer_id']);
+			if (update_data($dbc, "customers", $data, "customer_id", $cid)) {
+				$res = [
+					'msg' => ucfirst($cust_type) . " Updated Successfully",
+					'sts' => 'success',
+					'id' => $cid
+				];
+			} else {
+				$res = ['msg' => mysqli_error($dbc) ?: 'Failed to update ' . $cust_type, 'sts' => 'error'];
+			}
+		}
+		echo json_encode($res);
+		exit;
+	} catch (\Throwable $e) {
+		echo json_encode([
+			'sts' => 'error',
+			'msg' => 'Error: ' . $e->getMessage()
+		]);
+		exit;
 	}
-echo json_encode($res);
 }
 
 if (isset($_REQUEST['new_voucher_date'])) {
@@ -2347,12 +2385,10 @@ echo json_encode($response);
 
 
 if(isset($_REQUEST['LimitCustomerajax'])){
-	$cust = $_REQUEST['LimitCustomerajax'];
+	$cust = intval($_REQUEST['LimitCustomerajax']);
 	$check = mysqli_query($dbc,"SELECT * FROM checks WHERE customer_id = '$cust' AND voucher_id = 0 AND check_amount != 0");
-	//echo "SELECT * FROM checks WHERE customer_id = '$cust' AND voucher_id = 0 AND check_amount != 0";
-	if(mysqli_num_rows($check)>0){
+	if($check && mysqli_num_rows($check)>0){
 	$qq = mysqli_fetch_assoc($check);
-		//print_r($qq);
 		$response=[
 			'check_no' => $qq['check_no'],
 			'bank_name' => $qq['check_bank_name'],
@@ -2361,14 +2397,13 @@ if(isset($_REQUEST['LimitCustomerajax'])){
 			'check_amount' => $qq['check_amount'],
 			'check_location' => $qq['check_location'],
 			'sts' 			=> 'success',
-
 		];
 	}else{
-		$response = '';
-		}
-
+		$response = ['sts' => 'error', 'msg' => 'No limit checks found'];
+	}
 
 	echo json_encode($response);
+	exit;
 }
 
 if(isset($_REQUEST['getCustomerLimit'])){
@@ -2778,17 +2813,17 @@ if (isset($_REQUEST['fetch_customer_details'])) {
         echo json_encode([
             'sts' => 'success',
             'customer_id' => $cdata['customer_id'],
-            'customer_name' => $cdata['customer_name'],
-            'customer_email' => $cdata['customer_email'],
-            'customer_phone' => $cdata['customer_phone'],
-            'customer_address' => $cdata['customer_address'],
+            'customer_name' => $cdata['customer_name'] ?? '',
+            'customer_email' => $cdata['customer_email'] ?? '',
+            'customer_phone' => $cdata['customer_phone'] ?? '',
+            'customer_address' => $cdata['customer_address'] ?? '',
             'customer_fbr_address' => $cdata['customer_fbr_address'] ?? '',
-            'customer_strn' => $cdata['customer_strn'],
-            'customer_ntn' => $cdata['customer_ntn'],
-            'customer_province' => $cdata['customer_province'],
-            'customer_cnic' => $cdata['customer_cnic'],
-            'customer_status' => $cdata['customer_status'],
-            'customer_type' => $cdata['customer_type']
+            'customer_strn' => $cdata['customer_strn'] ?? '',
+            'customer_ntn' => $cdata['customer_ntn'] ?? '',
+            'customer_province' => $cdata['customer_province'] ?? '',
+            'customer_cnic' => $cdata['customer_cnic'] ?? '',
+            'customer_status' => $cdata['customer_status'] ?? '1',
+            'customer_type' => $cdata['customer_type'] ?? 'customer'
         ]);
     } else {
         echo json_encode(['sts' => 'error', 'msg' => 'Customer not found']);

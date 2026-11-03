@@ -144,8 +144,20 @@ if (e.altKey && e.which == 80) {
                }
                sweeetalert(response.msg,response.sts,1500);
             },
-            error: function() {
+            error: function(xhr, status, error) {
                submitBtn.prop("disabled",false);
+               var errDetail = error;
+               try {
+                 if (xhr.responseText) {
+                   var parsed = JSON.parse(xhr.responseText);
+                   if (parsed && parsed.msg) errDetail = parsed.msg;
+                 }
+               } catch(e) {
+                 if (xhr.responseText && xhr.responseText.length < 200) {
+                   errDetail = xhr.responseText.replace(/<[^>]*>?/gm, '').trim();
+                 }
+               }
+               sweeetalert("An error occurred: " + (errDetail || error || status), "error", 3500);
             }
         });//ajax call
     });//main
@@ -200,8 +212,20 @@ if (e.altKey && e.which == 80) {
                }
                sweeetalert(response.msg,response.sts,1500);
             },
-            error: function() {
+            error: function(xhr, status, error) {
                submitBtn.prop("disabled",false);
+               var errDetail = error;
+               try {
+                 if (xhr.responseText) {
+                   var parsed = JSON.parse(xhr.responseText);
+                   if (parsed && parsed.msg) errDetail = parsed.msg;
+                 }
+               } catch(e) {
+                 if (xhr.responseText && xhr.responseText.length < 200) {
+                   errDetail = xhr.responseText.replace(/<[^>]*>?/gm, '').trim();
+                 }
+               }
+               sweeetalert("An error occurred: " + (errDetail || error || status), "error", 3500);
             }
         });//ajax call
     });//main
