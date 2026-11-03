@@ -245,6 +245,13 @@ if (!empty($_REQUEST['edit_order_id'])) {
       var addr = $(this).find(':selected').data('address') || '';
       $('#customer_address').val(addr);
     });
+    $('#party_po').on('change', function() {
+      var days = $(this).find(':selected').data('paymentdays');
+      if (days) {
+        var dStr = String(days).replace(/[^0-9]/g, '');
+        if (dStr) $('#credit_sale_type').val(dStr + 'days');
+      }
+    });
   });
 </script>
 

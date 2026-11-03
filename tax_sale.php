@@ -1687,7 +1687,16 @@ if (!empty($tax_sale['customer_id'])) {
         },
         error: function(xhr, status, err) {
           btn.prop('disabled', false);
-          Swal.fire('Error', 'Server error: ' + err, 'error');
+          var errMsg = 'Server error: ' + err;
+          if (xhr.responseText) {
+            try {
+              var json = JSON.parse(xhr.responseText);
+              if (json.msg) errMsg = json.msg;
+            } catch(e) {
+              errMsg = 'Server error: ' + (xhr.statusText || err);
+            }
+          }
+          Swal.fire('Error', errMsg, 'error');
         }
       });
     });

@@ -383,7 +383,18 @@ if (e.altKey && e.which == 80) {
             error: function(xhr, status, error) {
               $('#sale_order_btn').prop("disabled",false);
               $('#sale_order_print').prop("disabled",false);
-              sweeetalert("An unexpected error occurred: " + error, "error", 2500);
+              var errDetail = error;
+              try {
+                if (xhr.responseText) {
+                  var parsed = JSON.parse(xhr.responseText);
+                  if (parsed && parsed.msg) errDetail = parsed.msg;
+                }
+              } catch(e) {
+                if (xhr.responseText && xhr.responseText.length < 200) {
+                  errDetail = xhr.responseText.replace(/<[^>]*>?/gm, '').trim();
+                }
+              }
+              sweeetalert("An unexpected error occurred: " + (errDetail || error || status), "error", 3500);
             }
         });//ajax call
     });//main

@@ -8,204 +8,236 @@
 //print_r($_REQUEST);
 //if(isset($_REQUEST['page_type'] == 'invoice')){
 	if (isset($_REQUEST['page_type']) && $_REQUEST['page_type'] == 'invoice' && !isset($_REQUEST['get_party_po']) && !isset($_REQUEST['getpodinvoice'])) {
-		if (empty($_REQUEST['customer_account'])) {
-			echo json_encode(['sts' => 'error', 'msg' => 'Please select a Customer Account']);
-			exit;
-		}
-
-		// Date validation: invoice date cannot be less than purchase order date
-		$inv_order_date = !empty($_REQUEST['order_date']) ? trim($_REQUEST['order_date']) : '';
-		$inv_order_ts = !empty($inv_order_date) ? strtotime($inv_order_date) : false;
-		if ($inv_order_ts !== false) {
-			$check_pos = [];
-			if (!empty($_REQUEST['party_po'])) {
-				if (is_array($_REQUEST['party_po'])) {
-					foreach ($_REQUEST['party_po'] as $p) {
-						$p = trim($p);
-						if ($p !== '' && !in_array($p, $check_pos)) $check_pos[] = $p;
-					}
-				} else {
-					$p = trim($_REQUEST['party_po']);
-					if ($p !== '') $check_pos[] = $p;
-				}
+		try {
+			if (empty($_REQUEST['customer_account'])) {
+				echo json_encode(['sts' => 'error', 'msg' => 'Please select a Customer Account']);
+				exit;
 			}
-			if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
-				foreach ($_REQUEST['dc_no'] as $dc_id) {
-					$dc_id = intval($dc_id);
-					if ($dc_id > 0) {
-						$dc_q = mysqli_query($dbc, "SELECT party_po FROM orders WHERE order_id = '$dc_id' LIMIT 1");
-						if ($dc_r = mysqli_fetch_assoc($dc_q)) {
-							$p = trim($dc_r['party_po']);
+
+			// Date validation: invoice date cannot be less than purchase order date
+			$inv_order_date = !empty($_REQUEST['order_date']) ? trim($_REQUEST['order_date']) : '';
+			$inv_order_ts = !empty($inv_order_date) ? strtotime($inv_order_date) : false;
+			if ($inv_order_ts !== false) {
+				$check_pos = [];
+				if (!empty($_REQUEST['party_po'])) {
+					if (is_array($_REQUEST['party_po'])) {
+						foreach ($_REQUEST['party_po'] as $p) {
+							$p = trim($p);
 							if ($p !== '' && !in_array($p, $check_pos)) $check_pos[] = $p;
 						}
+					} else {
+						$p = trim($_REQUEST['party_po']);
+						if ($p !== '') $check_pos[] = $p;
+					}
+				}
+				if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
+					foreach ($_REQUEST['dc_no'] as $dc_id) {
+						$dc_id = intval($dc_id);
+						if ($dc_id > 0) {
+							$dc_q = mysqli_query($dbc, "SELECT party_po FROM orders WHERE order_id = '$dc_id' LIMIT 1");
+							if ($dc_q && ($dc_r = mysqli_fetch_assoc($dc_q))) {
+								$p = trim($dc_r['party_po']);
+								if ($p !== '' && !in_array($p, $check_pos)) $check_pos[] = $p;
+							}
+						}
+					}
+				}
+				foreach ($check_pos as $p) {
+					$p_clean = mysqli_real_escape_string($dbc, $p);
+					$po_date_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '$p_clean' LIMIT 1");
+					if ($po_date_q && ($po_date_r = mysqli_fetch_assoc($po_date_q))) {
+						$po_date = trim($po_date_r['po_date']);
+						$po_ts = !empty($po_date) ? strtotime($po_date) : false;
+						if ($po_ts !== false && $inv_order_ts < $po_ts) {
+							echo json_encode([
+								'msg' => "Invoice date (" . date('d/m/Y', $inv_order_ts) . ") cannot be earlier than Purchase Order date (" . date('d/m/Y', $po_ts) . ")",
+								'sts' => 'error'
+							]);
+							exit;
+						}
 					}
 				}
 			}
-			foreach ($check_pos as $p) {
-				$p_clean = mysqli_real_escape_string($dbc, $p);
-				$po_date_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '$p_clean' LIMIT 1");
-				if ($po_date_r = mysqli_fetch_assoc($po_date_q)) {
-					$po_date = trim($po_date_r['po_date']);
-					$po_ts = !empty($po_date) ? strtotime($po_date) : false;
-					if ($po_ts !== false && $inv_order_ts < $po_ts) {
-						echo json_encode([
-							'msg' => "Invoice date (" . date('d/m/Y', $inv_order_ts) . ") cannot be earlier than Purchase Order date (" . date('d/m/Y', $po_ts) . ")",
-							'sts' => 'error'
-						]);
-						exit;
+			if (empty($_REQUEST['dc_no']) || !is_array($_REQUEST['dc_no']) || count($_REQUEST['dc_no']) === 0) {
+				echo json_encode(['sts' => 'error', 'msg' => 'Please add at least one Delivery Challan to the Invoice']);
+				exit;
+			}
+
+			$res = ['data' => []];
+			for ($i = 0; $i < count($_REQUEST['dc_no']); $i++) { 
+				$res['data'][$i] = [
+					'sr' => $i,
+					'party_po' => is_array($_REQUEST['party_po']) ? ($_REQUEST['party_po'][$i] ?? $_REQUEST['party_po'][0]) : $_REQUEST['party_po'],
+					'dc_no' => $_REQUEST['dc_no'][$i],
+					'po_amount' => $_REQUEST['po_amount'][$i]
+				];
+			}
+
+			$party_po_val = '';
+			if (!empty($_REQUEST['party_po'])) {
+				$party_po_val = is_array($_REQUEST['party_po']) ? $_REQUEST['party_po'][0] : $_REQUEST['party_po'];
+			}
+
+			// Fetch po_paymentdays from purchase_order table for this party_po
+			$credit_sale_type = '30days';
+			if (!empty($party_po_val)) {
+				$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
+				$po_q = mysqli_query($dbc, "SELECT po_paymentdays FROM purchase_order WHERE po_partypo = '$po_party_clean' LIMIT 1");
+				if ($po_q && ($po_row = mysqli_fetch_assoc($po_q))) {
+					$days_num = intval(filter_var($po_row['po_paymentdays'], FILTER_SANITIZE_NUMBER_INT));
+					if ($days_num > 0) {
+						$credit_sale_type = $days_num . 'days';
 					}
 				}
+			} elseif (!empty($_REQUEST['credit_sale_type'])) {
+				$credit_sale_type = trim($_REQUEST['credit_sale_type']);
 			}
-		}
-		if (empty($_REQUEST['dc_no']) || !is_array($_REQUEST['dc_no']) || count($_REQUEST['dc_no']) === 0) {
-			echo json_encode(['sts' => 'error', 'msg' => 'Please add at least one Delivery Challan to the Invoice']);
+
+			$sub_total = 0;
+			if (!empty($_REQUEST['po_amount'])) {
+				foreach ($_REQUEST['po_amount'] as $amt) {
+					$sub_total += floatval($amt);
+				}
+			}
+
+			$discount_val = isset($_REQUEST['ordered_discount']) ? $_REQUEST['ordered_discount'] : 0;
+			$freight_val = isset($_REQUEST['freight']) ? $_REQUEST['freight'] : 0;
+			$total_amount_val = !empty($_REQUEST['total_amount']) ? $_REQUEST['total_amount'] : $sub_total;
+			$grand_total_val = (isset($_REQUEST['grand_total']) && $_REQUEST['grand_total'] !== '') ? $_REQUEST['grand_total'] : $total_amount_val;
+			$order_narration = !empty($_REQUEST['order_narration']) ? trim($_REQUEST['order_narration']) : '';
+			$customer_address = !empty($_REQUEST['customer_address']) ? trim($_REQUEST['customer_address']) : '';
+			$user_id_val = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
+
+			// Schema auto-migration: ensure customer_address exists and grand_total is large enough
+			$check_col = mysqli_query($dbc, "SHOW COLUMNS FROM `invoices` LIKE 'customer_address'");
+			if ($check_col && mysqli_num_rows($check_col) == 0) {
+				@mysqli_query($dbc, "ALTER TABLE `invoices` ADD COLUMN `customer_address` TEXT NULL AFTER `customer_id`");
+			}
+			@mysqli_query($dbc, "ALTER TABLE `invoices` MODIFY `grand_total` VARCHAR(255) DEFAULT '0'");
+
+			// Fetch existing columns in invoices table to prevent unknown column exceptions
+			$existing_cols = [];
+			$cols_res = mysqli_query($dbc, "SHOW COLUMNS FROM `invoices`");
+			if ($cols_res) {
+				while ($c_row = mysqli_fetch_assoc($cols_res)) {
+					$existing_cols[$c_row['Field']] = true;
+				}
+			}
+
+			if (!empty($_REQUEST['product_order_id'])) {
+				$invoice_id = intval($_REQUEST['product_order_id']);
+				$fetchInv = fetchRecord($dbc, 'invoices', 'invoice_id', $invoice_id);
+				$transaction_id = (!empty($fetchInv) && !empty($fetchInv['transaction_id'])) ? intval($fetchInv['transaction_id']) : 0;
+
+				$data = [
+					'customer_id' => intval($_REQUEST['customer_account']),
+					'customer_address' => $customer_address,
+					'invoice_date' => !empty($_REQUEST['order_date']) ? trim($_REQUEST['order_date']) : date('Y-m-d'),
+					'total_amount' => strval($total_amount_val),
+					'discount' => strval($discount_val),
+					'freight' => strval($freight_val),
+					'grand_total' => strval($grand_total_val),
+					'order_narration' => $order_narration,
+					'user_id' => $user_id_val,
+					'party_po' => strval($party_po_val),
+					'credit_sale_type' => strval($credit_sale_type),
+					'invoice_details' => json_encode($res),
+					'transaction_id' => $transaction_id
+				];
+
+				if (!empty($existing_cols)) {
+					$data = array_intersect_key($data, $existing_cols);
+				}
+
+				if (update_data($dbc, 'invoices', $data, 'invoice_id', $invoice_id)) {
+					// Sync payment days to Delivery Challans (orders)
+					if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
+						foreach ($_REQUEST['dc_no'] as $dc_id) {
+							$dc_id = intval($dc_id);
+							if ($dc_id > 0) {
+								@mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE order_id = '$dc_id'");
+							}
+						}
+					}
+					if (!empty($party_po_val)) {
+						$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
+						@mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE party_po = '$po_party_clean'");
+					}
+
+					$data = [
+						'sts' => 'success',
+						'msg' => 'Invoice Updated successfully',
+						'order_id' => $invoice_id,
+						'type' => 'invoice'
+					];
+				} else {
+					$data = [
+						'sts' => 'error',
+						'msg' => mysqli_error($dbc) ?: 'Failed to update invoice',
+					];
+				}
+			} else {
+				// Commercial invoice adds record only (no transaction created)
+				$data = [
+					'customer_id' => intval($_REQUEST['customer_account']),
+					'customer_address' => $customer_address,
+					'invoice_date' => !empty($_REQUEST['order_date']) ? trim($_REQUEST['order_date']) : date('Y-m-d'),
+					'total_amount' => strval($total_amount_val),
+					'discount' => strval($discount_val),
+					'freight' => strval($freight_val),
+					'grand_total' => strval($grand_total_val),
+					'order_narration' => $order_narration,
+					'user_id' => $user_id_val,
+					'party_po' => strval($party_po_val),
+					'credit_sale_type' => strval($credit_sale_type),
+					'invoice_details' => json_encode($res),
+					'transaction_id' => 0
+				];
+
+				if (!empty($existing_cols)) {
+					$data = array_intersect_key($data, $existing_cols);
+				}
+
+				if (insert_data($dbc, 'invoices', $data)) {
+					$invoice_id = mysqli_insert_id($dbc);
+
+					// Sync payment days to Delivery Challans (orders)
+					if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
+						foreach ($_REQUEST['dc_no'] as $dc_id) {
+							$dc_id = intval($dc_id);
+							if ($dc_id > 0) {
+								@mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE order_id = '$dc_id'");
+							}
+						}
+					}
+					if (!empty($party_po_val)) {
+						$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
+						@mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE party_po = '$po_party_clean'");
+					}
+
+					$data = [
+						'sts' => 'success',
+						'msg' => 'Invoice Added successfully',
+						'order_id' => $invoice_id,
+						'type' => 'invoice'
+					];
+				} else {
+					$data = [
+						'sts' => 'error',
+						'msg' => mysqli_error($dbc) ?: 'Failed to insert invoice',
+					];
+				}
+			}
+
+			echo json_encode($data);
+			exit;
+		} catch (\Throwable $e) {
+			echo json_encode([
+				'sts' => 'error',
+				'msg' => 'Server Error: ' . $e->getMessage()
+			]);
 			exit;
 		}
-
-		$res = ['data' => []];
-		for ($i = 0; $i < count($_REQUEST['dc_no']); $i++) { 
-			$res['data'][$i] = [
-				'sr' => $i,
-				'party_po' => is_array($_REQUEST['party_po']) ? ($_REQUEST['party_po'][$i] ?? $_REQUEST['party_po'][0]) : $_REQUEST['party_po'],
-				'dc_no' => $_REQUEST['dc_no'][$i],
-				'po_amount' => $_REQUEST['po_amount'][$i]
-			];
-		}
-
-		$party_po_val = '';
-		if (!empty($_REQUEST['party_po'])) {
-			$party_po_val = is_array($_REQUEST['party_po']) ? $_REQUEST['party_po'][0] : $_REQUEST['party_po'];
-		}
-
-		// Fetch po_paymentdays from purchase_order table for this party_po
-		$credit_sale_type = '30days';
-		if (!empty($party_po_val)) {
-			$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
-			$po_q = mysqli_query($dbc, "SELECT po_paymentdays FROM purchase_order WHERE po_partypo = '$po_party_clean' LIMIT 1");
-			if ($po_row = mysqli_fetch_assoc($po_q)) {
-				$days_num = intval(filter_var($po_row['po_paymentdays'], FILTER_SANITIZE_NUMBER_INT));
-				if ($days_num > 0) {
-					$credit_sale_type = $days_num . 'days';
-				}
-			}
-		} elseif (!empty($_REQUEST['credit_sale_type'])) {
-			$credit_sale_type = $_REQUEST['credit_sale_type'];
-		}
-
-		$sub_total = 0;
-		if (!empty($_REQUEST['po_amount'])) {
-			foreach ($_REQUEST['po_amount'] as $amt) {
-				$sub_total += floatval($amt);
-			}
-		}
-
-		$discount_val = isset($_REQUEST['ordered_discount']) ? $_REQUEST['ordered_discount'] : 0;
-		$freight_val = isset($_REQUEST['freight']) ? $_REQUEST['freight'] : 0;
-		$total_amount_val = !empty($_REQUEST['total_amount']) ? $_REQUEST['total_amount'] : $sub_total;
-		$grand_total_val = (isset($_REQUEST['grand_total']) && $_REQUEST['grand_total'] !== '') ? floatval($_REQUEST['grand_total']) : $total_amount_val;
-		$order_narration = !empty($_REQUEST['order_narration']) ? trim($_REQUEST['order_narration']) : '';
-		$customer_address = !empty($_REQUEST['customer_address']) ? trim($_REQUEST['customer_address']) : '';
-		$user_id_val = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
-
-		if (!empty($_REQUEST['product_order_id'])) {
-			$invoice_id = intval($_REQUEST['product_order_id']);
-			$fetchInv = fetchRecord($dbc, 'invoices', 'invoice_id', $invoice_id);
-			$transaction_id = !empty($fetchInv['transaction_id']) ? intval($fetchInv['transaction_id']) : 0;
-
-			$data = [
-				'customer_id' => $_REQUEST['customer_account'],
-				'customer_address' => $customer_address,
-				'invoice_date' => $_REQUEST['order_date'],
-				'total_amount' => $total_amount_val,
-				'discount' => $discount_val,
-				'freight' => $freight_val,
-				'grand_total' => $grand_total_val,
-				'order_narration' => $order_narration,
-				'user_id' => $user_id_val,
-				'party_po' => $party_po_val,
-				'credit_sale_type' => $credit_sale_type,
-				'invoice_details' => json_encode($res),
-				'transaction_id' => $transaction_id
-			];
-
-			if (update_data($dbc, 'invoices', $data, 'invoice_id', $invoice_id)) {
-				// Sync payment days to Delivery Challans (orders)
-				if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
-					foreach ($_REQUEST['dc_no'] as $dc_id) {
-						$dc_id = intval($dc_id);
-						if ($dc_id > 0) {
-							mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE order_id = '$dc_id'");
-						}
-					}
-				}
-				if (!empty($party_po_val)) {
-					$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
-					mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE party_po = '$po_party_clean'");
-				}
-
-				$data = [
-					'sts' => 'success',
-					'msg' => 'Invoice Updated successfully',
-					'order_id' => $invoice_id,
-					'type' => 'invoice'
-				];
-			} else {
-				$data = [
-					'sts' => 'error',
-					'msg' => mysqli_error($dbc),
-				];
-			}
-		} else {
-			// Commercial invoice adds record only (no transaction created)
-			$data = [
-				'customer_id' => $_REQUEST['customer_account'],
-				'customer_address' => $customer_address,
-				'invoice_date' => $_REQUEST['order_date'],
-				'total_amount' => $total_amount_val,
-				'discount' => $discount_val,
-				'freight' => $freight_val,
-				'grand_total' => $grand_total_val,
-				'order_narration' => $order_narration,
-				'user_id' => $user_id_val,
-				'party_po' => $party_po_val,
-				'credit_sale_type' => $credit_sale_type,
-				'invoice_details' => json_encode($res),
-				'transaction_id' => 0
-			];
-
-			if (insert_data($dbc, 'invoices', $data)) {
-				$invoice_id = mysqli_insert_id($dbc);
-
-				// Sync payment days to Delivery Challans (orders)
-				if (!empty($_REQUEST['dc_no']) && is_array($_REQUEST['dc_no'])) {
-					foreach ($_REQUEST['dc_no'] as $dc_id) {
-						$dc_id = intval($dc_id);
-						if ($dc_id > 0) {
-							mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE order_id = '$dc_id'");
-						}
-					}
-				}
-				if (!empty($party_po_val)) {
-					$po_party_clean = mysqli_real_escape_string($dbc, $party_po_val);
-					mysqli_query($dbc, "UPDATE orders SET credit_sale_type = '$credit_sale_type' WHERE party_po = '$po_party_clean'");
-				}
-
-				$data = [
-					'sts' => 'success',
-					'msg' => 'Invoice Added successfully',
-					'order_id' => $invoice_id,
-					'type' => 'invoice'
-				];
-			} else {
-				$data = [
-					'sts' => 'error',
-					'msg' => mysqli_error($dbc),
-				];
-			}
-		}
-
-		echo json_encode($data);
-		exit;
 	}
 
 	/*Invocie end*/
@@ -215,13 +247,21 @@
 		if(!empty($party_po)){
 			$po_date_q = mysqli_query($dbc, "SELECT po_date FROM purchase_order WHERE po_partypo = '$party_po' LIMIT 1");
 			$po_date = '';
-			if ($po_date_r = mysqli_fetch_assoc($po_date_q)) {
+			if ($po_date_q && ($po_date_r = mysqli_fetch_assoc($po_date_q))) {
 				$po_date = trim($po_date_r['po_date']);
 			}
 
-			$q = mysqli_query($dbc,"SELECT party_po, grand_total as totalamount , order_id as dc_no FROM orders WHERE party_po = '$party_po'  ");
+			$cust_filter = '';
+			if (!empty($_REQUEST['customer_id'])) {
+				$cust_id = intval($_REQUEST['customer_id']);
+				if ($cust_id > 0) {
+					$cust_filter = " AND customer_account = '$cust_id' ";
+				}
+			}
+
+			$q = mysqli_query($dbc, "SELECT party_po, grand_total as totalamount, order_id as dc_no FROM orders WHERE party_po = '$party_po' {$cust_filter} ORDER BY order_id ASC");
 			
-			if(mysqli_num_rows($q) > 0){
+			if($q && mysqli_num_rows($q) > 0){
 				$data_rows = [];
 				while($r4 = mysqli_fetch_assoc($q)):
 					$data_rows[] = $r4;
@@ -350,43 +390,42 @@ GROUP BY
 
 		$is_invoice = (isset($_REQUEST['page_type']) && $_REQUEST['page_type'] == 'invoice');
 
-		if ($is_invoice) {
-			$q = mysqli_query($dbc, "
-				SELECT p.*
-				FROM purchase_order p
-				WHERE p.po_customer = '$customer_id'
-				AND NOT EXISTS (
-					SELECT 1
-					FROM invoices i
-					WHERE i.party_po = p.po_partypo
-					AND i.customer_id = p.po_customer
-				)
-				ORDER BY p.po_id DESC
-			");
-		} else {
-			$q = mysqli_query($dbc, "
-				SELECT p.*
-				FROM purchase_order p
-				WHERE p.po_customer = '$customer_id'
-				ORDER BY p.po_id DESC
-			");
+		$pos_map = [];
+		// Fetch from purchase_order
+		$qp = mysqli_query($dbc, "SELECT po_partypo, po_paymentdays, po_date FROM purchase_order WHERE po_customer = '$customer_id' ORDER BY po_id DESC");
+		if ($qp) {
+			while ($r = mysqli_fetch_assoc($qp)) {
+				$po = trim($r['po_partypo']);
+				if ($po !== '' && !isset($pos_map[$po])) {
+					$pos_map[$po] = [
+						'days' => $r['po_paymentdays'] ?? '30',
+						'date' => trim($r['po_date'] ?? '')
+					];
+				}
+			}
 		}
 
-		if($q && mysqli_num_rows($q) > 0){
-			$emitted = [];
-			while ($r = mysqli_fetch_assoc($q)) {
-				$po = trim($r['po_partypo']);
-				if ($po === '' || in_array($po, $emitted)) {
-					continue;
+		// Also fetch from orders for this customer (e.g. Delivery Challans that have a party_po)
+		$qo = mysqli_query($dbc, "SELECT DISTINCT party_po, credit_sale_type FROM orders WHERE customer_account = '$customer_id' AND party_po IS NOT NULL AND party_po != '' ORDER BY order_id DESC");
+		if ($qo) {
+			while ($ro = mysqli_fetch_assoc($qo)) {
+				$po = trim($ro['party_po']);
+				if ($po !== '' && !isset($pos_map[$po])) {
+					$days = !empty($ro['credit_sale_type']) ? intval($ro['credit_sale_type']) : '30';
+					$pos_map[$po] = [
+						'days' => $days ?: '30',
+						'date' => ''
+					];
 				}
-				$emitted[] = $po;
-				$po_dt = trim($r['po_date']);
-				echo '<option data-paymentdays="'.$r['po_paymentdays'].'" data-date="'.$po_dt.'" value="'.$po.'">'.$po.'</option>';
 			}
-			if (empty($emitted)) {
-				echo '<option value="">Not Found</option>';
+		}
+
+		if (!empty($pos_map)) {
+			echo '<option value="">Select Party PO</option>';
+			foreach ($pos_map as $po => $pinfo) {
+				echo '<option data-paymentdays="'.$pinfo['days'].'" data-date="'.htmlspecialchars($pinfo['date']).'" value="'.htmlspecialchars($po).'">'.htmlspecialchars($po).'</option>';
 			}
-		}else{
+		} else {
 			echo '<option value="">Not Found</option>';
 		}
 		exit;
@@ -2345,173 +2384,237 @@ if(isset($_REQUEST['getCustomerLimit'])){
  * Tax Sale Invoice Handler
  * ------------------------------------------------------------- */
 if (isset($_REQUEST['tax_sale_action']) && $_REQUEST['tax_sale_action'] == 'save_tax_sale') {
-    $tax_sale_id = !empty($_REQUEST['tax_sale_id']) ? intval($_REQUEST['tax_sale_id']) : 0;
-    
-    $customer_id = !empty($_REQUEST['customer_id']) ? intval($_REQUEST['customer_id']) : NULL;
-    $company_id = !empty($_REQUEST['company_id']) ? intval($_REQUEST['company_id']) : 5;
+    try {
+        $tax_sale_id = !empty($_REQUEST['tax_sale_id']) ? intval($_REQUEST['tax_sale_id']) : 0;
+        
+        $customer_id = !empty($_REQUEST['customer_id']) ? intval($_REQUEST['customer_id']) : 0;
+        $company_id = !empty($_REQUEST['company_id']) ? intval($_REQUEST['company_id']) : 5;
 
-    $invoice_no = !empty($_REQUEST['invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['invoice_no'])) : '';
-    $invoice_date = !empty($_REQUEST['invoice_date']) ? $_REQUEST['invoice_date'] : date('Y-m-d');
-    $time_of_supply = !empty($_REQUEST['time_of_supply']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['time_of_supply'])) : '';
-    $payment_terms = !empty($_REQUEST['payment_terms']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['payment_terms'])) : 'CREDIT';
-    $copy_type = !empty($_REQUEST['copy_type']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['copy_type'])) : 'ORIGINAL';
-    $header_description = !empty($_REQUEST['header_description']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['header_description'])) : '';
-    $po_no = !empty($_REQUEST['po_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['po_no'])) : '';
-    $fbr_invoice_no = !empty($_REQUEST['fbr_invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['fbr_invoice_no'])) : '';
-    $remarks = !empty($_REQUEST['remarks']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['remarks'])) : '';
+        $invoice_no = !empty($_REQUEST['invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['invoice_no'])) : '';
+        $invoice_date = !empty($_REQUEST['invoice_date']) ? $_REQUEST['invoice_date'] : date('Y-m-d');
+        $time_of_supply = !empty($_REQUEST['time_of_supply']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['time_of_supply'])) : '';
+        $payment_terms = !empty($_REQUEST['payment_terms']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['payment_terms'])) : 'CREDIT';
+        $copy_type = !empty($_REQUEST['copy_type']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['copy_type'])) : 'ORIGINAL';
+        $header_description = !empty($_REQUEST['header_description']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['header_description'])) : '';
+        $po_no = !empty($_REQUEST['po_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['po_no'])) : '';
+        $fbr_invoice_no = !empty($_REQUEST['fbr_invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['fbr_invoice_no'])) : '';
+        $remarks = !empty($_REQUEST['remarks']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['remarks'])) : '';
 
-    $total_qty = !empty($_REQUEST['total_qty']) ? floatval($_REQUEST['total_qty']) : 0;
-    $total_value_excl_tax = !empty($_REQUEST['total_value_excl_tax']) ? floatval($_REQUEST['total_value_excl_tax']) : 0;
-    $total_sales_tax = !empty($_REQUEST['total_sales_tax']) ? floatval($_REQUEST['total_sales_tax']) : 0;
-    $total_further_tax = !empty($_REQUEST['total_further_tax']) ? floatval($_REQUEST['total_further_tax']) : 0;
-    $total_tax_payable = !empty($_REQUEST['total_tax_payable']) ? floatval($_REQUEST['total_tax_payable']) : 0;
-    $total_value_incl_tax = !empty($_REQUEST['total_value_incl_tax']) ? floatval($_REQUEST['total_value_incl_tax']) : 0;
-    $itax_236g_rate = isset($_REQUEST['itax_236g_rate']) ? floatval($_REQUEST['itax_236g_rate']) : 0.10;
-    $itax_236g_amount = !empty($_REQUEST['itax_236g_amount']) ? floatval($_REQUEST['itax_236g_amount']) : 0;
-    $total_tax_amount = !empty($_REQUEST['total_tax_amount']) ? floatval($_REQUEST['total_tax_amount']) : $total_tax_payable;
-    $grand_total = !empty($_REQUEST['grand_total']) ? floatval($_REQUEST['grand_total']) : $total_value_incl_tax;
-    $amount_in_words = !empty($_REQUEST['amount_in_words']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['amount_in_words'])) : '';
-    $user_id = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
+        $total_qty = !empty($_REQUEST['total_qty']) ? floatval($_REQUEST['total_qty']) : 0;
+        $total_value_excl_tax = !empty($_REQUEST['total_value_excl_tax']) ? floatval($_REQUEST['total_value_excl_tax']) : 0;
+        $total_sales_tax = !empty($_REQUEST['total_sales_tax']) ? floatval($_REQUEST['total_sales_tax']) : 0;
+        $total_further_tax = !empty($_REQUEST['total_further_tax']) ? floatval($_REQUEST['total_further_tax']) : 0;
+        $total_tax_payable = !empty($_REQUEST['total_tax_payable']) ? floatval($_REQUEST['total_tax_payable']) : 0;
+        $total_value_incl_tax = !empty($_REQUEST['total_value_incl_tax']) ? floatval($_REQUEST['total_value_incl_tax']) : 0;
+        $itax_236g_rate = isset($_REQUEST['itax_236g_rate']) ? floatval($_REQUEST['itax_236g_rate']) : 0.10;
+        $itax_236g_amount = !empty($_REQUEST['itax_236g_amount']) ? floatval($_REQUEST['itax_236g_amount']) : 0;
+        $total_tax_amount = !empty($_REQUEST['total_tax_amount']) ? floatval($_REQUEST['total_tax_amount']) : $total_tax_payable;
+        $grand_total = !empty($_REQUEST['grand_total']) ? floatval($_REQUEST['grand_total']) : $total_value_incl_tax;
+        $amount_in_words = !empty($_REQUEST['amount_in_words']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['amount_in_words'])) : '';
+        $user_id = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
 
-    $sale_data = [
-        'invoice_no' => $invoice_no,
-        'invoice_date' => $invoice_date,
-        'time_of_supply' => $time_of_supply,
-        'payment_terms' => $payment_terms,
-        'copy_type' => $copy_type,
-        'header_description' => $header_description,
-        'po_no' => $po_no,
-        'customer_id' => $customer_id,
-        'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
-        'company_id' => $company_id,
-        'total_qty' => $total_qty,
-        'total_value_excl_tax' => $total_value_excl_tax,
-        'total_sales_tax' => $total_sales_tax,
-        'total_further_tax' => $total_further_tax,
-        'total_tax_payable' => $total_tax_payable,
-        'total_value_incl_tax' => $total_value_incl_tax,
-        'itax_236g_rate' => $itax_236g_rate,
-        'itax_236g_amount' => $itax_236g_amount,
-        'total_tax_amount' => $total_tax_amount,
-        'grand_total' => $grand_total,
-        'amount_in_words' => $amount_in_words,
-        'fbr_invoice_no' => $fbr_invoice_no,
-        'remarks' => $remarks,
-        'user_id' => $user_id
-    ];
-
-    // Store transaction in transactions table same like invoice.php
-    $trans_amount = !empty($_REQUEST['invoice_amount']) && floatval($_REQUEST['invoice_amount']) > 0 
-        ? floatval($_REQUEST['invoice_amount']) 
-        : $grand_total;
-
-    $trans_remarks = !empty($remarks) ? $remarks : ("Sales Tax Invoice #" . $invoice_no);
-
-    $trans_record = [
-        'credit' => $trans_amount,
-        'debit' => 0,
-        'customer_id' => $customer_id,
-        'transaction_from' => 'invoice',
-        'transaction_type' => 'credit_sale',
-        'transaction_remarks' => $trans_remarks,
-        'transaction_date' => $invoice_date,
-    ];
-
-    if ($tax_sale_id > 0) {
-        $existing_ts = fetchRecord($dbc, 'tax_sales', 'tax_sale_id', $tax_sale_id);
-        $transaction_id = !empty($existing_ts['transaction_id']) ? intval($existing_ts['transaction_id']) : 0;
-
-        $trans_exists = false;
-        if ($transaction_id > 0) {
-            $chk_tr = mysqli_query($dbc, "SELECT transaction_id FROM transactions WHERE transaction_id = '$transaction_id'");
-            if ($chk_tr && mysqli_num_rows($chk_tr) > 0) {
-                $trans_exists = true;
+        // Auto-check and add missing columns to tax_sales
+        $tax_sales_cols = [];
+        $ts_col_q = mysqli_query($dbc, "SHOW COLUMNS FROM tax_sales");
+        if ($ts_col_q) {
+            while ($cr = mysqli_fetch_assoc($ts_col_q)) {
+                $tax_sales_cols[] = $cr['Field'];
+            }
+        }
+        if (!empty($tax_sales_cols)) {
+            if (!in_array('customer_address', $tax_sales_cols)) {
+                @mysqli_query($dbc, "ALTER TABLE tax_sales ADD COLUMN customer_address TEXT NULL AFTER customer_id");
+                $tax_sales_cols[] = 'customer_address';
+            }
+            if (!in_array('fbr_invoice_no', $tax_sales_cols)) {
+                @mysqli_query($dbc, "ALTER TABLE tax_sales ADD COLUMN fbr_invoice_no VARCHAR(100) NULL");
+                $tax_sales_cols[] = 'fbr_invoice_no';
+            }
+            if (!in_array('transaction_id', $tax_sales_cols)) {
+                @mysqli_query($dbc, "ALTER TABLE tax_sales ADD COLUMN transaction_id INT NULL DEFAULT 0");
+                $tax_sales_cols[] = 'transaction_id';
+            }
+            if (!in_array('header_description', $tax_sales_cols)) {
+                @mysqli_query($dbc, "ALTER TABLE tax_sales ADD COLUMN header_description TEXT NULL");
+                $tax_sales_cols[] = 'header_description';
             }
         }
 
-        if ($trans_exists) {
-            update_data($dbc, "transactions", $trans_record, "transaction_id", $transaction_id);
-        } else if (!empty($customer_id) && $trans_amount > 0) {
-            insert_data($dbc, "transactions", $trans_record);
-            $transaction_id = mysqli_insert_id($dbc);
-        }
+        $sale_data = [
+            'invoice_no' => $invoice_no,
+            'invoice_date' => $invoice_date,
+            'time_of_supply' => $time_of_supply,
+            'payment_terms' => $payment_terms,
+            'copy_type' => $copy_type,
+            'header_description' => $header_description,
+            'po_no' => $po_no,
+            'customer_id' => $customer_id,
+            'customer_address' => !empty($_REQUEST['customer_address']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['customer_address'])) : '',
+            'company_id' => $company_id,
+            'total_qty' => $total_qty,
+            'total_value_excl_tax' => $total_value_excl_tax,
+            'total_sales_tax' => $total_sales_tax,
+            'total_further_tax' => $total_further_tax,
+            'total_tax_payable' => $total_tax_payable,
+            'total_value_incl_tax' => $total_value_incl_tax,
+            'itax_236g_rate' => $itax_236g_rate,
+            'itax_236g_amount' => $itax_236g_amount,
+            'total_tax_amount' => $total_tax_amount,
+            'grand_total' => $grand_total,
+            'amount_in_words' => $amount_in_words,
+            'fbr_invoice_no' => $fbr_invoice_no,
+            'remarks' => $remarks,
+            'user_id' => $user_id
+        ];
 
-        $sale_data['transaction_id'] = $transaction_id;
-        $ok = update_data($dbc, 'tax_sales', $sale_data, 'tax_sale_id', $tax_sale_id);
-    } else {
-        $transaction_id = 0;
-        if (!empty($customer_id) && $trans_amount > 0) {
-            insert_data($dbc, "transactions", $trans_record);
-            $transaction_id = mysqli_insert_id($dbc);
-        }
-        $sale_data['transaction_id'] = $transaction_id;
-        $ok = insert_data($dbc, 'tax_sales', $sale_data);
-        if ($ok) {
-            $tax_sale_id = mysqli_insert_id($dbc);
-            if (empty($invoice_no) && empty($remarks) && $transaction_id > 0) {
-                update_data($dbc, "transactions", ['transaction_remarks' => "Sales Tax Invoice #" . $tax_sale_id], "transaction_id", $transaction_id);
-            }
-        }
-    }
-
-    if ($ok) {
-        // Remove old items if updating
-        mysqli_query($dbc, "DELETE FROM tax_sale_items WHERE tax_sale_id = '$tax_sale_id'");
-
-        // Insert new items
-        if (!empty($_REQUEST['item_description']) && is_array($_REQUEST['item_description'])) {
-            foreach ($_REQUEST['item_description'] as $k => $desc) {
-                $desc = trim($desc);
-                if ($desc === '') continue;
-
-                $pid = !empty($_REQUEST['item_product_id'][$k]) ? intval($_REQUEST['item_product_id'][$k]) : NULL;
-                $unit = 'KG';
-                if (empty($unit)) {
-                    $unit = 'KG';
+        // Filter sale_data by existing columns in tax_sales
+        if (!empty($tax_sales_cols)) {
+            foreach ($sale_data as $col_name => $col_val) {
+                if (!in_array($col_name, $tax_sales_cols)) {
+                    unset($sale_data[$col_name]);
                 }
-                $hs = !empty($_REQUEST['item_hscode'][$k]) ? $_REQUEST['item_hscode'][$k] : '';
-                $origin = !empty($_REQUEST['item_origin'][$k]) ? $_REQUEST['item_origin'][$k] : '';
-                $qty = !empty($_REQUEST['item_qty'][$k]) ? floatval($_REQUEST['item_qty'][$k]) : 0;
-                $rate = !empty($_REQUEST['item_rate'][$k]) ? floatval($_REQUEST['item_rate'][$k]) : 0;
-                $val_excl = !empty($_REQUEST['item_val_excl'][$k]) ? floatval($_REQUEST['item_val_excl'][$k]) : ($qty * $rate);
-                $tax_rate = isset($_REQUEST['item_tax_rate'][$k]) ? floatval($_REQUEST['item_tax_rate'][$k]) : 18.00;
-                $tax_amt = !empty($_REQUEST['item_tax_amount'][$k]) ? floatval($_REQUEST['item_tax_amount'][$k]) : ($val_excl * ($tax_rate / 100));
-                $further_tax_rate = isset($_REQUEST['item_further_tax_rate'][$k]) ? floatval($_REQUEST['item_further_tax_rate'][$k]) : 0.00;
-                $further_tax_amt = !empty($_REQUEST['item_further_tax_amount'][$k]) ? floatval($_REQUEST['item_further_tax_amount'][$k]) : ($val_excl * ($further_tax_rate / 100));
-                $total_tax_payable = !empty($_REQUEST['item_total_tax'][$k]) ? floatval($_REQUEST['item_total_tax'][$k]) : ($tax_amt + $further_tax_amt);
-                $val_incl = !empty($_REQUEST['item_val_incl'][$k]) ? floatval($_REQUEST['item_val_incl'][$k]) : ($val_excl + $total_tax_payable);
-
-                $item_row = [
-                    'tax_sale_id' => $tax_sale_id,
-                    'product_id' => $pid,
-                    'description_of_goods' => $desc,
-                    'unit' => $unit,
-                    'hs_code' => $hs,
-                    'origin' => $origin,
-                    'quantity' => $qty,
-                    'rate' => $rate,
-                    'value_excl_tax' => $val_excl,
-                    'tax_rate' => $tax_rate,
-                    'tax_amount' => $tax_amt,
-                    'further_tax_rate' => $further_tax_rate,
-                    'further_tax_amount' => $further_tax_amt,
-                    'total_tax_payable' => $total_tax_payable,
-                    'value_incl_tax' => $val_incl
-                ];
-                insert_data($dbc, 'tax_sale_items', $item_row);
             }
         }
 
-        echo json_encode([
-            'sts' => 'success',
-            'msg' => 'Tax Sale Invoice Saved Successfully',
-            'order_id' => $tax_sale_id,
-            'type' => 'tax_sale'
-        ]);
-    } else {
+        // Store transaction in transactions table same like invoice.php
+        $trans_amount = !empty($_REQUEST['invoice_amount']) && floatval($_REQUEST['invoice_amount']) > 0 
+            ? floatval($_REQUEST['invoice_amount']) 
+            : $grand_total;
+
+        $trans_remarks = !empty($remarks) ? $remarks : ("Sales Tax Invoice #" . $invoice_no);
+
+        $trans_record = [
+            'credit' => $trans_amount,
+            'debit' => 0,
+            'balance' => 0,
+            'customer_id' => $customer_id,
+            'transaction_from' => 'invoice',
+            'transaction_type' => 'credit_sale',
+            'transaction_remarks' => $trans_remarks,
+            'transaction_date' => $invoice_date,
+        ];
+
+        if ($tax_sale_id > 0) {
+            $existing_ts = fetchRecord($dbc, 'tax_sales', 'tax_sale_id', $tax_sale_id);
+            $transaction_id = !empty($existing_ts['transaction_id']) ? intval($existing_ts['transaction_id']) : 0;
+
+            $trans_exists = false;
+            if ($transaction_id > 0) {
+                $chk_tr = mysqli_query($dbc, "SELECT transaction_id FROM transactions WHERE transaction_id = '$transaction_id'");
+                if ($chk_tr && mysqli_num_rows($chk_tr) > 0) {
+                    $trans_exists = true;
+                }
+            }
+
+            if ($trans_exists) {
+                update_data($dbc, "transactions", $trans_record, "transaction_id", $transaction_id);
+            } else if (!empty($customer_id) && $trans_amount > 0) {
+                insert_data($dbc, "transactions", $trans_record);
+                $transaction_id = mysqli_insert_id($dbc);
+            }
+
+            if (empty($tax_sales_cols) || in_array('transaction_id', $tax_sales_cols)) {
+                $sale_data['transaction_id'] = $transaction_id;
+            }
+            $ok = update_data($dbc, 'tax_sales', $sale_data, 'tax_sale_id', $tax_sale_id);
+        } else {
+            $transaction_id = 0;
+            if (!empty($customer_id) && $trans_amount > 0) {
+                insert_data($dbc, "transactions", $trans_record);
+                $transaction_id = mysqli_insert_id($dbc);
+            }
+            if (empty($tax_sales_cols) || in_array('transaction_id', $tax_sales_cols)) {
+                $sale_data['transaction_id'] = $transaction_id;
+            }
+            $ok = insert_data($dbc, 'tax_sales', $sale_data);
+            if ($ok) {
+                $tax_sale_id = mysqli_insert_id($dbc);
+                if (empty($invoice_no) && empty($remarks) && $transaction_id > 0) {
+                    update_data($dbc, "transactions", ['transaction_remarks' => "Sales Tax Invoice #" . $tax_sale_id], "transaction_id", $transaction_id);
+                }
+            }
+        }
+
+        if ($ok) {
+            // Remove old items if updating
+            mysqli_query($dbc, "DELETE FROM tax_sale_items WHERE tax_sale_id = '$tax_sale_id'");
+
+            $tsi_cols = [];
+            $tsi_col_q = mysqli_query($dbc, "SHOW COLUMNS FROM tax_sale_items");
+            if ($tsi_col_q) {
+                while ($cr = mysqli_fetch_assoc($tsi_col_q)) {
+                    $tsi_cols[] = $cr['Field'];
+                }
+            }
+
+            // Insert new items
+            if (!empty($_REQUEST['item_description']) && is_array($_REQUEST['item_description'])) {
+                foreach ($_REQUEST['item_description'] as $k => $desc) {
+                    $desc = trim($desc);
+                    if ($desc === '') continue;
+
+                    $pid = !empty($_REQUEST['item_product_id'][$k]) ? intval($_REQUEST['item_product_id'][$k]) : 0;
+                    $unit = 'KG';
+                    if (empty($unit)) {
+                        $unit = 'KG';
+                    }
+                    $hs = !empty($_REQUEST['item_hscode'][$k]) ? $_REQUEST['item_hscode'][$k] : '';
+                    $origin = !empty($_REQUEST['item_origin'][$k]) ? $_REQUEST['item_origin'][$k] : '';
+                    $qty = !empty($_REQUEST['item_qty'][$k]) ? floatval($_REQUEST['item_qty'][$k]) : 0;
+                    $rate = !empty($_REQUEST['item_rate'][$k]) ? floatval($_REQUEST['item_rate'][$k]) : 0;
+                    $val_excl = !empty($_REQUEST['item_val_excl'][$k]) ? floatval($_REQUEST['item_val_excl'][$k]) : ($qty * $rate);
+                    $tax_rate = isset($_REQUEST['item_tax_rate'][$k]) ? floatval($_REQUEST['item_tax_rate'][$k]) : 18.00;
+                    $tax_amt = !empty($_REQUEST['item_tax_amount'][$k]) ? floatval($_REQUEST['item_tax_amount'][$k]) : ($val_excl * ($tax_rate / 100));
+                    $further_tax_rate = isset($_REQUEST['item_further_tax_rate'][$k]) ? floatval($_REQUEST['item_further_tax_rate'][$k]) : 0.00;
+                    $further_tax_amt = !empty($_REQUEST['item_further_tax_amount'][$k]) ? floatval($_REQUEST['item_further_tax_amount'][$k]) : ($val_excl * ($further_tax_rate / 100));
+                    $total_tax_payable = !empty($_REQUEST['item_total_tax'][$k]) ? floatval($_REQUEST['item_total_tax'][$k]) : ($tax_amt + $further_tax_amt);
+                    $val_incl = !empty($_REQUEST['item_val_incl'][$k]) ? floatval($_REQUEST['item_val_incl'][$k]) : ($val_excl + $total_tax_payable);
+
+                    $item_row = [
+                        'tax_sale_id' => $tax_sale_id,
+                        'product_id' => $pid,
+                        'description_of_goods' => $desc,
+                        'unit' => $unit,
+                        'hs_code' => $hs,
+                        'origin' => $origin,
+                        'quantity' => $qty,
+                        'rate' => $rate,
+                        'value_excl_tax' => $val_excl,
+                        'tax_rate' => $tax_rate,
+                        'tax_amount' => $tax_amt,
+                        'further_tax_rate' => $further_tax_rate,
+                        'further_tax_amount' => $further_tax_amt,
+                        'total_tax_payable' => $total_tax_payable,
+                        'value_incl_tax' => $val_incl
+                    ];
+
+                    if (!empty($tsi_cols)) {
+                        foreach ($item_row as $icol => $ival) {
+                            if (!in_array($icol, $tsi_cols)) {
+                                unset($item_row[$icol]);
+                            }
+                        }
+                    }
+                    insert_data($dbc, 'tax_sale_items', $item_row);
+                }
+            }
+
+            echo json_encode([
+                'sts' => 'success',
+                'msg' => 'Tax Sale Invoice Saved Successfully',
+                'order_id' => $tax_sale_id,
+                'type' => 'tax_sale'
+            ]);
+        } else {
+            echo json_encode([
+                'sts' => 'error',
+                'msg' => mysqli_error($dbc)
+            ]);
+        }
+    } catch (Throwable $e) {
         echo json_encode([
             'sts' => 'error',
-            'msg' => mysqli_error($dbc)
+            'msg' => 'Server Error: ' . $e->getMessage()
         ]);
     }
     exit;
