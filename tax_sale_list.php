@@ -30,6 +30,7 @@
                       <th>Party PO</th>
                       <th>Grand Total</th>
                       <th>Paid Amount</th>
+                      <th>WHT Tax</th>
                       <th>Due Balance</th>
                       <th>Action</th>
                     </tr>
@@ -63,7 +64,9 @@
                         if (!empty($party_po)) {
                           $po_escaped = mysqli_real_escape_string($dbc, $party_po);
                           $q_vi_paid = mysqli_query($dbc, "
-                            SELECT SUM(CAST(vi.invoice_amount AS DECIMAL(15,2))) AS total_paid 
+                            SELECT 
+                              SUM(CAST(vi.invoice_amount AS DECIMAL(15,2))) AS total_paid,
+                              SUM(CAST(COALESCE(vi.tax_amount, 0) AS DECIMAL(15,2))) AS total_wht
                             FROM voucher_invoices vi
                             LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id
                             WHERE $inv_clause
@@ -73,15 +76,18 @@
                           ");
                         } else {
                           $q_vi_paid = mysqli_query($dbc, "
-                            SELECT SUM(CAST(vi.invoice_amount AS DECIMAL(15,2))) AS total_paid 
+                            SELECT 
+                              SUM(CAST(vi.invoice_amount AS DECIMAL(15,2))) AS total_paid,
+                              SUM(CAST(COALESCE(vi.tax_amount, 0) AS DECIMAL(15,2))) AS total_wht
                             FROM voucher_invoices vi
                             WHERE $inv_clause
                           ");
                         }
                         $r_vi_paid = mysqli_fetch_assoc($q_vi_paid);
                         $paid_amount = !empty($r_vi_paid['total_paid']) ? floatval($r_vi_paid['total_paid']) : 0;
+                        $wht_amount  = !empty($r_vi_paid['total_wht']) ? floatval($r_vi_paid['total_wht']) : 0;
                         $grand_total = floatval($r['grand_total']);
-                        $due_diff = $grand_total - $paid_amount;
+                        $due_diff = $grand_total - ($paid_amount + $wht_amount);
                       ?>
                        <tr>
                           <td><?=$c?></td>
@@ -100,10 +106,17 @@
                           <td><?=number_format($grand_total)?></td>
                           <td><span class="text-success font-weight-bold"><?=number_format($paid_amount)?></span></td>
                           <td>
+                            <?php if ($wht_amount > 0): ?>
+                              <span class="font-weight-bold" style="color: #6f42c1;"><?=number_format($wht_amount)?></span>
+                            <?php else: ?>
+                              <span class="text-muted">0</span>
+                            <?php endif; ?>
+                          </td>
+                          <td>
                             <?php if ($due_diff > 0.01): ?>
                               <span class="text-danger font-weight-bold"><?=number_format($due_diff)?></span>
                             <?php elseif ($due_diff < -0.01): ?>
-                              <span class="badge badge-info font-weight-bold" title="Paid Rs <?=number_format($paid_amount)?> exceeds Invoice Total Rs <?=number_format($grand_total)?>">Overpaid (+<?=number_format(abs($due_diff))?>)</span>
+                              <span class="badge badge-info font-weight-bold" title="Paid Rs <?=number_format($paid_amount)?> + WHT Rs <?=number_format($wht_amount)?> exceeds Invoice Total Rs <?=number_format($grand_total)?>">Overpaid (+<?=number_format(abs($due_diff))?>)</span>
                             <?php else: ?>
                               <span class="badge badge-success font-weight-bold">Paid</span>
                             <?php endif; ?>

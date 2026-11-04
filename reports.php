@@ -3,6 +3,7 @@
 <?php 
 include_once 'includes/head.php'; 
 $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
+$ledger_heading = $report_type === 'customer' ? 'Tax Invoice Ledger' : ucfirst($_REQUEST['type'] ?? '') . ' Ledger';
 ?>
 <style type="text/css">
   .ledger-table thead th {
@@ -122,7 +123,7 @@ $report_type = strtolower(trim($_REQUEST['type'] ?? ''));
 
             <div class="row">
               <div class="col-12 mx-auto h4">
-                <b class="text-center card-text"><?=ucfirst($_REQUEST['type'] ?? '')?> Ledger</b>
+                <b class="text-center card-text"><?=$ledger_heading?></b>
            
              
               </div>
@@ -237,7 +238,7 @@ if (!empty($_REQUEST['from_date']) && !empty($_REQUEST['to_date'])) {
     $duration_text = "Up to: " . date('d-M-Y', strtotime($_REQUEST['to_date']));
 }
 
-$report_title = strtoupper(($_REQUEST['type'] ?? 'Account') . " LEDGER STATEMENT");
+$report_title = strtoupper($report_type === 'customer' ? 'Tax Invoice Ledger Statement' : (($_REQUEST['type'] ?? 'Account') . " LEDGER STATEMENT"));
 $report_customer = $fetchCustomer;
 $report_duration = $duration_text;
 include 'includes/report_header.php';

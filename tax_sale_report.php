@@ -140,7 +140,8 @@ if ($q_invoices) {
         }
 
         $grand_total = floatval($r['grand_total']);
-        $diff = $grand_total - $paid_amt;
+        $total_settled = $paid_amt + $wht_amt;
+        $diff = $grand_total - $total_settled;
         $left_amt = 0;
         $overpaid_amt = 0;
 
@@ -151,7 +152,7 @@ if ($q_invoices) {
         } elseif ($diff <= 0.01) {
             $left_amt = 0;
             $status = 'paid';
-        } elseif ($paid_amt > 0) {
+        } elseif ($total_settled > 0) {
             $left_amt = $diff;
             $status = 'partial';
         } else {
@@ -227,9 +228,9 @@ if (isset($_REQUEST['export']) && $_REQUEST['export'] === 'csv') {
         'Party PO #',
         'Grand Total (Rs)',
         'Amount Paid (Rs)',
+        'WHT Deducted (Rs)',
         'Balance Due (Rs)',
         'Overpaid (Rs)',
-        'WHT Deducted (Rs)',
         'Status',
         'Vouchers Count'
     ]);
@@ -249,9 +250,9 @@ if (isset($_REQUEST['export']) && $_REQUEST['export'] === 'csv') {
             $inv['po_no'] ?: '',
             $row['grand_total'],
             $row['paid_amount'],
+            $row['wht_amount'],
             $row['left_amount'],
             $row['overpaid_amount'],
-            $row['wht_amount'],
             strtoupper($row['status']),
             count($row['vouchers'])
         ]);
@@ -269,9 +270,9 @@ if (isset($_REQUEST['export']) && $_REQUEST['export'] === 'csv') {
         '',
         $total_invoiced,
         $total_paid,
+        $total_wht,
         $total_left,
         $total_overpaid,
-        $total_wht,
         '',
         ''
     ]);
@@ -436,7 +437,7 @@ include_once 'includes/head.php';
             <div class="row align-items-center">
               <div class="col-md-7 col-sm-12">
                 <h4 class="mb-0 text-white font-weight-bold">
-                  <i class="fe fe-file-text mr-1"></i> Tax Sale Invoices Payment & Due Report
+                  <i class="fe fe-file-text mr-1"></i> Tax Invoice Wise Ledger
                 </h4>
                 <small class="text-white-50">
                   Track invoiced amounts, voucher payments, remaining balance due, and FBR invoice numbers
@@ -564,22 +565,22 @@ include_once 'includes/head.php';
               <div class="summary-value text-success">Rs <?=number_format($total_paid)?></div>
               <div class="summary-sub">
                 <?php 
-                $recovery_pct = $total_invoiced > 0 ? round(($total_paid / $total_invoiced) * 100, 1) : 0;
+                $settled_pct = $total_invoiced > 0 ? round((($total_paid + $total_wht) / $total_invoiced) * 100, 1) : 0;
                 ?>
-                Recovery: <strong><?=$recovery_pct?>%</strong> (WHT Tax: Rs <?=number_format($total_wht)?>)
+                WHT Tax: <strong style="color: #6f42c1;">Rs <?=number_format($total_wht)?></strong> &bull; Settled: <strong><?=$settled_pct?>%</strong>
               </div>
             </div>
           </div>
 
           <div class="col-xl-3 col-md-6 col-sm-12">
             <div class="summary-card border-left border-danger" style="border-left-width: 4px !important;">
-              <div class="summary-title">Pending Invoices Due</div>
+              <div class="summary-title">Total Amount Left (Due)</div>
               <div class="summary-value text-danger">Rs <?=number_format($total_left)?></div>
               <div class="summary-sub">
                 <?php if ($total_overpaid > 0): ?>
-                  Net Account Due: <strong class="text-dark">Rs <?=number_format(max(0, $total_invoiced - $total_paid))?></strong> (Overpaid: Rs <?=number_format($total_overpaid)?>)
+                  Net Due: <strong class="text-dark">Rs <?=number_format(max(0, $total_invoiced - ($total_paid + $total_wht)))?></strong> (Overpaid: Rs <?=number_format($total_overpaid)?>)
                 <?php else: ?>
-                  Outstanding Balance to be Collected
+                  Outstanding balance after Paid + WHT Tax
                 <?php endif; ?>
               </div>
             </div>
@@ -598,15 +599,16 @@ include_once 'includes/head.php';
               <table class="table table-bordered table-striped table-hover report-table mb-0 dataTableAsc" id="tax_sale_report_tb">
                 <thead>
                   <tr>
-                    <th style="width: 4%;">#</th>
-                    <th style="width: 9%;">Date</th>
-                    <th style="width: 8%;">Inv #</th>
-                    <th style="width: 14%;">FBR Invoice #</th>
-                    <th style="width: 22%;">Customer Details</th>
-                    <th style="width: 9%;">PO #</th>
+                    <th style="width: 3%;">#</th>
+                    <th style="width: 8%;">Date</th>
+                    <th style="width: 7%;">Inv #</th>
+                    <th style="width: 12%;">FBR Invoice #</th>
+                    <th style="width: 20%;">Customer Details</th>
+                    <th style="width: 8%;">PO #</th>
                     <th style="width: 11%; text-align: right;">Grand Total (Rs)</th>
                     <th style="width: 11%; text-align: right;">Amount Paid (Rs)</th>
-                    <th style="width: 12%; text-align: right;">Amount Left / Due (Rs)</th>
+                    <th style="width: 9%; text-align: right;">WHT Tax (Rs)</th>
+                    <th style="width: 11%; text-align: right;">Amount Left / Due (Rs)</th>
                     <th style="width: 8%; text-align: center;">Status</th>
                   </tr>
                 </thead>
@@ -670,10 +672,18 @@ include_once 'includes/head.php';
                           </div>
                         <?php endif; ?>
                       </td>
+                      <!-- WHT TAX -->
+                      <td class="text-right text-nowrap">
+                        <?php if ($row['wht_amount'] > 0): ?>
+                          <span class="font-weight-bold" style="color: #6f42c1;"><?=number_format($row['wht_amount'], 2)?></span>
+                        <?php else: ?>
+                          <span class="text-muted">0.00</span>
+                        <?php endif; ?>
+                      </td>
                       <!-- AMOUNT LEFT (DUE) -->
                       <td class="text-right text-nowrap">
                         <?php if ($row['status'] === 'overpaid'): ?>
-                          <span class="badge badge-info px-2 py-1 font-weight-bold" title="Payment of Rs <?=number_format($row['paid_amount'])?> exceeds invoice total of Rs <?=number_format($row['grand_total'])?>">
+                          <span class="badge badge-info px-2 py-1 font-weight-bold" title="Payment & WHT of Rs <?=number_format($row['paid_amount'] + $row['wht_amount'])?> exceeds invoice total of Rs <?=number_format($row['grand_total'])?>">
                             Overpaid (+<?=number_format($row['overpaid_amount'], 2)?>)
                           </span>
                         <?php elseif ($row['left_amount'] > 0): ?>
@@ -700,7 +710,7 @@ include_once 'includes/head.php';
                   else: 
                   ?>
                     <tr>
-                      <td colspan="10" class="text-center py-4 text-muted">
+                      <td colspan="11" class="text-center py-4 text-muted">
                         <i class="fe fe-inbox fe-32 d-block mb-2"></i>
                         <strong>No tax sale invoices found matching the selected criteria.</strong>
                       </td>
@@ -720,12 +730,15 @@ include_once 'includes/head.php';
                     <td class="text-right font-weight-bold text-success">
                       <?=number_format($total_paid, 2)?>
                     </td>
+                    <td class="text-right font-weight-bold" style="color: #6f42c1;">
+                      <?=number_format($total_wht, 2)?>
+                    </td>
                     <td class="text-right font-weight-bold text-danger">
                       <?=number_format($total_left, 2)?>
                     </td>
                     <td class="text-center">
                       <span class="small font-weight-bold text-muted">
-                        <?=$total_invoiced > 0 ? round(($total_paid / $total_invoiced) * 100, 1) : 0?>% Recovered
+                        <?=$total_invoiced > 0 ? round((($total_paid + $total_wht) / $total_invoiced) * 100, 1) : 0?>% Settled
                       </span>
                     </td>
                   </tr>
@@ -760,17 +773,21 @@ include_once 'includes/head.php';
               </div>
               <div class="modal-body p-3">
                 <div class="row mb-3 bg-light p-2 rounded mx-0">
-                  <div class="col-sm-4">
+                  <div class="col-sm-3">
                     <small class="text-muted d-block">Customer</small>
-                    <strong><?=htmlspecialchars($inv['customer_name'])?></strong>
+                    <strong class="text-truncate d-block" title="<?=htmlspecialchars($inv['customer_name'])?>"><?=htmlspecialchars($inv['customer_name'])?></strong>
                   </div>
                   <div class="col-sm-3">
                     <small class="text-muted d-block">Invoice Grand Total</small>
                     <strong class="text-primary">Rs <?=number_format($row['grand_total'], 2)?></strong>
                   </div>
-                  <div class="col-sm-3">
+                  <div class="col-sm-2">
                     <small class="text-muted d-block">Total Paid</small>
                     <strong class="text-success">Rs <?=number_format($row['paid_amount'], 2)?></strong>
+                  </div>
+                  <div class="col-sm-2">
+                    <small class="text-muted d-block">WHT Tax</small>
+                    <strong style="color: #6f42c1;">Rs <?=number_format($row['wht_amount'], 2)?></strong>
                   </div>
                   <div class="col-sm-2">
                     <small class="text-muted d-block">Balance Left</small>
