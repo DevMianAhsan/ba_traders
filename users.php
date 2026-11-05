@@ -7,12 +7,19 @@
     <div class="wrapper">
   <?php include_once 'includes/header.php'; ?>
       <main role="main" class="main-content">
-        <div class="container">
+        <div class="container-fluid">
           <div class="row ">
             <div class="col-12">
             	
 		<div class="card ">
-	<div class="card-header card-bg " align="center"><h4 class="card-text"> Create Users</h4></div>
+	<div class="card-header card-bg d-flex justify-content-between align-items-center">
+           <div class="card-title-wrap">
+             <h4 class="card-text mb-0"><i class="fe fe-users mr-2"></i><b>User Management</b></h4>
+           </div>
+           <div class="card-action-wrap">
+             <a href="users.php" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
+           </div>
+         </div>
 	<div class="card-body">
 		<?=getMessage(@$msg,@$sts); ?>
 		<form class="form-horizontal" method="POST" action="includes/code.php" id="formData">

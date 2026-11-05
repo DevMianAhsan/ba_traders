@@ -12,13 +12,14 @@ if (isset($_REQUEST['id'])) {
       <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text text-center"><?=ucwords(str_replace('_', ' ', $_REQUEST['act']))?></b>
-           
-                <?php if (@$userPrivileges['nav_add']==1 || $fetchedUserRole=="admin"): ?>
-                 <a  href="<?=$getpage?>" class="btn btn-admin float-right btn-sm hide"> Add New</a>
-                  <?php endif ?>  
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-clipboard mr-2"></i><b><?=ucwords(str_replace('_', ' ', $_REQUEST['act']))?></b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="voucher.php?act=lists" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-list"></i> Voucher List</a>
+                <a href="voucher.php?act=general_voucher" class="btn btn-admin btn-sm mr-1"><i class="fe fe-plus"></i> General</a>
+                <a href="voucher.php?act=single_voucher" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Single</a>
               </div>
             </div>
            
@@ -151,7 +152,7 @@ if (isset($_REQUEST['id'])) {
                     <div class="form-group row mb-2" id="voucher_invoices_section" style="display:none;">
                       <div class="col-sm-2 text-right">Invoices</div>
                       <div class="col-sm-10">
-                        <table class="table table-sm table-bordered mb-1" id="voucher_invoices_table" style="background:#fff;">
+                        <table class="table table-sm table-bordered mb-1" id="voucher_invoices_table">
                           <thead class="thead-light">
                             <tr>
                               <th style="width: 28%; padding: 4px 8px;">Invoice #</th>

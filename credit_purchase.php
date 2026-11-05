@@ -10,22 +10,19 @@ if (!empty($_REQUEST['edit_purchase_id'])) {
   <body class="horizontal light  ">
     <div class="wrapper">
   <?php include_once 'includes/header.php'; ?>
-  
+      <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">Purchase</b>
-           
-             
-                 <a href="credit_purchase.php" class="btn btn-admin float-right btn-sm">Add New</a>
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-shopping-cart mr-2"></i><b>Credit Purchase</b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="view_purchases.php" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-list"></i> Purchase List</a>
+                <a href="credit_purchase.php" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
               </div>
             </div>
-  
-          </div>
-           <div class="card-body">
+            <div class="card-body">
             <form action="php_action/custom_action.php" method="POST" id="sale_order_fm">
               <input type="hidden" name="product_purchase_id" value="<?=@empty($_REQUEST['edit_purchase_id'])?"":base64_decode($_REQUEST['edit_purchase_id'])?>">
               <input type="hidden" name="payment_type" id="payment_type" value="credit_purchase">
@@ -286,8 +283,7 @@ $next_increment = $data['Auto_increment']; ?>
            </div>
           </div> <!-- .row -->
         </div> <!-- .container-fluid -->
-       
-     
+      </main> <!-- main -->
     </div> <!-- .wrapper -->
     
   </body>

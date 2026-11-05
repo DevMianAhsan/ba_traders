@@ -20,22 +20,18 @@ if (!empty($_REQUEST['edit_order_id'])) {
   <body class="horizontal light  ">
     <div class="wrapper">
   <?php include_once 'includes/header.php'; ?>
-  
+      <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text pb-3"><?=!empty($_REQUEST['edit_order_id']) ? "Edit Commercial Invoice" : "Commercial Invoice"?></b>
-           
-             
-                 <a href="invoice.php" class="btn btn-admin float-right btn-sm ml-2">Add New</a>
-                 <a href="invoice_list.php" class="btn btn-admin2 float-right btn-sm"><i class="fe fe-list"></i> Invoice List</a>
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-file-text mr-2"></i><b><?=!empty($_REQUEST['edit_order_id']) ? "Edit Commercial Invoice" : "Commercial Invoice"?></b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="invoice_list.php" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-list"></i> Invoice List</a>
+                <a href="invoice.php" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
               </div>
             </div>
-  
-          </div>
            <div class="card-body">
             <form action="php_action/custom_action.php" method="POST" id="sale_order_fm">
               <input type="hidden" name="product_order_id" value="<?=!isset($_REQUEST['edit_order_id'])?"":base64_decode($_REQUEST['edit_order_id'])?>">
@@ -224,8 +220,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
            </div>
           </div> <!-- .row -->
         </div> <!-- .container-fluid -->
-       
-     
+      </main> <!-- main -->
     </div> <!-- .wrapper -->
     
   </body>

@@ -7,17 +7,14 @@
       <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">Good Issues List</b>
-           
-             
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-package mr-2"></i><b>Goods Issues List</b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="cash_sale.php?type=goodsissue" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> New Issue</a>
               </div>
             </div>
-  
-          </div>
            <div class="card-body">
                             <table class="table  dataTable" id="view_orders_tb">
                   <thead>

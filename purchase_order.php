@@ -24,27 +24,21 @@ if (!empty($_REQUEST['edit_order_id'])) {
 
   <?php include_once 'includes/header.php'; ?>
 
+      <main role="main" class="main-content">
         <div class="container-fluid">
 
           <div class="card">
 
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-
-              <div class="col-12 mx-auto h4">
-
-                <b class="text-center card-text pb-3">Purchase Order</b>
-
-                 <a href="#" onclick="reload_page()" class="btn btn-admin float-right btn-sm">Add New</a>
-
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-shopping-bag mr-2"></i><b>Purchase Order</b></h4>
               </div>
-
+              <div class="card-action-wrap">
+                <a href="purchase_order_list.php" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-list"></i> PO List</a>
+                <a href="#" onclick="reload_page()" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
+              </div>
             </div>
-
-          </div>
-
-           <div class="card-body">
+<div class="card-body">
 
             <form action="php_action/custom_action.php" method="POST" id="sale_order_fm">
 
@@ -336,7 +330,7 @@ if (!empty($_REQUEST['edit_order_id'])) {
           </div> <!-- .row -->
 
         </div> <!-- .container-fluid -->
-
+      </main> <!-- main -->
     </div> <!-- .wrapper -->
 
   </body>

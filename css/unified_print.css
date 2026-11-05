@@ -1,0 +1,400 @@
+/**
+ * UNIFIED PRINT STYLESHEET
+ * Consistent print UI across all transaction vouchers, invoices, challans, orders, and reports.
+ */
+
+@page {
+  size: A4 portrait;
+  margin: 8mm 6mm;
+}
+
+@media print {
+  /* Hide all interactive/screen elements */
+  .d-print-none,
+  .print_hide,
+  .navbar,
+  .navbar-slide,
+  .toggle-sidebar,
+  .sidebar,
+  #header,
+  footer,
+  .btn,
+  .breadcrumb,
+  .nav-pills,
+  .modal,
+  .dataTables_length,
+  .dataTables_filter,
+  .dataTables_info,
+  .dataTables_paginate,
+  .paging_simple_numbers,
+  .dataTables_wrapper .row:first-child,
+  .dataTables_wrapper .row:last-child {
+    display: none !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, Tahoma, sans-serif !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box !important;
+  }
+
+  .wrapper, main, .main-content, .container, .container-fluid, .card, .card-body {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .print-page-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Printable Tables */
+  table, .table, .print-table, .inv-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  th, .print-table th, table thead th {
+    background-color: #f1f3f5 !important;
+    color: #000000 !important;
+    border: 1.5px solid #000000 !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    padding: 6px 5px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  td, .print-table td, table tbody td {
+    border: 1px solid #333333 !important;
+    font-size: 11.5px !important;
+    color: #000000 !important;
+    padding: 5px 6px !important;
+    vertical-align: middle !important;
+  }
+
+  tfoot th, tfoot td, .print-table tfoot th, .print-table tfoot td {
+    border: 1.5px solid #000000 !important;
+    background-color: #f8f9fa !important;
+    color: #000000 !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    padding: 6px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-signature-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-top: 35px !important;
+    padding-top: 15px !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-sig-col {
+    width: 22% !important;
+    text-align: center !important;
+  }
+
+  .print-sig-line {
+    border-top: 1.5px solid #000000 !important;
+    margin-bottom: 5px !important;
+  }
+
+  .print-sig-title {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    color: #000000 !important;
+  }
+
+  .print-sig-sub {
+    font-size: 9.5px !important;
+    color: #555555 !important;
+  }
+
+  /* Ensure dark theme never affects print output */
+  .dark, .dark-theme, [data-mode="dark"],
+  .dark *, .dark-theme *, [data-mode="dark"] * {
+    color: #000000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  .dark body, .dark-theme body {
+    background-color: #ffffff !important;
+  }
+  .dark .print-page-container, .dark-theme .print-page-container {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}
+
+/* Screen Preview Styling for Print Pages */
+.print-page-container {
+  max-width: 950px;
+  margin: 20px auto;
+  background: #ffffff;
+  padding: 30px 40px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, Tahoma, sans-serif;
+  color: #212529;
+}
+
+/* Unified Company Header */
+.unified-print-header {
+  text-align: center;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #222222;
+}
+
+.unified-print-header .comp-logo {
+  max-height: 75px;
+  max-width: 220px;
+  object-fit: contain;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.unified-print-header .comp-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111111;
+  letter-spacing: 0.5px;
+  margin: 2px 0;
+  text-transform: uppercase;
+}
+
+.unified-print-header .comp-address {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #333333;
+  line-height: 1.4;
+  margin: 2px 0;
+}
+
+.unified-print-header .comp-contact {
+  font-size: 13px;
+  font-weight: 700;
+  color: #222222;
+  margin-top: 2px;
+}
+
+/* Document Title Bar */
+.unified-doc-title-bar {
+  text-align: center;
+  margin: 10px 0 14px 0;
+  position: relative;
+}
+
+.unified-doc-title {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #000000;
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+  padding: 4px 25px;
+}
+
+.unified-doc-copy {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1.5px solid #000000;
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+
+/* Unified Metadata Section (Party & Document Info) */
+.unified-meta-grid {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 15px;
+}
+
+.unified-meta-box {
+  flex: 1;
+  border: 1.5px solid #222222;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #fafbfc;
+}
+
+.unified-meta-box .meta-box-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #666666;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 3px;
+  margin-bottom: 5px;
+}
+
+.unified-meta-box .meta-row {
+  display: flex;
+  margin-bottom: 2px;
+}
+
+.unified-meta-box .meta-lbl {
+  font-weight: 700;
+  min-width: 105px;
+  color: #222222;
+}
+
+.unified-meta-box .meta-val {
+  flex: 1;
+  color: #000000;
+}
+
+.unified-meta-box .party-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #000000;
+  margin-bottom: 3px;
+}
+
+/* Printable Table Styling for screen preview */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+
+.print-table th {
+  background-color: #f1f3f5;
+  color: #000000;
+  border: 1.5px solid #000000;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 7px 6px;
+  text-align: center;
+}
+
+.print-table td {
+  border: 1px solid #333333;
+  font-size: 11.5px;
+  color: #000000;
+  padding: 6px 8px;
+}
+
+.print-table tfoot th,
+.print-table tfoot td {
+  border: 1.5px solid #000000;
+  background-color: #f8f9fa;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 6px;
+}
+
+/* Unified Summary / Totals block */
+.unified-totals-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.unified-totals-table {
+  min-width: 280px;
+  border-collapse: collapse;
+}
+
+.unified-totals-table td {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: none;
+}
+
+.unified-totals-table .totals-lbl {
+  text-align: right;
+  font-weight: 700;
+  color: #222222;
+}
+
+.unified-totals-table .totals-val {
+  text-align: right;
+  font-weight: 800;
+  color: #000000;
+}
+
+.unified-totals-table .grand-total-row {
+  border-top: 1.5px solid #000000;
+  border-bottom: 2px solid #000000;
+  font-size: 13.5px;
+}
+
+/* Unified Signature Row (Screen Preview) */
+.print-signature-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 50px;
+  padding-top: 15px;
+}
+
+.print-sig-col {
+  width: 22%;
+  text-align: center;
+}
+
+.print-sig-line {
+  border-top: 1.5px solid #000000;
+  margin-bottom: 5px;
+}
+
+.print-sig-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.print-sig-sub {
+  font-size: 9.5px;
+  color: #555555;
+}

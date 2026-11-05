@@ -628,7 +628,7 @@ if ($q_ann) {
 
         <!-- Customer Profile Info Box (Only shown if a customer is selected) -->
         <?php if (!empty($fetchCustomer)): ?>
-          <div class="card shadow-sm border-left-danger mb-3 d-print-none" style="border-left: 5px solid #930027; background: #fffdfd;">
+          <div class="card shadow-sm border-left-danger mb-3 d-print-none" style="border-left: 5px solid #930027;">
             <div class="card-body py-2 px-3">
               <div class="row align-items-center">
                 <div class="col-md-8 col-12">

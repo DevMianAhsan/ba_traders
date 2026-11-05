@@ -13,18 +13,14 @@ if (isset($_REQUEST['edit_brand_id'])) {
       <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">Brands</b>
-           
-             
-                 <a href="brands.php" class="btn btn-admin float-right btn-sm">Add New</a>
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-tag mr-2"></i><b>Brands</b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="brands.php" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
               </div>
             </div>
-  
-          </div>
            <div class="card-body">
 
 							<form action="php_action/panel.php" method="POST" role="form" id="formData">

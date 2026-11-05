@@ -24,7 +24,14 @@ if (empty($_REQUEST['type'])) {
         			
 
 		<div class="card card-info">
-				<div class="card-header text-center h4  card-bg card-text" id="card_form_title"><?=isset($_REQUEST['id']) ? "Edit " : ""?><?=ucfirst($_REQUEST['type'])?> Information</div>
+				<div class="card-header card-bg d-flex justify-content-between align-items-center">
+					<div class="card-title-wrap">
+						<h4 class="card-text mb-0"><i class="fe fe-user mr-2"></i><span id="card_form_title"><?=isset($_REQUEST['id']) ? "Edit " : ""?><?=ucfirst($_REQUEST['type'])?> Information</span></h4>
+					</div>
+					<div class="card-action-wrap">
+						<a href="customers.php?type=<?=@$_REQUEST['type']?>" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
+					</div>
+				</div>
 				<div class=" card-body">
 					 <form action="php_action/custom_action.php" method="post" id="formData">
 					 	<input type="hidden" name="add_manually_user" id="add_manually_user" value="<?=@$_REQUEST['type']?>">
@@ -128,8 +135,10 @@ if (empty($_REQUEST['type'])) {
         		<div class="col-sm-12">
         			
 	<div class="card card-info mt-3">
-		<div class="card-header text-center h4  card-bg card-text" align="center">
-			<h5 style="color: white"><span class="glyphicon glyphicon-user"></span> <?=ucfirst($_REQUEST['type'])?> Management system</h5>
+		<div class="card-header card-bg d-flex justify-content-between align-items-center">
+			<div class="card-title-wrap">
+				<h4 class="card-text mb-0"><i class="fe fe-list mr-2"></i><?=ucfirst($_REQUEST['type'])?> List</h4>
+			</div>
 		</div>
 		<div class="card-body">
 		

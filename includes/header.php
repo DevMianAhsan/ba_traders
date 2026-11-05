@@ -6,6 +6,9 @@
 
 $UserData = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM users WHERE user_id = '$user_id_current'"));
 $_SESSION['user_role'] = $UserData['user_role'];
+if (empty($get_company) && isset($dbc)) {
+    $get_company = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT * FROM company ORDER BY id DESC LIMIT 1"));
+}
  if (isset($_REQUEST['credit_type']) AND $_REQUEST['credit_type']=="15days") {
     $credit_sale_type="15days";
       $credit_sale_type_text="15 days";
@@ -23,7 +26,22 @@ $_SESSION['user_role'] = $UserData['user_role'];
   <nav class="navbar navbar-expand-lg navbar-light bg-white flex-row border-bottom shadow">
         <div class="container-fluid">
           <a class="navbar-brand mx-lg-1 mr-0" href="dashboard.php">
-            <img src="img/logo/<?=$get_company['logo']?>" class="img-fluid" alt="" style="width: 100px;">
+            <?php
+            $comp_logo = !empty($get_company['logo']) ? $get_company['logo'] : '';
+            $comp_logo_dark = '';
+            if ($comp_logo) {
+                $ext = pathinfo($comp_logo, PATHINFO_EXTENSION);
+                $base = pathinfo($comp_logo, PATHINFO_FILENAME);
+                $cand = $base . '_dark.' . $ext;
+                if (file_exists('img/logo/' . $cand)) {
+                    $comp_logo_dark = $cand;
+                }
+            }
+            ?>
+            <img src="img/logo/<?=$comp_logo?>" class="img-fluid logo-light" alt="<?=@$get_company['name']?>" style="width: 100px;">
+            <?php if ($comp_logo_dark): ?>
+              <img src="img/logo/<?=$comp_logo_dark?>" class="img-fluid logo-dark" alt="<?=@$get_company['name']?>" style="width: 100px;">
+            <?php endif; ?>
           </a>
           <button class="navbar-toggler mt-2 mr-auto toggle-sidebar text-muted">
             <i class="fe fe-menu navbar-toggler-icon"></i>

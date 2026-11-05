@@ -7,17 +7,14 @@
       <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">DC List</b>
-           
-             
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-truck mr-2"></i><b>Delivery Challan List</b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="credit_sale.php?credit_type=30days" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> New DC</a>
               </div>
             </div>
-  
-          </div>
            <div class="card-body">
                             <table class="table  dataTableAsc" id="view_orders_tb">
                   <thead>

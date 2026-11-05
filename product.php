@@ -19,22 +19,15 @@ if (isset($_REQUEST['edit_product_id'])) {
       <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">Product Management</b>
-           
-             
-             <!-- <a href="stock.php?type=simple" class="btn btn-admin float-right btn-sm mx-1">Print Stock</a> -->
-             <!-- <a href="stock.php?type=amount" class="btn btn-admin float-right btn-sm mx-1">Print Stock With Amount</a> -->
-              
-                 <a href="product.php?act=add" class="btn btn-admin float-right btn-sm mx-1">Add New</a>
-                 <!-- <a href="product.php?act=add&type=pvc" class="btn btn-admin float-right btn-sm mx-1">Add PVC prodcuts</a> -->
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-box mr-2"></i><b>Product Management</b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="product.php?act=list" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-list"></i> Product List</a>
+                <a href="product.php?act=add" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add New</a>
               </div>
             </div>
-  
-          </div>
              <?php if (@$_REQUEST['act']=="add"): ?>
              <div class="card-body">  
             <form action="php_action/custom_action.php" id="add_product_fm" method="POST" enctype="multipart/form-data">

@@ -7416,10 +7416,10 @@ button:focus {
 .brand-md {
   width: 4rem; }
 
-[data-mode="dark"] .fe::before {
+#modeSwitcher[data-mode="dark"] .fe::before {
   content: "\e9e3"; }
 
-[data-mode="light"] .fe::before {
+#modeSwitcher[data-mode="light"] .fe::before {
   content: "\e9a3"; }
 
 .searchform {

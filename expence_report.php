@@ -1,20 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include_once 'includes/head.php'; ?>
-<style type="text/css">
-  thead tr th{
-    font-size: 19px !important;
-    font-weight: bolder !important;
-    color: #000 !important;
-  }
- tbody tr th{
-    font-size: 18px !important;
-    font-weight: bolder !important;
-      color: #000 !important;
-  }
-</style>
+
   <body class="horizontal light  ">
-    <div class="">
+    <div class="wrapper">
   <?php include_once 'includes/header.php'; ?>
       <main role="main" class="main-content">
         <div class="container-fluid">

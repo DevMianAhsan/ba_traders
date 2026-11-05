@@ -66,7 +66,22 @@ if($_POST) {
           
         <form action="" method="POST">
           <a class="navbar-brand mx-auto mt-2 flex-fill text-center" href="index.php">
-            <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px;">
+            <?php
+            $comp_logo = !empty($get_company['logo']) ? $get_company['logo'] : '';
+            $comp_logo_dark = '';
+            if ($comp_logo) {
+                $ext = pathinfo($comp_logo, PATHINFO_EXTENSION);
+                $base = pathinfo($comp_logo, PATHINFO_FILENAME);
+                $cand = $base . '_dark.' . $ext;
+                if (file_exists('img/logo/' . $cand)) {
+                    $comp_logo_dark = $cand;
+                }
+            }
+            ?>
+            <img src="img/logo/<?=$comp_logo?>" class="logo-light" style="width: 200px;">
+            <?php if ($comp_logo_dark): ?>
+              <img src="img/logo/<?=$comp_logo_dark?>" class="logo-dark" style="width: 200px;">
+            <?php endif; ?>
           </a>
           <h1 class="h4 mb-3"><?=$get_company['name']?></h1>
           <h1 class="h6 mb-3">Sign in</h1>

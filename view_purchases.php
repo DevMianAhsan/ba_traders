@@ -7,17 +7,15 @@
       <main role="main" class="main-content">
         <div class="container-fluid">
           <div class="card">
-            <div class="card-header card-bg" align="center">
-
-            <div class="row">
-              <div class="col-12 mx-auto h4">
-                <b class="text-center card-text">Purchase List</b>
-           
-             
+            <div class="card-header card-bg d-flex justify-content-between align-items-center">
+              <div class="card-title-wrap">
+                <h4 class="card-text mb-0"><i class="fe fe-shopping-cart mr-2"></i><b>Purchase List</b></h4>
+              </div>
+              <div class="card-action-wrap">
+                <a href="credit_purchase.php" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-plus"></i> Credit Purchase</a>
+                <a href="cash_purchase.php" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Cash Purchase</a>
               </div>
             </div>
-  
-          </div>
            <div class="card-body">
                             <table class="table  dataTable" id="view_purchase_tb">
                   <thead>
