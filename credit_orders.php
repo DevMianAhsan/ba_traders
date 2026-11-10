@@ -16,7 +16,7 @@
               </div>
             </div>
            <div class="card-body">
-                            <table class="table  dataTableAsc" id="view_orders_tb">
+                            <table class="table  dataTable" id="view_orders_tb">
                   <thead>
                     <tr>
                       <!-- <th>ID #</th> -->
