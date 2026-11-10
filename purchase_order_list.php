@@ -16,7 +16,7 @@
               </div>
             </div>
            <div class="card-body">
-                            <table class="table" id="view_orders_tb">
+                            <table class="table dataTable" id="view_orders_tb">
                   <thead>
                     <tr>
                       <th>PO ID</th>
@@ -88,4 +88,3 @@
 </html>
 
 <?php include_once 'includes/foot.php'; ?>
-<script type="text/javascript" src="js/panelV2.js"></script>
