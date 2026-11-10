@@ -20,10 +20,10 @@
                             <table class="table  dataTable" id="view_purchase_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th>ID #</th>
+                      <th> Date</th>
                       <th>Customer Name</th>
                       <th>Customer Contact</th>
-                      <th> Date</th>
                       <th>Amount</th>
                       <th>Purchase Type</th>
                       
@@ -40,9 +40,9 @@
                        ?>
                        <tr>
                           <td><?=$r['purchase_id']?></td>
+                          <td><?=$r['purchase_date']?></td>
                           <td><?=ucfirst($r['client_name'])?></td>
                           <td><?=$r['client_contact']?></td>
-                          <td><?=$r['purchase_date']?></td>
                           <td><?=$r['grand_total']?></td>
                            <td><?=$r['payment_type']?></td>
                 

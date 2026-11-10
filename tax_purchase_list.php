@@ -22,11 +22,11 @@
                 <table class="table  dataTableAsc" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Invoice #</th>
+                      <!-- <th>#</th> -->
+                      <th>ID #</th>
                       <th>Date</th>
                       <th>Supplier</th>
-                      <th>Total Qty</th>
+                      <th>Weight (KG)</th>
                       <th>Value Excl Taxes</th>
                       <th>Sales Tax</th>
                       <th>Grand Total</th>
@@ -41,7 +41,7 @@
                         $c++;
                       ?>
                        <tr>
-                          <td><?=$c?></td>
+                          <!-- <td><?=$c?></td> -->
                           <td><?=$row['invoice_no'] ?: $row['tax_purchase_id']?></td>
                           <td><?=$row['invoice_date']?></td>
                           <td>

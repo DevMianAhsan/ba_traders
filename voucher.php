@@ -635,7 +635,7 @@ if (isset($_REQUEST['id'])) {
                 <table class="table  dataTable" id="voucher_expense_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th>ID #</th>
                       <th>From Account</th>
                       <th>To Account</th>
                       <th>Amount</th>

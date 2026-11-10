@@ -19,10 +19,11 @@
                             <table class="table  dataTableAsc" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Order No</th>
+                      <!-- <th>ID #</th> -->
+                      <th>ID #</th>
                       
-                      <th>Order Date</th>
+                      <th>Date</th>
+                      <th>PO #</th>
                       <th>Customer Name</th>
                       <th>Customer Contact</th>
                    
@@ -31,7 +32,7 @@
                     </tr>
                   </thead>
                   <tbody> 
-                      <?php   $q=mysqli_query($dbc,"SELECT * FROM orders WHERE payment_type='credit_sale' ORDER by order_id DESC LIMIT 500 ");
+                      <?php   $q=mysqli_query($dbc,"SELECT * FROM orders WHERE payment_type='credit_sale' ORDER by order_id DESC");
                       $c=0;
                         while ($r=mysqli_fetch_assoc($q)) { $c++;
                           if ($r['credit_sale_type']=="15days") {
@@ -47,10 +48,11 @@
 
                        ?>
                        <tr>
-                          <td><?=$c?></td>
+                          <!-- <td><?=$c?></td> -->
                            <td><?=$r['order_id']?></td>
-                       
+
                           <td><?=$r['order_date']?></td>
+                          <td><strong><?=htmlspecialchars($r['party_po'])?></strong></td>
                           <td><?=$r['client_name']?></td>
                           <td><?=$r['client_contact']?></td>
                           

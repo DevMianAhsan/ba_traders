@@ -19,10 +19,10 @@
                             <table class="table  dataTable" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th>ID #</th>
+                      <th>Date</th>
                       <th>Customer Name</th>
                       <th>Customer Contact</th>
-                      <th>Order Date</th>
                       <th>Amount</th>
                       <th>Order Type</th>
                      
@@ -40,9 +40,9 @@
                        ?>
                        <tr>
                           <td><?=$r['order_id']?></td>
+                          <td><?=$r['order_date']?></td>
                           <td><?=ucfirst($r['client_name'])?></td>
                           <td><?=$r['client_contact']?></td>
-                          <td><?=$r['order_date']?></td>
                           <td><?=$r['grand_total']?></td>
                            <td><?=$r['payment_type']?></td>
                           

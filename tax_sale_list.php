@@ -23,11 +23,11 @@
                 <table class="table  dataTableAsc" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Invoice ID</th>
-                      <th>Invoice Date</th>
+                      <!-- <th>#</th> -->
+                      <th>ID #</th>
+                      <th>Date</th>
+                      <th>PO #</th>
                       <th>Customer Details</th>
-                      <th>Party PO</th>
                       <th>Grand Total</th>
                       <th>Paid Amount</th>
                       <th>WHT Tax</th>
@@ -90,7 +90,7 @@
                         $due_diff = $grand_total - ($paid_amount + $wht_amount);
                       ?>
                        <tr>
-                          <td><?=$c?></td>
+                          <!-- <td><?=$c?></td> -->
                           <td>
                             <strong><?=$r['invoice_no'] ?: $r['tax_sale_id']?></strong>
                             <?php if (!empty($r['fbr_invoice_no'])): ?>
@@ -98,11 +98,11 @@
                             <?php endif; ?>
                           </td>
                           <td><?=$r['invoice_date']?></td>
+                          <td><strong><?=htmlspecialchars($r['po_no'] ?? '')?></strong></td>
                           <td>
                             <?=htmlspecialchars($r['customer_name'] ?? '')?><br/>
                             <?=htmlspecialchars($r['customer_phone'] ?: ($r['customer_strn'] ? 'STRN: ' . $r['customer_strn'] : ''))?>
                           </td>
-                          <td><strong><?=htmlspecialchars($r['po_no'] ?? '')?></strong></td>
                           <td><?=number_format($grand_total)?></td>
                           <td><span class="text-success font-weight-bold"><?=number_format($paid_amount)?></span></td>
                           <td>

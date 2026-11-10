@@ -19,9 +19,9 @@
                             <table class="table dataTable" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>PO ID</th>
+                      <th>ID #</th>
                       <th> Date</th>
-                       <th>PO</th>
+                       <th>PO #</th>
                       <th>Customer Name</th>
                       <th>Customer Contact</th>
                       <th>Target Date</th>
@@ -43,7 +43,7 @@
                           
                            <td><?=$r['po_id']?></td>
                           <td><?=$r['po_date']?></td>
-                          <td><?=$r['po_partypo']?></td>
+                          <td><strong><?=htmlspecialchars($r['po_partypo'])?></strong></td>
                           <td><?=$r['po_customer_name']?></td>
                           <td><?=$r['po_customer_no']?></td>
                           <td><?=$r['po_targetdate']?></td>

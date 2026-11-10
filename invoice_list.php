@@ -22,11 +22,11 @@
                             <table class="table  dataTableAsc" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Invoice ID</th>
-                      <th>Invoice Date</th>
+                      <!-- <th>#</th> -->
+                      <th>ID #</th>
+                      <th>Date</th>
+                      <th>PO #</th>
                       <th>Customer Details  </th>
-                      <th>Party PO</th>
                       <th>Grand Total</th>
                       <th>Paid Amount</th>
                       <th>Due Balance</th>
@@ -42,15 +42,15 @@
 
                        ?>
                        <tr>
-                          <td><?=$c?></td>
+                          <!-- <td><?=$c?></td> -->
                            <td><?=$r['invoice_id']?></td>
                        
                           <td><?=$r['invoice_date'] ?: '-'?></td>
+                          <td><strong><?=htmlspecialchars($r['party_po'])?></strong></td>
                           <td>
                             <?=htmlspecialchars($CLEINTHIS['customer_name'] ?? 'N/A')?><br/>
                             <small class="text-muted"><?=htmlspecialchars($CLEINTHIS['customer_phone'] ?? '')?></small>
                           </td>
-                          <td><strong><?=htmlspecialchars($r['party_po'])?></strong></td>
                           <td><?=number_format(floatval($r['grand_total']))?></td>
                           <?php
                             $party_po = trim($r['party_po'] ?? '');

@@ -19,7 +19,7 @@
                             <table class="table  dataTable" id="view_orders_tb">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th>ID #</th>
                       <th>Date</th>
                       <th>Department Name</th>
                       <th>Department Contact</th>
