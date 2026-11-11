@@ -49,14 +49,36 @@ $company_phone = !empty($get_company['company_phone']) ? $get_company['company_p
 $edit_customer = null;
 $customer_pos = [];
 if (!empty($tax_sale['customer_id'])) {
-    $edit_customer = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT * FROM customers WHERE customer_id = '{$tax_sale['customer_id']}'"));
-    $q_pos = mysqli_query($dbc, "SELECT DISTINCT po_partypo FROM purchase_order WHERE po_customer = '{$tax_sale['customer_id']}' ORDER BY po_id DESC");
+    $cid_safe = mysqli_real_escape_string($dbc, $tax_sale['customer_id']);
+    $edit_customer = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT * FROM customers WHERE customer_id = '$cid_safe'"));
+
+    // Fetch from purchase_order
+    $q_pos = mysqli_query($dbc, "SELECT DISTINCT po_partypo FROM purchase_order WHERE po_customer = '$cid_safe' ORDER BY po_id DESC");
     if ($q_pos) {
         while ($r_po = mysqli_fetch_assoc($q_pos)) {
             $c_po_clean = trim($r_po['po_partypo'] ?? '');
             if ($c_po_clean !== '' && !in_array($c_po_clean, $customer_pos)) {
                 $customer_pos[] = $c_po_clean;
             }
+        }
+    }
+
+    // Also fetch from orders (DC)
+    $qo_pos = mysqli_query($dbc, "SELECT DISTINCT party_po FROM orders WHERE customer_account = '$cid_safe' AND party_po IS NOT NULL AND party_po != '' ORDER BY order_id DESC");
+    if ($qo_pos) {
+        while ($ro_po = mysqli_fetch_assoc($qo_pos)) {
+            $c_po_clean = trim($ro_po['party_po'] ?? '');
+            if ($c_po_clean !== '' && !in_array($c_po_clean, $customer_pos)) {
+                $customer_pos[] = $c_po_clean;
+            }
+        }
+    }
+
+    // Ensure the saved po_no is present in customer_pos list
+    if (!empty($tax_sale['po_no'])) {
+        $saved_po = trim($tax_sale['po_no']);
+        if ($saved_po !== '' && !in_array($saved_po, $customer_pos)) {
+            array_unshift($customer_pos, $saved_po);
         }
     }
 }
@@ -225,8 +247,8 @@ if (!empty($tax_sale['customer_id'])) {
     .po-input-group .select2-container,
     .po-input-group .select2-container--bootstrap4 {
       flex: 1 1 auto !important;
-      width: 1% !important;
-      min-width: 0 !important;
+      width: auto !important;
+      min-width: 160px !important;
     }
     .po-input-group .select2-selection--single {
       height: 31px !important;
@@ -807,13 +829,13 @@ if (!empty($tax_sale['customer_id'])) {
               
               <strong class="po-lbl">PO # :</strong>
               <div class="input-group po-input-group">
-                <select name="po_no" id="po_no" data-placeholder="-- Select PO --" class="inv-input font-weight-bold searchableSelect" style="height: 31px;" onchange="onPoChange(this.value)">
+                <select name="po_no" id="po_no" class="inv-input font-weight-bold" style="height: 31px;" onchange="onPoChange(this.value)">
+                  <option value="">-- Select PO --</option>
                   <?php if (!empty($customer_pos)): ?>
-                    <option value="">-- Select PO --</option>
                     <?php 
                     $found_sel = false;
                     foreach ($customer_pos as $cpo): 
-                        $is_sel = (!empty($tax_sale['po_no']) && $tax_sale['po_no'] == $cpo);
+                        $is_sel = (!empty($tax_sale['po_no']) && strval($tax_sale['po_no']) === strval($cpo));
                         if ($is_sel) $found_sel = true;
                     ?>
                       <option value="<?=htmlspecialchars($cpo)?>" <?=$is_sel ? 'selected' : ''?>><?=htmlspecialchars($cpo)?></option>
@@ -823,11 +845,10 @@ if (!empty($tax_sale['customer_id'])) {
                     <?php endif; ?>
                     <option value="__custom__">+ Enter Custom PO...</option>
                   <?php elseif (!empty($tax_sale['po_no'])): ?>
-                    <option value="">-- Select PO --</option>
                     <option value="<?=htmlspecialchars($tax_sale['po_no'])?>" selected><?=htmlspecialchars($tax_sale['po_no'])?></option>
                     <option value="__custom__">+ Enter Custom PO...</option>
                   <?php else: ?>
-                    <option value="">Select Customer first</option>
+                    <option value="__custom__">+ Enter Custom PO...</option>
                   <?php endif; ?>
                 </select>
                 <div class="input-group-append">
@@ -1033,6 +1054,8 @@ if (!empty($tax_sale['customer_id'])) {
     var fullProductOptionsHtml = $('#product_options_source').html();
     var productOptionsHtml = fullProductOptionsHtml;
     var existingItems = <?=json_encode($tax_sale_items)?>;
+    var isHandlingCustomPo = false;
+    var currentPoProducts = {};
 
     function escapeHtml(text) {
       if (!text) return '';
@@ -1044,10 +1067,38 @@ if (!empty($tax_sale['customer_id'])) {
         .replace(/'/g, '&#039;');
     }
 
+    function initPoSelect2() {
+      if ($.fn.select2) {
+        try {
+          if ($('#po_no').hasClass('select2-hidden-accessible')) {
+            $('#po_no').select2('destroy');
+          }
+        } catch (e) {}
+        $('.po-input-group').find('.select2-container').remove();
+        $('#po_no').select2({
+          theme: 'bootstrap4',
+          width: 'resolve',
+          placeholder: {
+            id: '',
+            text: $('#po_no option:first').text() || '-- Select PO --'
+          }
+        });
+      }
+    }
+
     $(document).ready(function() {
       // Initialize select2 on customer selector
       if ($.fn.select2) {
         $('.select2').select2({ width: '100%' });
+      }
+
+      var savedPo = <?=json_encode(!empty($tax_sale['po_no']) ? strval($tax_sale['po_no']) : '')?>;
+      var editCustomerId = <?=json_encode(!empty($tax_sale['customer_id']) ? strval($tax_sale['customer_id']) : '')?>;
+
+      // Initialize PO Select2
+      initPoSelect2();
+      if (savedPo) {
+        $('#po_no').val(savedPo).trigger('change.select2');
       }
 
       // Customer selection change handler
@@ -1077,8 +1128,9 @@ if (!empty($tax_sale['customer_id'])) {
             }
           });
 
-          // Fetch POs for customer
-          loadCustomerPOs(cid);
+          // Fetch POs for customer; preserve savedPo if editing and customer matches
+          var poToPreserve = (cid == editCustomerId && savedPo) ? savedPo : '';
+          loadCustomerPOs(cid, poToPreserve);
         } else {
           $('#customer_id').val('');
           $('#customer_balance_badge').hide();
@@ -1095,10 +1147,9 @@ if (!empty($tax_sale['customer_id'])) {
         addItemRow();
       }
 
-      // If initial PO exists (edit mode), filter products accordingly
-      var initialPo = $('#po_no').val();
-      if (initialPo && initialPo !== '__custom__') {
-        onPoChange(initialPo, true);
+      // If initial PO exists (edit mode), load its PO rates in memory without filtering products
+      if (savedPo) {
+        onPoChange(savedPo, true);
       }
     });
 
@@ -1115,6 +1166,9 @@ if (!empty($tax_sale['customer_id'])) {
       $('#po_no').html(html);
 
       if (valToSelect) {
+        if ($('#po_no option[value="' + valToSelect + '"]').length === 0) {
+          $('#po_no option[value="__custom__"]').before('<option value="' + escapeHtml(valToSelect) + '" selected>' + escapeHtml(valToSelect) + '</option>');
+        }
         $('#po_no').val(valToSelect);
       } else {
         $('#po_no').val('');
@@ -1136,8 +1190,7 @@ if (!empty($tax_sale['customer_id'])) {
 
     function loadCustomerPOs(cid, selectedPo) {
       if (!cid) {
-        updatePoDropdown('<option value="">Select Customer first</option>', '');
-        resetProductDropdown();
+        updatePoDropdown('<option value="">-- Select PO --</option><option value="__custom__">+ Enter Custom PO...</option>', '');
         autoUpdateHeaderDesc();
         return;
       }
@@ -1156,19 +1209,19 @@ if (!empty($tax_sale['customer_id'])) {
         success: function(msg) {
           var res = (msg || '').trim();
           var hasPOs = (res && res.indexOf('<option') !== -1 && res.indexOf('Not Found') === -1);
-          var html = '';
+          var html = '<option value="">-- Select PO --</option>';
 
           if (hasPOs) {
-            html += '<option value="">-- Select PO --</option>';
-            html += res;
+            var cleanRes = res.replace(/<option\s+value=["']["']>Select Party PO<\/option>/gi, '');
+            html += cleanRes;
+            if (selectedPo && html.indexOf('value="' + selectedPo + '"') === -1 && html.indexOf("value='" + selectedPo + "'") === -1) {
+              html += '<option value="' + escapeHtml(selectedPo) + '">' + escapeHtml(selectedPo) + '</option>';
+            }
             html += '<option value="__custom__">+ Enter Custom PO...</option>';
 
-            var poToSelect = '';
-            if (selectedPo) {
-              poToSelect = selectedPo;
-            } else {
-              // Extract the first PO number from res
-              var match = res.match(/value="([^"]+)"/);
+            var poToSelect = selectedPo || '';
+            if (!poToSelect) {
+              var match = cleanRes.match(/value="([^"]+)"/);
               if (match && match[1]) {
                 poToSelect = match[1];
               }
@@ -1179,26 +1232,37 @@ if (!empty($tax_sale['customer_id'])) {
             if (poToSelect) {
               onPoChange(poToSelect);
             } else {
-              resetProductDropdown();
               autoUpdateHeaderDesc();
             }
           } else {
-            html += '<option value="">-- No PO Found --</option>';
+            if (selectedPo) {
+              html += '<option value="' + escapeHtml(selectedPo) + '" selected>' + escapeHtml(selectedPo) + '</option>';
+            }
             html += '<option value="__custom__">+ Enter Custom PO...</option>';
-            updatePoDropdown(html, '');
-            resetProductDropdown();
-            autoUpdateHeaderDesc();
+            updatePoDropdown(html, selectedPo || '');
+            if (selectedPo) {
+              onPoChange(selectedPo);
+            } else {
+              autoUpdateHeaderDesc();
+            }
           }
         },
         error: function() {
-          updatePoDropdown('<option value="">-- No PO Found --</option><option value="__custom__">+ Enter Custom PO...</option>', '');
-          resetProductDropdown();
-          autoUpdateHeaderDesc();
+          var html = '<option value="">-- Select PO --</option>';
+          if (selectedPo) {
+            html += '<option value="' + escapeHtml(selectedPo) + '" selected>' + escapeHtml(selectedPo) + '</option>';
+          }
+          html += '<option value="__custom__">+ Enter Custom PO...</option>';
+          updatePoDropdown(html, selectedPo || '');
+          if (selectedPo) {
+            onPoChange(selectedPo);
+          } else {
+            autoUpdateHeaderDesc();
+          }
         }
       });
     }
 
-    var isHandlingCustomPo = false;
     function onPoChange(poVal, isInit) {
       if (isHandlingCustomPo) return;
       if (poVal === '__custom__') {
@@ -1206,7 +1270,7 @@ if (!empty($tax_sale['customer_id'])) {
         if (custom && custom.trim() !== '') {
           custom = custom.trim();
           if ($('#po_no option[value="' + custom + '"]').length === 0) {
-            $('#po_no option[value="__custom__"]').before('<option value="' + custom + '" selected>' + custom + '</option>');
+            $('#po_no option[value="__custom__"]').before('<option value="' + escapeHtml(custom) + '" selected>' + escapeHtml(custom) + '</option>');
           }
           isHandlingCustomPo = true;
           updatePoDropdown($('#po_no').html(), custom);
@@ -1223,7 +1287,7 @@ if (!empty($tax_sale['customer_id'])) {
       autoUpdateHeaderDesc();
 
       if (!poVal) {
-        resetProductDropdown();
+        currentPoProducts = {};
         return;
       }
 
@@ -1239,54 +1303,13 @@ if (!empty($tax_sale['customer_id'])) {
         },
         dataType: 'json',
         success: function(resp) {
+          currentPoProducts = {};
           if (resp && resp.sts === 'success' && resp.data && resp.data.length > 0) {
-            var html = '<option value="">-- Choose Product --</option>';
             resp.data.forEach(function(p) {
-              var hsText = p.hs_code ? p.hs_code : 'N/A';
-              html += '<option value="' + p.product_id + '"' +
-                ' data-id="' + p.product_id + '"' +
-                ' data-name="' + escapeHtml(p.product_name) + '"' +
-                ' data-hscode="' + escapeHtml(p.hs_code) + '"' +
-                ' data-unit="KG"' +
-                ' data-rate="' + p.rate + '"' +
-                ' data-qty="' + (p.ordered_qty || '') + '"' +
-                ' data-desc="' + escapeHtml(p.description) + '">' +
-                escapeHtml(p.product_name) + ' (HS: ' + escapeHtml(hsText) + ')' +
-                '</option>';
+              currentPoProducts[p.product_id] = p;
             });
 
-            // If initializing in edit mode, ensure existing items remain present
-            if (isInit) {
-              $('.product_selector').each(function() {
-                var currVal = $(this).val();
-                if (currVal && html.indexOf('value="' + currVal + '"') === -1) {
-                  var currOpt = $('#product_options_source option[value="' + currVal + '"]');
-                  if (currOpt.length > 0) {
-                    html += currOpt[0].outerHTML;
-                  }
-                }
-              });
-            }
-
-            productOptionsHtml = html;
-
-            // Update all existing item rows
-            $('.product_selector').each(function() {
-              var currentVal = $(this).val();
-              var rowId = $(this).closest('tr').attr('id').replace('row_', '');
-              $(this).html(productOptionsHtml);
-
-              if (currentVal && $(this).find('option[value="' + currentVal + '"]').length > 0) {
-                $(this).val(currentVal);
-              } else {
-                if (!isInit) {
-                  $(this).val('');
-                  onProductSelect(rowId, this);
-                }
-              }
-            });
-
-            // Auto-select if only 1 product in PO and first row is blank
+            // On new invoice creation (not edit init), auto-select if only 1 product in PO and first row is blank
             if (!isInit && resp.data.length === 1 && $('#items_tbody tr').length === 1) {
               var firstRowSelector = $('#items_tbody tr:first .product_selector');
               if (!firstRowSelector.val()) {
@@ -1295,23 +1318,13 @@ if (!empty($tax_sale['customer_id'])) {
                 onProductSelect(firstRowId, firstRowSelector[0]);
               }
             }
-          } else {
-            resetProductDropdown();
           }
-        },
-        error: function() {
-          resetProductDropdown();
         }
       });
     }
 
     function resetProductDropdown() {
       productOptionsHtml = fullProductOptionsHtml;
-      $('.product_selector').each(function() {
-        var currentVal = $(this).val();
-        $(this).html(productOptionsHtml);
-        if (currentVal) $(this).val(currentVal);
-      });
     }
 
     function getpoDetails() {
@@ -1432,6 +1445,9 @@ if (!empty($tax_sale['customer_id'])) {
       $('#items_tbody').append(rowHtml);
 
       if (pid) {
+        if ($(`#row_${currentIdx} .product_selector option[value="${pid}"]`).length === 0) {
+          $(`#row_${currentIdx} .product_selector`).append(`<option value="${pid}" data-id="${pid}" data-name="${escapeHtml(desc)}" data-hscode="${escapeHtml(hscode)}" data-unit="KG">${escapeHtml(desc || 'Product #' + pid)}</option>`);
+        }
         $(`#row_${currentIdx} .product_selector`).val(pid);
       } else if (desc) {
         var matchedOpt = $(`#row_${currentIdx} .product_selector option`).filter(function() {
@@ -1448,18 +1464,32 @@ if (!empty($tax_sale['customer_id'])) {
     function onProductSelect(idx, elem) {
       var opt = $(elem).find(':selected');
       if (opt.val()) {
-        $(`#item_product_id_${idx}`).val(opt.data('id') || opt.val());
+        var pid = opt.data('id') || opt.val();
+        $(`#item_product_id_${idx}`).val(pid);
         $(`#item_description_${idx}`).val(opt.data('name') || '');
         $(`#item_hscode_${idx}`).val(opt.data('hscode') || '');
         $(`#item_unit_${idx}`).val('KG');
         
-        var defaultRate = parseFloat(opt.data('rate') || 0);
+        var defaultRate = 0;
+        if (currentPoProducts && currentPoProducts[pid] && parseFloat(currentPoProducts[pid].rate) > 0) {
+          defaultRate = parseFloat(currentPoProducts[pid].rate);
+        } else {
+          defaultRate = parseFloat(opt.data('rate') || 0);
+        }
+
         if (defaultRate > 0) {
           $(`#item_rate_${idx}`).val(defaultRate);
         } else {
           $(`#item_rate_${idx}`).val('');
         }
-        var defaultQty = parseFloat(opt.data('qty') || 0);
+
+        var defaultQty = 0;
+        if (currentPoProducts && currentPoProducts[pid] && parseFloat(currentPoProducts[pid].ordered_qty) > 0) {
+          defaultQty = parseFloat(currentPoProducts[pid].ordered_qty);
+        } else {
+          defaultQty = parseFloat(opt.data('qty') || 0);
+        }
+
         if (defaultQty > 0 && (!$(`#item_qty_${idx}`).val() || parseFloat($(`#item_qty_${idx}`).val()) === 0)) {
           $(`#item_qty_${idx}`).val(defaultQty);
         }

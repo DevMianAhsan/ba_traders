@@ -763,7 +763,15 @@ include 'includes/report_header.php';
             <tr>
               <td colspan="12"></td>
               <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Closing Balance</td>
-              <td colspan="2" class="h4 font-weight-bold mb-0 <?=$running_bal > 0 ? 'text-danger' : 'text-success'?>" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
+              <?php
+                $closing_type = '';
+                if ($running_bal < 0) {
+                  $closing_type = ' dr';
+                } elseif ($running_bal > 0) {
+                  $closing_type = ' cr';
+                }
+              ?>
+              <td colspan="2" class="h4 font-weight-bold mb-0 <?=$running_bal > 0 ? 'text-danger' : 'text-success'?>" style="vertical-align: middle;"><?=number_format(abs($running_bal)) . $closing_type?></td>
             </tr>
           </tfoot>
         </table>
@@ -954,10 +962,18 @@ include 'includes/report_header.php';
                 <td colspan="2"></td>
               <?php endif; ?> 
               <td colspan="3" align="right">Closing Balance</td>
+              <?php
+                $closing_type_legacy = '';
+                if ($temp < 0) {
+                  $closing_type_legacy = ' dr';
+                } elseif ($temp > 0) {
+                  $closing_type_legacy = ' cr';
+                }
+              ?>
               <?php if ($temp<=0): ?>
-                <td colspan="4" class='h3 text-danger'><?=number_format((float)$temp)?></td>
+                <td colspan="4" class='h3 text-danger'><?=number_format(abs((float)$temp)) . $closing_type_legacy?></td>
               <?php else: ?>
-                <td colspan="4" class='h3 text-success'><?=number_format((float)$temp)?></td>
+                <td colspan="4" class='h3 text-success'><?=number_format((float)$temp) . $closing_type_legacy?></td>
               <?php endif ?>
             </tr>
           </tbody>

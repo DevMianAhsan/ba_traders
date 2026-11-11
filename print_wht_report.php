@@ -73,9 +73,9 @@ $distinct_vouchers = [];
 
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
-        $g_amt = floatval(str_replace(',', '', $row['invoice_amount'] ?? 0));
+        $n_amt = floatval(str_replace(',', '', $row['invoice_amount'] ?? 0));
         $w_amt = floatval(str_replace(',', '', $row['tax_amount'] ?? 0));
-        $n_amt = $g_amt - $w_amt;
+        $g_amt = $n_amt + $w_amt;
 
         $total_gross += $g_amt;
         $total_wht += $w_amt;
@@ -402,9 +402,9 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
           foreach ($transactions as $t):
             $tsr++;
             $v_date = !empty($t['voucher_date']) ? date('d-M-Y', strtotime($t['voucher_date'])) : date('d-M-Y', strtotime($t['timestamp']));
-            $g = floatval(str_replace(',', '', $t['invoice_amount'] ?? 0));
+            $n = floatval(str_replace(',', '', $t['invoice_amount'] ?? 0));
             $w = floatval(str_replace(',', '', $t['tax_amount'] ?? 0));
-            $n = $g - $w;
+            $g = $n + $w;
             $p = floatval(str_replace(',', '', $t['tax_percent'] ?? 0));
         ?>
           <tr>

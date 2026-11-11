@@ -22,8 +22,14 @@ while ($vi_row = mysqli_fetch_assoc($q_vi_check)) {
 
             # code...
         }else{
-    $from_balance=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='".$vouchers['customer_id1']."'"));
-    $previous_balance=(int)$from_balance['from_balance']+(int)$vouchers['voucher_amount'];
+    $c_id1 = mysqli_real_escape_string($dbc, $vouchers['customer_id1']);
+    $from_balance=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='$c_id1'"));
+    $raw_bal1 = !empty($from_balance['from_balance']) ? floatval($from_balance['from_balance']) : 0;
+    $q_wht1 = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS total_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.customer_id1 = '$c_id1'");
+    $r_wht1 = mysqli_fetch_assoc($q_wht1);
+    $wht1 = !empty($r_wht1['total_wht']) ? floatval($r_wht1['total_wht']) : 0;
+    $from_balance['from_balance'] = $raw_bal1 - $wht1;
+    $previous_balance=(int)$from_balance['from_balance']+(int)$vouchers['voucher_amount']+(int)$wht1;
 
     $from_balance2=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='".$vouchers['customer_id2']."'"));
     $previous_balance2=(int)$from_balance2['from_balance']-(int)$vouchers['voucher_amount'];
@@ -166,10 +172,10 @@ body{
                                   <th style="padding: 4px; text-align: center;">Invoice #</th>
                                   <th style="padding: 4px; text-align: center;">Customer</th>
                                   <th style="padding: 4px; text-align: center;">Party PO</th>
-                                  <th style="padding: 4px; text-align: right;">Total Amount</th>
+                                  <th style="padding: 4px; text-align: right;">Cheque Amount</th>
                                   <th style="padding: 4px; text-align: center;">WHT %</th>
                                   <th style="padding: 4px; text-align: right;">WHT Amount</th>
-                                  
+                                  <th style="padding: 4px; text-align: right;">Gross Cleared</th>
                               </tr>
                           </thead>
                           <tbody>
@@ -177,14 +183,17 @@ body{
                               $v_idx = 0; 
                               $v_sum_total = 0;
                               $v_sum_tax = 0;
+                              $v_sum_gross = 0;
                                
                               foreach ($voucher_invoices_list as $vi_item): 
                                   $v_idx++; 
                                   $v_inv_amt = floatval($vi_item['invoice_amount']);
                                   $v_tax_amt = floatval(!empty($vi_item['tax_amount']) ? $vi_item['tax_amount'] : 0);
                                   
+                                  $v_gross_amt = $v_inv_amt + $v_tax_amt;
                                   $v_sum_total += $v_inv_amt;
                                   $v_sum_tax += $v_tax_amt;
+                                  $v_sum_gross += $v_gross_amt;
                                   
                               ?>
                               <tr>
@@ -196,6 +205,7 @@ body{
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_inv_amt)?> RS</td>
                                   <td style="padding: 4px; text-align: center;"><?=!empty($vi_item['tax_percent']) ? $vi_item['tax_percent'].'%' : '-'?></td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_tax_amt)?> RS</td>
+                                  <td style="padding: 4px; text-align: right; font-weight: bold;"><?=number_format($v_gross_amt)?> RS</td>
                                   
                               </tr>
                               <?php endforeach; ?>
@@ -204,6 +214,7 @@ body{
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_total)?> RS</td>
                                   <td style="padding: 4px; text-align: center;">-</td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_tax)?> RS</td>
+                                  <td style="padding: 4px; text-align: right; color: green; font-weight: bold;"><?=number_format($v_sum_gross)?> RS</td>
                                   
                               </tr>
                           </tbody>
@@ -286,10 +297,10 @@ body{
                                   <th style="padding: 4px; text-align: center;">Invoice #</th>
                                   <th style="padding: 4px; text-align: center;">Customer</th>
                                   <th style="padding: 4px; text-align: center;">Party PO</th>
-                                  <th style="padding: 4px; text-align: right;">Total Amount</th>
+                                  <th style="padding: 4px; text-align: right;">Cheque Amount</th>
                                   <th style="padding: 4px; text-align: center;">WHT %</th>
                                   <th style="padding: 4px; text-align: right;">WHT Amount</th>
-                                  
+                                  <th style="padding: 4px; text-align: right;">Gross Cleared</th>
                               </tr>
                           </thead>
                           <tbody>
@@ -297,14 +308,17 @@ body{
                               $v_idx = 0; 
                               $v_sum_total = 0;
                               $v_sum_tax = 0;
+                              $v_sum_gross = 0;
                                
                               foreach ($voucher_invoices_list as $vi_item): 
                                   $v_idx++; 
                                   $v_inv_amt = floatval($vi_item['invoice_amount']);
                                   $v_tax_amt = floatval(!empty($vi_item['tax_amount']) ? $vi_item['tax_amount'] : 0);
                                   
+                                  $v_gross_amt = $v_inv_amt + $v_tax_amt;
                                   $v_sum_total += $v_inv_amt;
                                   $v_sum_tax += $v_tax_amt;
+                                  $v_sum_gross += $v_gross_amt;
                                   
                               ?>
                               <tr>
@@ -316,6 +330,7 @@ body{
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_inv_amt)?> RS</td>
                                   <td style="padding: 4px; text-align: center;"><?=!empty($vi_item['tax_percent']) ? $vi_item['tax_percent'].'%' : '-'?></td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_tax_amt)?> RS</td>
+                                  <td style="padding: 4px; text-align: right; font-weight: bold;"><?=number_format($v_gross_amt)?> RS</td>
                                   
                               </tr>
                               <?php endforeach; ?>
@@ -324,6 +339,7 @@ body{
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_total)?> RS</td>
                                   <td style="padding: 4px; text-align: center;">-</td>
                                   <td style="padding: 4px; text-align: right;"><?=number_format($v_sum_tax)?> RS</td>
+                                  <td style="padding: 4px; text-align: right; color: green; font-weight: bold;"><?=number_format($v_sum_gross)?> RS</td>
                                   
                               </tr>
                           </tbody>

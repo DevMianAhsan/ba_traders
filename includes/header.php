@@ -224,6 +224,12 @@ if (empty($get_company) && isset($dbc)) {
           </div>
                    <ul class="navbar-nav d-flex flex-row">
             <li class="nav-item">
+              <a class="nav-link text-muted my-2 mr-2" href="javascript:void(0);" id="tabModeSwitcher" title="Toggle: Open menu links in new tab" style="display: flex; align-items: center; gap: 4px; text-decoration: none;">
+                <i class="fe fe-external-link fe-16"></i>
+                <span id="tabModeBadge" class="badge badge-pill badge-secondary" style="font-size: 10px; padding: 2px 6px;">New Tab: OFF</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link text-muted my-2" href="./#" id="modeSwitcher" data-mode="light">
                 <i class="fe fe-sun fe-16"></i>
               </a>
@@ -256,4 +262,123 @@ if (empty($get_company) && isset($dbc)) {
             </li>
           </ul>
         </div>
-     </nav> 
+     </nav>
+
+<style>
+/* Auto-open dropdown menus on hover for desktop screens */
+@media (min-width: 992px) {
+  .navbar-nav .nav-item.dropdown:hover > .dropdown-menu {
+    display: block !important;
+    margin-top: 0;
+    animation: navDropdownFade 0.15s ease-in-out;
+  }
+
+  .navbar-nav .nav-item.dropdown > .dropdown-menu {
+    margin-top: 0;
+  }
+
+  /* Invisible bridge to prevent mouse-leave flickering */
+  .navbar-nav .nav-item.dropdown > .dropdown-menu::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 0;
+    right: 0;
+    height: 8px;
+  }
+
+  /* Multi-level / nested dropdowns on hover */
+  .navbar-nav .dropdown-menu .nav-item.dropdown:hover > .dropdown-menu {
+    display: block !important;
+    top: 0;
+    left: 100%;
+    margin-top: 0;
+    animation: navDropdownFade 0.15s ease-in-out;
+  }
+}
+
+@keyframes navDropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+
+<script>
+(function() {
+  function applyTabPreference(isNewTab) {
+    var menuLinks = document.querySelectorAll(".navbar-nav .dropdown-menu a, .navbar-slide a.nav-link:not(.dropdown-toggle)");
+    for (var i = 0; i < menuLinks.length; i++) {
+      var link = menuLinks[i];
+      var href = link.getAttribute("href") || "";
+      // Skip profile, logout, modals, and javascript anchors
+      if (href === "logout.php" || href === "setting.php" || href.startsWith("#") || href.startsWith("javascript:")) {
+        continue;
+      }
+      if (isNewTab) {
+        link.setAttribute("target", "_blank");
+        link.setAttribute("rel", "noopener noreferrer");
+      } else {
+        link.removeAttribute("target");
+        link.removeAttribute("rel");
+      }
+    }
+
+    var badge = document.getElementById("tabModeBadge");
+    var switcher = document.getElementById("tabModeSwitcher");
+    if (badge) {
+      badge.textContent = isNewTab ? "New Tab: ON" : "New Tab: OFF";
+      badge.className = "badge badge-pill " + (isNewTab ? "badge-success" : "badge-secondary");
+    }
+    if (switcher) {
+      if (isNewTab) {
+        switcher.classList.remove("text-muted");
+        switcher.classList.add("text-success");
+      } else {
+        switcher.classList.remove("text-success");
+        switcher.classList.add("text-muted");
+      }
+    }
+  }
+
+  function initTabMode() {
+    var savedPref = localStorage.getItem("open_menu_new_tab") === "true";
+    applyTabPreference(savedPref);
+
+    var switcher = document.getElementById("tabModeSwitcher");
+    if (switcher && !switcher.dataset.bound) {
+      switcher.dataset.bound = "true";
+      switcher.addEventListener("click", function(e) {
+        e.preventDefault();
+        var currentPref = localStorage.getItem("open_menu_new_tab") === "true";
+        var newPref = !currentPref;
+        localStorage.setItem("open_menu_new_tab", newPref ? "true" : "false");
+        applyTabPreference(newPref);
+      });
+    }
+
+    // Auto-close dropdown on mouseleave so accidental clicks do not leave it stuck open
+    var dropdownItems = document.querySelectorAll(".navbar-nav .nav-item.dropdown");
+    dropdownItems.forEach(function(item) {
+      item.addEventListener("mouseleave", function() {
+        var menu = item.querySelector(".dropdown-menu");
+        var toggle = item.querySelector('[data-toggle="dropdown"]');
+        if (item.classList.contains("show")) item.classList.remove("show");
+        if (menu && menu.classList.contains("show")) menu.classList.remove("show");
+        if (toggle) toggle.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTabMode);
+  } else {
+    initTabMode();
+  }
+})();
+</script> 

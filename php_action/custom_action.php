@@ -501,7 +501,7 @@ GROUP BY
 				$fbr_inv = trim($r['fbr_invoice_no'] ?? '');
 				$fbr_clause = !empty($fbr_inv) ? " OR invoice_id = '".mysqli_real_escape_string($dbc, $fbr_inv)."'" : "";
 				$exclude_sql = $exclude_voucher > 0 ? " AND voucher_id != '$exclude_voucher'" : "";
-				$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(invoice_amount AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE (invoice_id = '$inv_id' OR invoice_id = '$ts_id' $fbr_clause) $exclude_sql");
+				$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(invoice_amount AS DECIMAL(15,2)) + CAST(COALESCE(tax_amount, 0) AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE (invoice_id = '$inv_id' OR invoice_id = '$ts_id' $fbr_clause) $exclude_sql");
 				$r_paid = mysqli_fetch_assoc($q_paid);
 				$paid = !empty($r_paid['total_paid']) ? floatval($r_paid['total_paid']) : 0;
 				$grand_total = floatval($r['grand_total']);
@@ -540,7 +540,7 @@ GROUP BY
 			$fbr_inv = trim($r['fbr_invoice_no'] ?? '');
 			$fbr_clause = !empty($fbr_inv) ? " OR invoice_id = '".mysqli_real_escape_string($dbc, $fbr_inv)."'" : "";
 			$exclude_sql = $exclude_voucher > 0 ? " AND voucher_id != '$exclude_voucher'" : "";
-			$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(invoice_amount AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE (invoice_id = '$inv_num' OR invoice_id = '$ts_id' $fbr_clause) $exclude_sql");
+			$q_paid = mysqli_query($dbc, "SELECT SUM(CAST(invoice_amount AS DECIMAL(15,2)) + CAST(COALESCE(tax_amount, 0) AS DECIMAL(15,2))) AS total_paid FROM voucher_invoices WHERE (invoice_id = '$inv_num' OR invoice_id = '$ts_id' $fbr_clause) $exclude_sql");
 			$r_paid = mysqli_fetch_assoc($q_paid);
 			$paid = !empty($r_paid['total_paid']) ? floatval($r_paid['total_paid']) : 0;
 			$grand_total = floatval($r['grand_total']);
@@ -2200,19 +2200,26 @@ if (isset($_REQUEST['get_products_code'])) {
 	echo json_encode($response);
 }
 if (isset($_REQUEST['getBalance'])) {
-	 $from_balance=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='".$_REQUEST['getBalance']."'"));
-	 $cust = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = '".$_REQUEST['getBalance']."'"));
-	if (!empty($from_balance['from_balance'])) {
-		$response1 = [
-			'blnc' => round($from_balance['from_balance']),
-			'custLimit' => round($cust['customer_limit']),
-		];
-	}else{
-		$response1 = [
-			'blnc' => '0',
-			'custLimit' =>round($cust['customer_limit']),
-		];
-	}
+	$customer_id = mysqli_real_escape_string($dbc, $_REQUEST['getBalance']);
+	$from_balance = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='$customer_id'"));
+	$cust = mysqli_fetch_assoc(mysqli_query($dbc,"SELECT * FROM customers WHERE customer_id = '$customer_id'"));
+	
+	$raw_balance = !empty($from_balance['from_balance']) ? floatval($from_balance['from_balance']) : 0;
+	
+	// Deduct WHT from vouchers for this customer so balance matches closing balance
+	$q_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS total_wht 
+		FROM voucher_invoices vi 
+		JOIN vouchers v ON vi.voucher_id = v.voucher_id 
+		WHERE v.customer_id1 = '$customer_id'");
+	$r_wht = mysqli_fetch_assoc($q_wht);
+	$total_wht = !empty($r_wht['total_wht']) ? floatval($r_wht['total_wht']) : 0;
+	
+	$final_balance = $raw_balance - $total_wht;
+	
+	$response1 = [
+		'blnc' => round($final_balance),
+		'custLimit' => round($cust['customer_limit'] ?? 0),
+	];
 	echo json_encode($response1);
 }
 if (isset($_REQUEST['pending_bills_detils'])) {
@@ -2669,6 +2676,7 @@ if (isset($_REQUEST['tax_purchase_action']) && $_REQUEST['tax_purchase_action'] 
     $time_of_supply = !empty($_REQUEST['time_of_supply']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['time_of_supply'])) : '';
     $payment_terms = !empty($_REQUEST['payment_terms']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['payment_terms'])) : 'CREDIT';
     $copy_type = !empty($_REQUEST['copy_type']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['copy_type'])) : 'ORIGINAL';
+    $fbr_invoice_no = !empty($_REQUEST['fbr_invoice_no']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['fbr_invoice_no'])) : '';
 
     $header_description = !empty($_REQUEST['header_description']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['header_description'])) : '';
     $gd_number = !empty($_REQUEST['gd_number']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['gd_number'])) : '';
@@ -2686,12 +2694,29 @@ if (isset($_REQUEST['tax_purchase_action']) && $_REQUEST['tax_purchase_action'] 
     $amount_in_words = !empty($_REQUEST['amount_in_words']) ? mysqli_real_escape_string($dbc, trim($_REQUEST['amount_in_words'])) : '';
     $user_id = !empty($_SESSION['userId']) ? intval($_SESSION['userId']) : 1;
 
+    $purchase_cols = [];
+    $purchase_cols_q = mysqli_query($dbc, "SHOW COLUMNS FROM tax_purchases");
+    if (!$purchase_cols_q) {
+        echo json_encode(['sts' => 'error', 'msg' => 'Could not inspect tax purchase columns: ' . mysqli_error($dbc)]);
+        exit;
+    }
+    while ($column = mysqli_fetch_assoc($purchase_cols_q)) {
+        $purchase_cols[] = $column['Field'];
+    }
+    if (!in_array('fbr_invoice_no', $purchase_cols)) {
+        if (!mysqli_query($dbc, "ALTER TABLE tax_purchases ADD COLUMN fbr_invoice_no VARCHAR(100) NULL")) {
+            echo json_encode(['sts' => 'error', 'msg' => 'Could not add FBR invoice number column: ' . mysqli_error($dbc)]);
+            exit;
+        }
+    }
+
     $purchase_data = [
         'invoice_no' => $invoice_no,
         'invoice_date' => $invoice_date,
         'time_of_supply' => $time_of_supply,
         'payment_terms' => $payment_terms,
         'copy_type' => $copy_type,
+        'fbr_invoice_no' => $fbr_invoice_no,
         'supplier_id' => $supplier_id,
         'company_id' => $company_id,
         'header_description' => $header_description,

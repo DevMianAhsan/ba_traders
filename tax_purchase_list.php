@@ -19,7 +19,7 @@
   
           </div>
            <div class="card-body">
-                <table class="table  dataTableAsc" id="view_orders_tb">
+                <table class="table  dataTable" id="view_orders_tb">
                   <thead>
                     <tr>
                       <!-- <th>#</th> -->
@@ -42,7 +42,12 @@
                       ?>
                        <tr>
                           <!-- <td><?=$c?></td> -->
-                          <td><?=$row['invoice_no'] ?: $row['tax_purchase_id']?></td>
+                          <td>
+                            <strong><?=$row['invoice_no'] ?: $row['tax_purchase_id']?></strong>
+                            <?php if (!empty($row['fbr_invoice_no'])): ?>
+                              <br><small class="text-primary font-weight-bold" title="FBR Invoice Number">FBR: <?=htmlspecialchars($row['fbr_invoice_no'])?></small>
+                            <?php endif; ?>
+                          </td>
                           <td><?=$row['invoice_date']?></td>
                           <td>
                             <?=htmlspecialchars($row['supplier_name'] ?? '')?>

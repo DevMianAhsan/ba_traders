@@ -270,20 +270,60 @@ if($_REQUEST['type'] == 'dc'){
 
 <?php
 }else{
+    if ($_REQUEST['type'] == "purchase") {
+       $order = fetchRecord($dbc, "purchase", "purchase_id", $_REQUEST['id']);
+       $customer = !empty($order['customer_account']) ? fetchRecord($dbc, "customers", "customer_id", $order['customer_account']) : null;
+       $order_item = mysqli_query($dbc, "SELECT purchase_item.*, product.* FROM purchase_item INNER JOIN product ON purchase_item.product_id=product.product_id WHERE purchase_item.purchase_id='".$_REQUEST['id']."'");
+       $doc_title = "Purchase Order";
+       $doc_heading = "PURCHASE ORDER";
+       $doc_num_label = "PO Number";
+       $doc_date_label = "PO Date";
+       $doc_id = $order['purchase_id'] ?? $_REQUEST['id'];
+       $doc_date = !empty($order['purchase_date']) && $order['purchase_date'] != '0000-00-00' ? $order['purchase_date'] : $order['timestamp'];
+       $saleorder = null;
+    } else {
+       $order = fetchRecord($dbc, "orders", "order_id", $_REQUEST['id']);
+       $customer = !empty($order['customer_account']) ? fetchRecord($dbc, "customers", "customer_id", $order['customer_account']) : null;
+       $order_item = mysqli_query($dbc, "SELECT order_item.*, product.* FROM order_item INNER JOIN product ON order_item.product_id=product.product_id WHERE order_item.order_id='".$_REQUEST['id']."'");
+       $doc_title = "Sale Order";
+       $doc_heading = "SALE ORDER";
+       $doc_num_label = "Challan Number";
+       $doc_date_label = "Challan Date";
+       $doc_id = $order['order_id'] ?? $_REQUEST['id'];
+       $doc_date = !empty($order['order_date']) && $order['order_date'] != '0000-00-00' ? $order['order_date'] : $order['timestamp'];
+       $saleorder = !empty($order['party_po']) ? fetchRecord($dbc, "purchase_order", "po_partypo", $order['party_po']) : null;
+    }
+
+    $tax_percent = 0;
+    if (!empty($order['discount']) && floatval($order['discount']) > 0) {
+        $tax_percent = floatval($order['discount']);
+    } elseif (!empty($saleorder['discount']) && floatval($saleorder['discount']) > 0) {
+        $tax_percent = floatval($saleorder['discount']);
+    }
+
+    $freight = !empty($order['freight']) ? floatval($order['freight']) : (!empty($saleorder['freight']) ? floatval($saleorder['freight']) : 0);
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sale Order</title>
+  <title><?=$doc_title?> - <?=$doc_id?></title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    table,td,td,body {
-        font-family: Tahoma, Arial, sans-serif;
+    .page-container {
+      padding: 30px;
     }
 
-    h1, p,span {
-        font-family: Tahoma, Arial, sans-serif;
+    @font-face {
+      font-family: tahoma;
+      src: url(./fonts/Tahoma\ Regular\ font.ttf);
+    }
+
+    @font-face {
+      font-family: tahomabold;
+      src: url(./fonts/TAHOMAB0.TTF);
     }
 
     * {
@@ -292,53 +332,17 @@ if($_REQUEST['type'] == 'dc'){
       font-family: Tahoma, Arial, sans-serif;
     }
 
-    .container{
-        height: 100% !important;
-        background-color: #fff;
-        border-bottom: 1px dashed #000 !important;
-    }
-    .border{
-
-        border: 1px solid #000 !important;
-    }
-    .thead_row th{
-        color: #000 !important;
-        font-size: 18px !important;
-        border: 1px solid #000;
-        text-align: center;
-    }
-     tbody td{
-    
-        border: 1px solid #000;
-        text-align: center;
-    }
-    table{
-        width: 100%;
-        
-
-    }
-    .table_row{
-
-        border: 1px solid #000;
-        padding: 0px;
-    }
-    .tbody_row tr td{
-        font-size: 17px;
-        font-weight: bolder;
-        text-align: center;
-        color: #000;
-
-    }
-    .tfoot_row tr td{
-        font-size: 17px;
-        font-weight: bolder;
-        color: #000;
-        text-align: center;
-    }
-
     .top-sec {
       text-align: center;
       margin-top: 0;
+    }
+
+    .top-sec h5 {
+      color: #001a4e;
+      font-weight: bold;
+      margin-top: 5px;
+      text-align: center;
+      font-size: 15px;
     }
 
     .order-det {
@@ -357,6 +361,7 @@ if($_REQUEST['type'] == 'dc'){
       text-align: right;
       margin-top: 8px;
       font-weight: bold;
+      padding-right: 10px;
     }
 
     .order-n-d .com-det p {
@@ -370,196 +375,227 @@ if($_REQUEST['type'] == 'dc'){
       font-weight: bold;
       margin-top: 2px;
     }
+
+    .remarks-sec {
+      display: flex;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      justify-content: space-between;
+    }
+
+    table {
+      border-collapse: collapse;
+      text-align: center;
+      border: 1px solid black;
+      width: 100%;
+      column-gap: 80px;
+    }
+
+    th, td {
+      border: 2px solid black;
+      padding: 5px 0px;
+    }
+
+    thead th {
+      background-color: #AFCDEA;
+      padding: 10px 0px !important;
+      font-weight: bold;
+    }
+
+    tbody {
+      border-left: 2px solid black;
+    }
+
+    tfoot th {
+      padding-top: 5px;
+    }
+
+    .total-text {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+    }
+
+    .total-text h4 {
+      font-weight: bold;
+      color: #001a4e;
+      margin-bottom: 0.5rem;
+      line-height: 1.2;
+    }
+
+    .sign-sec {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 60px;
+    }
+
+    .sign-sec h4 {
+      border: 1px solid black;
+      font-weight: bold;
+      width: 180px;
+      text-align: center;
+      padding: 4px 0;
+    }
   </style>
 </head>
 
 <body>
-<?php   for ($i=0; $i < 1; $i++) : 
-    $totalQTY= 0;
-    if($i>0){
-       $margin = "margin-top:-270px !important";
-       $copy = "Company Copy";
-    }else{
-       $margin = "";
-       $copy = "Customer Copy";
-    } 
-
-    if ($_REQUEST['type']=="purchase") {
-       $order=fetchRecord($dbc,"purchase","purchase_id",$_REQUEST['id']);
-       $customer = !empty($order['customer_account']) ? fetchRecord($dbc,"customers","customer_id",$order['customer_account']) : null;
-       $table_row="390px";
-       $getDate=$order['purchase_date'];
-       if ($order['payment_type']=="credit_purchase") {
-          $order_type="credit purchase";
-       }else{
-          $order_type="cash purchase";
-       }
-       $order_item=mysqli_query($dbc,"SELECT purchase_item.*,product.* FROM purchase_item INNER JOIN product ON purchase_item.product_id=product.product_id WHERE purchase_item.purchase_id='".$_REQUEST['id']."'");
-    }else{
-       $order=fetchRecord($dbc,"orders","order_id",$_REQUEST['id']);
-       $customer = !empty($order['customer_account']) ? fetchRecord($dbc,"customers","customer_id",$order['customer_account']) : null;
-       $getDate=$order['order_date'];
-
-       $order_item=mysqli_query($dbc,"SELECT order_item.*,product.* FROM order_item INNER JOIN product ON order_item.product_id=product.product_id WHERE order_item.order_id='".$_REQUEST['id']."'");
-       if ($order['payment_type']=="credit_sale") {
-            $table_row="390px";
-            if ($order['payment_type']=="none") {
-                $order_type="credit sale";
-            }else{
-                 $order_type=$order['credit_sale_type']." (Credit)";   
-            }
-       }else{
-            $order_type="cash sale";
-            $table_row="450px";
-       }
-    }
-?>
-       
-<div class="container">
+  <div class="page-container">
     <div class="top-sec">
       <img src="img/logo/<?=$get_company['logo']?>" style="width: 200px">
-      <h5 style="margin-top: 5px; text-align: center;"><?=$get_company['address']?></h5>
-      <h5 style="margin-top: 5px; text-align: center;">Phone: <?=$get_company['company_phone']?></h5>
+      <h5><?=$get_company['address']?></h5>
+      <h5>Phone: <?=$get_company['company_phone']?></h5>
     </div>
     <div class="order-det">
-      <div class="order-data">
-        <h4>Customer: <span></span></h4>
-        <?php
-          $cust_name = !empty($customer['customer_name']) ? $customer['customer_name'] : ($order['client_name'] ?? '');
-          $cust_address = !empty($customer['customer_address']) ? $customer['customer_address'] : (!empty($order['address']) ? $order['address'] : '');
-        ?>
-        <h5><?=ucwords(strtolower($cust_name ?? ''))?></h5>
-        <?php if (!empty($cust_address)): ?>
-        <h5 style="margin-top: 8px;">
-          <?=nl2br(htmlspecialchars(ucwords(strtolower($cust_address))))?>
-        </h5>
-        <?php endif; ?>
+      <div class="order-data" style="width: 70%;">
+        <div>
+          <h4>Customer:</h4>
+          <h5> 
+          	<?php
+            if (!empty($saleorder['po_consumer'])) {
+          	  echo nl2br(htmlspecialchars(ucwords(strtolower(str_replace(',', "\n", $saleorder['po_consumer'])))));
+            } else {
+              $cust_name = !empty($customer['customer_name']) ? $customer['customer_name'] : ($order['client_name'] ?? '');
+              echo ucwords(strtolower($cust_name ?? ''));
+            }
+          	?>
+          </h5>
+          <?php 
+          $display_address = !empty($order['address']) ? $order['address'] : (!empty($customer['customer_fbr_address']) ? $customer['customer_fbr_address'] : ($customer['customer_address'] ?? ''));
+          if (!empty($display_address)): 
+          ?>
+          <h5 style="margin-top: 8px;">
+            <?=nl2br(htmlspecialchars(ucwords(strtolower($display_address))))?>
+          </h5>
+          <?php endif; ?>
+        </div>
       </div>
       <div class="order-n-d">
         <div class="com-det" style="text-align: right; margin-bottom: 10px;">
-          <h1><?=($_REQUEST['type'] == 'purchase') ? 'Purchase Order' : 'Sale Order'?></h1>
-          <p style="text-align: right; border: none; font-weight: normal; margin-top: 0;">Office Copy</p>
+          <h1><?=$doc_heading?></h1>
+          <p style="text-align: right;">Original</p>
         </div>
-        <h4><?=($_REQUEST['type'] == 'purchase') ? 'Purchase Order No' : 'Sales Order No'?></h4>
-        <p style="padding-right: 10px"><?=$_REQUEST['id']?></p>
-        <h4><?=($_REQUEST['type'] == 'purchase') ? 'Purchase Order Date' : 'Sales Order Date'?></h4>
-        <p style="padding-right: 10px"><?=empty($order['order_date']) ? (empty($order['purchase_date']) ? date('Y-m-d', strtotime($order['timestamp'])) : $order['purchase_date']) : $order['order_date']?></p>
+        <h4><?=$doc_num_label?></h4>
+        <p><?=$doc_id?></p>
+        <h4><?=$doc_date_label?></h4>
+        <p><?=date('D, d-m-Y', strtotime($doc_date))?></p>
       </div>
+    </div>
+    <?php 
+    $remarks = !empty($order['order_narration']) ? $order['order_narration'] : (!empty($saleorder['po_remarks']) ? $saleorder['po_remarks'] : ($order['note'] ?? ''));
+    if (!empty($remarks)): 
+    ?>
+    <div class="remarks-sec">
+      <h4>REMARKS: <span></span></h4>
+      <h5><?=$remarks?></h5>
+    </div>
+    <?php endif; ?>
+    <div class="table-sec">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 6%;">Sr #</th>
+            <th>PO #</th>
+            <th>Challan #</th>
+            <th style="width: 35%;">Item Description</th>
+            <th>Quantity</th>
+            <th>UOM</th>
+            <th>Rate</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+        	<?php
+          $qtytotal = 0;
+          $grandtotal = 0;
+          $sr = 1;
 
+        	while($r = mysqli_fetch_assoc($order_item)):
+            $row_amount = $r['quantity'] * $r['rate'];
+        	?>
+        	<tr>
+            <td><?=$sr++?></td>
+        		<td><?=$order['party_po'] ?? ($order['purchase_id'] ?? '')?></td>
+            <td><?=$doc_id?></td>
+            <td><?=ucwords(strtolower(trim($r['product_name'] ?? '')))?></td>
+            <td><?=number_format($r['quantity'])?></td>
+            <td><?=ucwords(strtolower($r['product_unit'] ?? ''))?></td>
+            <td><?=(floatval($r['rate']) == intval($r['rate'])) ? number_format($r['rate']) : number_format($r['rate'], 2)?></td>
+            <td><?=(floatval($row_amount) == intval($row_amount)) ? number_format($row_amount) : number_format($row_amount, 2)?> RS</td>
+        	</tr>
+        	<?php
+            $qtytotal += $r['quantity'];
+            $grandtotal += $row_amount;
+          endwhile;
+        	?>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="4" style="text-align: right; padding-right: 5px;">TOTAL:</th>
+            <th><?=number_format($qtytotal)?></th>
+            <th></th>
+            <th></th>
+            <th><?=(floatval($grandtotal) == intval($grandtotal)) ? number_format($grandtotal) : number_format($grandtotal, 2)?> RS</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <?php
+    if (floatval($tax_percent) > 0 || floatval($freight) > 0):
+      if (!empty($order['grand_total']) && floatval($order['grand_total']) > 0) {
+          $total_value = floatval($order['grand_total']);
+      } else {
+          $tax_amount = ($grandtotal * $tax_percent) / 100;
+          $total_value = $grandtotal + $tax_amount + $freight;
+      }
+    ?>
+    <div class="total-text">
+      <div class="" style="text-align: right; padding-right: 10px;">
+        <h4>Sub. Total :</h4>
+        <?php if (floatval($tax_percent) > 0): ?>
+        <h4>Sales Tax:</h4>
+        <?php endif; ?>
+        <?php if (floatval($freight) > 0): ?>
+        <h4>Freight:</h4>
+        <?php endif; ?>
+        <h4>Total Value :</h4>
+      </div>
+     
+      <div class="" style="text-align: right;">
+        <h4>
+            <?= (floatval($grandtotal) == intval($grandtotal))
+                ? number_format($grandtotal)
+                : number_format($grandtotal, 2) ?> RS
+        </h4>
+
+        <?php if (floatval($tax_percent) > 0): ?>
+        <h4><?= (floatval($tax_percent) == intval($tax_percent)) ? intval($tax_percent) : $tax_percent ?>%</h4>
+        <?php endif; ?>
+
+        <?php if (floatval($freight) > 0): ?>
+        <h4>
+            <?= (floatval($freight) == intval($freight))
+                ? number_format($freight)
+                : number_format($freight, 2) ?> RS
+        </h4>
+        <?php endif; ?>
+
+        <h4>
+            <?= (floatval($total_value) == intval($total_value))
+                ? number_format($total_value)
+                : number_format($total_value, 2) ?> RS
+        </h4>
+      </div>
+    </div>
+    <?php endif; ?>
+    <div class="sign-sec">
+      <h4>Approved By</h4>
     </div>
 
-    <div class="row table_row mt-4" style="min-height: <?=$table_row?>;">
-        <div class="col-sm-12 p-0">
-            <table class="w-100">
-                <thead class="thead_row">
-                    <th>Sr</th>
-                    <th>DESCRIPTION</th>
-                     <th>RATE MM</th>
-                    <th>PRICE</th>
-                    <th>QUANTITY</th>
-                    <th>TOTAL</th>
-                </thead>
-                <tbody class="tbody_row">
-                        <?php  $c=0; while ($r=mysqli_fetch_assoc($order_item)) { $c++;
-
-                       ?>
-                        <tr>
-                            <td><?=$c?></td>
-                            <td ><?=strtoupper($r['product_name'])?></td>
-                            <td ><?=$r['rate_mm']?></td>
-                            <td ><?=$r['rate']?></td>
-                            <td ><?=$r['quantity']?></td>
-                            <td ><?=$r['rate']*$r['quantity']?></td>
-                        </tr>
-
-                   <?php 
-                   $totalQTY += $r['quantity'];
-               } ?>
-                    </tbody>
-                    <tfoot class="tfoot_row">
-              
-                           <tr>
-                            <td colspan="4"></td>
-                            <td class="border"><b>Sub Total</b></td>
-                            <td class="border"><?=$order['total_amount']?></td>
-                            </tr>
-                            <tr>
-                            <td colspan="4"></td>
-                            <td class="border"><b>Total Quantity</b></td>
-                            <td class="border"><?=$totalQTY?></td>
-                            </tr>
-                    <?php
-                    if ($order['discount']>0) {
-                       
-                    
-                    ?>
-                     <tr>
-                        <td colspan="4"></td>
-                        <td class="border">Tax%</td>
-                        <td class="border"><?=$order['discount']?>%</td>
-                    </tr>
-                    <?php
-                }
-                    ?>
-                    <tr>
-                        <td colspan="4"></td>
-                        <td class="border">FREIGHT</td>
-                        
-                        <td class="border"><b><?=empty($order['freight'])?"0":$order['freight']?></b></td>
-                    </tr>
-                    <tr>
-                        <td colspan="4"></td>
-                        <td class="border">GRAND TOTAL</td>
-                        
-                        <td class="border"><b><?=number_format($order['grand_total'],2)?></b></td>
-                    </tr>
-                    <?php if ($_REQUEST['type']=="order" AND $order['payment_type']=="credit_sale"): ?>
-                      
-                     <tr>
-                        <td colspan="4"></td>
-                        <td class="border">Previous Balance</td>
-                        
-                        <td class="border"><b><?=getcustomerBlance($dbc,$order['customer_account'])-$order['due']?></b></td>
-                    </tr>
-                    <tr>
-                        <td colspan="4"></td>
-                        <td class="border">Current Balance</td>
-                        
-                        <td class="border"><b><?=number_format(getcustomerBlance($dbc,$order['customer_account']),2)?></b></td>
-                    </tr>
-                    
-                    <?php endif; ?>   
-                    </tfoot>
-            </table>
-        </div>
-    </div>
-    <div class="row" style="font-size: 18px">
-                    <div class="col-sm-3 h4">
-                        Prepared By : __________________ 
-                    </div>
-                     <div class="col-sm-6 ">
-                        <?php
-                        if (isset($order['vehicle_no'])) {
-                            // code...
-                        
-                        ?>
-                       <p class="4 mt-1 text-center"> Vehicle No : <b><u><?=strtoupper($order['vehicle_no'])?></u></b></p>
-
-                        <?php
-                    }
-                        ?>
-                    <p class="mt-1 text-dark text-center"> Software Developed By :<br/><b>TheWebConcept.com (0313-7573667)</b> </p>
-                    
-                    </div>
-                     <div class="col-sm-3 h4">
-                        Recevied By  : _________________ 
-                    </div>
-                </div>
-</div> <!-- end of container --> 
-<?php endfor; ?>
-
-
+  </div>
 </body>
+
 </html>
 <?php
 }

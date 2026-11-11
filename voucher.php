@@ -2,8 +2,14 @@
 <html lang="en">
 <?php include_once 'includes/head.php'; 
 if (isset($_REQUEST['id'])) {
- $voucher=fetchRecord($dbc,"vouchers", "voucher_id",base64_decode($_REQUEST['id']));
-
+  $raw_id = $_REQUEST['id'];
+  $decoded_id = base64_decode($raw_id, true);
+  if ($decoded_id !== false && base64_encode($decoded_id) === $raw_id) {
+    $voucher_id_val = $decoded_id;
+  } else {
+    $voucher_id_val = $raw_id;
+  }
+  $voucher = fetchRecord($dbc, "vouchers", "voucher_id", $voucher_id_val);
 }
 ?>
   <body class="horizontal light  ">
@@ -155,13 +161,13 @@ if (isset($_REQUEST['id'])) {
                         <table class="table table-sm table-bordered mb-1" id="voucher_invoices_table">
                           <thead class="thead-light">
                             <tr>
-                              <th style="width: 28%; padding: 4px 8px;">Invoice #</th>
-                              <th style="width: 16%; padding: 4px 8px;">Party PO</th>
-                              <th style="width: 22%; padding: 4px 8px;">Total Amount</th>
-                              <th style="width: 14%; padding: 4px 8px;">WHT %</th>
-                              <th style="width: 15%; padding: 4px 8px;">WHT Amount</th>
-                              
-                              <th style="width: 5%; padding: 4px 8px; text-align: center;">
+                              <th style="width: 25%; padding: 4px 8px;">Invoice #</th>
+                              <th style="width: 13%; padding: 4px 8px;">Party PO</th>
+                              <th style="width: 18%; padding: 4px 8px;">Cheque Amount</th>
+                              <th style="width: 12%; padding: 4px 8px;">WHT %</th>
+                              <th style="width: 14%; padding: 4px 8px;">WHT Amount</th>
+                              <th style="width: 14%; padding: 4px 8px;">Gross Cleared</th>
+                              <th style="width: 4%; padding: 4px 8px; text-align: center;">
                                 <button type="button" class="btn btn-sm btn-admin py-0 px-2" style="font-size:11px;" onclick="addInvoiceRow()" title="Add another invoice">
                                   <i class="fa fa-plus"></i> Add
                                 </button>
@@ -183,7 +189,42 @@ if (isset($_REQUEST['id'])) {
                             ?>
                             <tr class="v_inv_row">
                               <td>
-                                <input type="text" class="form-control form-control-sm font-weight-bold" name="invoice_id[]" value="<?=(!empty($ei['fbr_invoice_no']) ? $ei['fbr_invoice_no'] : $ei['invoice_id'])?>" readonly>
+                                <div class="input-group input-group-sm">
+                                  <select class="form-control form-control-sm v_inv_select" name="invoice_id[]" onchange="onRowInvoiceChange(this)">
+                                    <option value="">-- Select Invoice --</option>
+                                    <?php
+                                    $selected_cust_id = !empty($voucher['customer_id1']) ? $voucher['customer_id1'] : 0;
+                                    $cur_ei_inv = !empty($ei['fbr_invoice_no']) ? $ei['fbr_invoice_no'] : $ei['invoice_id'];
+                                    $inv_matched = false;
+                                    if (!empty($selected_cust_id)):
+                                      $q_initial_inv = mysqli_query($dbc, "SELECT ts.*, c.customer_name FROM tax_sales ts LEFT JOIN customers c ON ts.customer_id = c.customer_id WHERE ts.customer_id = '$selected_cust_id' ORDER BY ts.tax_sale_id DESC");
+                                      while ($r_inv = mysqli_fetch_assoc($q_initial_inv)):
+                                        $inv_num = !empty($r_inv['invoice_no']) ? $r_inv['invoice_no'] : $r_inv['tax_sale_id'];
+                                        $pName = !empty($r_inv['po_no']) ? ' (PO: ' . htmlspecialchars($r_inv['po_no']) . ')' : '';
+                                        $inv_label = !empty($r_inv['fbr_invoice_no']) ? htmlspecialchars($r_inv['fbr_invoice_no']) : ('Invoice #' . $inv_num); 
+                                        $inv_val = !empty($r_inv['fbr_invoice_no']) ? htmlspecialchars($r_inv['fbr_invoice_no']) : $inv_num;
+                                        $is_selected = ($cur_ei_inv == $inv_val || $cur_ei_inv == $inv_num || $ei['invoice_id'] == $inv_val || $ei['invoice_id'] == $inv_num);
+                                        if ($is_selected) $inv_matched = true;
+                                      ?>
+                                      <option value="<?=$inv_val?>" <?=$is_selected ? 'selected' : ''?> data-fbr="<?=htmlspecialchars($r_inv['fbr_invoice_no'] ?? '')?>" data-customer="<?=htmlspecialchars($r_inv['customer_name'] ?? '')?>" data-po="<?=htmlspecialchars($r_inv['po_no'] ?? '')?>" data-total="<?=$r_inv['grand_total']?>" data-due="<?=$r_inv['grand_total']?>">
+                                        <?=$inv_label?><?=$pName?> - Due: <?=number_format($r_inv['grand_total'])?>
+                                      </option>
+                                      <?php endwhile;
+                                    endif;
+                                    if (!$inv_matched && !empty($cur_ei_inv)):
+                                    ?>
+                                      <option value="<?=htmlspecialchars($cur_ei_inv)?>" selected data-po="<?=htmlspecialchars($ei['party_po'] ?? '')?>">
+                                        <?=htmlspecialchars($cur_ei_inv)?> <?=!empty($ei['party_po']) ? '(PO: ' . htmlspecialchars($ei['party_po']) . ')' : ''?>
+                                      </option>
+                                    <?php endif; ?>
+                                  </select>
+                                  <input type="text" class="form-control form-control-sm v_inv_manual" placeholder="Inv #" style="display:none;" onkeyup="onManualInvChange(this)">
+                                  <div class="input-group-append">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="toggleManualRow(this)" title="Type invoice number manually" style="font-size:11px;">
+                                      <i class="fa fa-pencil-alt"></i>
+                                    </button>
+                                  </div>
+                                </div>
                               </td>
                               <td>
                                 <input type="text" name="inv_party_po[]" class="form-control form-control-sm v_inv_po" value="<?=$ei['party_po']?>" readonly placeholder="PO">
@@ -212,7 +253,15 @@ if (isset($_REQUEST['id'])) {
                                   </div>
                                 </div>
                               </td>
-
+                              <td>
+                                <div class="input-group input-group-sm">
+                                  <?php $ei_gross = floatval($ei['invoice_amount'] ?? 0) + floatval($ei['tax_amount'] ?? 0); ?>
+                                  <input type="text" readonly class="form-control form-control-sm v_inv_gross font-weight-bold text-success" style="background:#e9ecef;" value="<?=$ei_gross > 0 ? number_format($ei_gross) : '0'?>" placeholder="0">
+                                  <div class="input-group-append">
+                                    <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
+                                  </div>
+                                </div>
+                              </td>
                               <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="removeInvoiceRow(this)" title="Remove"><i class="fa fa-trash"></i></button>
                               </td>
@@ -280,7 +329,14 @@ if (isset($_REQUEST['id'])) {
                                   </div>
                                 </div>
                               </td>
-
+                              <td>
+                                <div class="input-group input-group-sm">
+                                  <input type="text" readonly class="form-control form-control-sm v_inv_gross font-weight-bold text-success" style="background:#e9ecef;" value="0" placeholder="0">
+                                  <div class="input-group-append">
+                                    <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
+                                  </div>
+                                </div>
+                              </td>
                               <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="removeInvoiceRow(this)" title="Remove"><i class="fa fa-trash"></i></button>
                               </td>
@@ -292,7 +348,7 @@ if (isset($_REQUEST['id'])) {
                               <td colspan="2" class="text-right" style="padding: 6px 8px; vertical-align: middle;">Total:</td>
                               <td style="padding: 4px 8px;">
                                 <div class="input-group input-group-sm">
-                                  <input type="text" id="v_inv_total_sum" class="form-control form-control-sm font-weight-bold" readonly style="background:#e9ecef;" value="0">
+                                  <input type="text" id="v_inv_total_sum" class="form-control form-control-sm font-weight-bold" readonly style="background:#e9ecef;" value="0" title="Total Cheque Amount">
                                   <div class="input-group-append">
                                     <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
                                   </div>
@@ -301,13 +357,20 @@ if (isset($_REQUEST['id'])) {
                               <td></td>
                               <td style="padding: 4px 8px;">
                                 <div class="input-group input-group-sm">
-                                  <input type="text" id="v_inv_tax_sum" class="form-control form-control-sm font-weight-bold text-danger" readonly style="background:#e9ecef;" value="0">
+                                  <input type="text" id="v_inv_tax_sum" class="form-control form-control-sm font-weight-bold text-danger" readonly style="background:#e9ecef;" value="0" title="Total WHT Amount">
                                   <div class="input-group-append">
                                     <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
                                   </div>
                                 </div>
                               </td>
-
+                              <td style="padding: 4px 8px;">
+                                <div class="input-group input-group-sm">
+                                  <input type="text" id="v_inv_gross_sum" class="form-control form-control-sm font-weight-bold text-success" readonly style="background:#e9ecef;" value="0" title="Total Gross Cleared">
+                                  <div class="input-group-append">
+                                    <span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>
+                                  </div>
+                                </div>
+                              </td>
                               <td></td>
                             </tr>
                           </tfoot>
@@ -793,12 +856,23 @@ function loadCustomerInvoices(customerId) {
         
         invoiceOptionsHtml = options;
         
-        // Update all select dropdowns
+        // Update all select dropdowns while strictly preserving selected values
         $('.v_inv_select').each(function() {
           var curVal = $(this).val();
+          var $selectedOpt = $(this).find('option:selected');
+          var curText = ($selectedOpt.length && $selectedOpt.text() && $selectedOpt.val()) ? $selectedOpt.text() : (curVal ? ('Invoice #' + curVal) : '');
+          var curPo = $selectedOpt.data('po') || '';
+          var curFbr = $selectedOpt.data('fbr') || '';
+          var curDue = $selectedOpt.data('due') || '';
+          
           $(this).html(invoiceOptionsHtml);
-          if (curVal && customerInvoicesData[curVal]) {
-            $(this).val(curVal);
+          if (curVal) {
+            if ($(this).find('option[value="' + curVal + '"]').length > 0) {
+              $(this).val(curVal);
+            } else {
+              $(this).append('<option value="' + curVal + '" selected data-po="' + curPo + '" data-fbr="' + curFbr + '" data-due="' + curDue + '">' + curText + '</option>');
+              $(this).val(curVal);
+            }
           }
         });
       }
@@ -831,12 +905,29 @@ function formatInputOnBlur(input) {
   }
 }
 
+function calculateWHT(amount, taxPercent) {
+  if (!amount || amount <= 0 || !taxPercent || taxPercent <= 0) return 0;
+  if (taxPercent >= 100) return 0;
+  // Formula: Gross = Cheque / (1 - TaxRate) where TaxRate = taxPercent / 100
+  // WHT = Cheque * (taxPercent / (100 - taxPercent))
+  // For 5.5%: WHT = Cheque * (5.5 / 94.5)
+  return Math.round(amount * (taxPercent / (100 - taxPercent)));
+}
+
+function updateRowGross($row) {
+  var totalVal = cleanNumber($row.find('.v_inv_amount').val());
+  var taxVal = cleanNumber($row.find('.v_inv_tax').val());
+  var gross = totalVal + taxVal;
+  $row.find('.v_inv_gross').val(gross > 0 ? formatNumberWithCommas(gross) : '0');
+}
+
 function onTaxPercentChange(input) {
   var $row = $(input).closest('tr');
   var totalVal = cleanNumber($row.find('.v_inv_amount').val());
   var pctVal = parseFloat($(input).val()) || 0;
-  var tax = parseFloat((totalVal * (pctVal / 100)).toFixed(2));
+  var tax = calculateWHT(totalVal, pctVal);
   $row.find('.v_inv_tax').val(tax > 0 ? formatNumberWithCommas(tax) : '0');
+  updateRowGross($row);
   calcVoucherInvoicesTotal();
 }
 
@@ -844,10 +935,16 @@ function onTaxAmountChange(input) {
   var $row = $(input).closest('tr');
   var totalVal = cleanNumber($row.find('.v_inv_amount').val());
   var taxVal = cleanNumber($(input).val());
-  if (totalVal > 0) {
-    var pct = parseFloat(((taxVal / totalVal) * 100).toFixed(2));
-    $row.find('.v_inv_tax_percent').val(pct);
+  var grossVal = totalVal + taxVal;
+  if (grossVal > 0) {
+    var calculatedPct = parseFloat(((taxVal / grossVal) * 100).toFixed(2));
+    var currentPct = parseFloat($row.find('.v_inv_tax_percent').val()) || 0;
+    // Allow manual adjustment / rounding of 1-2 rupees without overriding user-set percentage
+    if (Math.abs(calculatedPct - currentPct) > 0.05) {
+      $row.find('.v_inv_tax_percent').val(calculatedPct);
+    }
   }
+  updateRowGross($row);
   calcVoucherInvoicesTotal();
 }
 
@@ -855,8 +952,9 @@ function onTotalAmountChange(input) {
   var $row = $(input).closest('tr');
   var totalVal = cleanNumber($(input).val());
   var pctVal = parseFloat($row.find('.v_inv_tax_percent').val()) || 0;
-  var tax = parseFloat((totalVal * (pctVal / 100)).toFixed(2));
+  var tax = calculateWHT(totalVal, pctVal);
   $row.find('.v_inv_tax').val(tax > 0 ? formatNumberWithCommas(tax) : '0');
+  updateRowGross($row);
   calcVoucherInvoicesTotal();
 }
 
@@ -908,6 +1006,14 @@ function addInvoiceRow() {
         '</div>' +
       '</div>' +
     '</td>' +
+    '<td>' +
+      '<div class="input-group input-group-sm">' +
+        '<input type="text" readonly class="form-control form-control-sm v_inv_gross font-weight-bold text-success" style="background:#e9ecef;" value="0" placeholder="0">' +
+        '<div class="input-group-append">' +
+          '<span class="input-group-text" style="font-size:11px; padding: 2px 6px;">RS</span>' +
+        '</div>' +
+      '</div>' +
+    '</td>' +
 
     '<td class="text-center">' +
       '<button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="removeInvoiceRow(this)" title="Remove"><i class="fa fa-trash"></i></button>' +
@@ -927,18 +1033,30 @@ function toggleManualRow(btn) {
   var $icon = $(btn).find('i');
   
   if ($select.is(':visible')) {
+    var curVal = $select.val();
+    if (curVal) {
+      $input.val(curVal);
+    }
     $select.hide().removeAttr('name');
     $input.show().attr('name', 'invoice_id[]').focus();
     $poInput.prop('readonly', false);
     $amountInput.prop('readonly', false);
     $icon.removeClass('fa-pencil-alt').addClass('fa-list');
   } else {
+    var manualVal = $input.val();
     $input.hide().removeAttr('name');
     $select.show().attr('name', 'invoice_id[]');
+    if (manualVal) {
+      if ($select.find('option[value="' + manualVal + '"]').length > 0) {
+        $select.val(manualVal);
+      } else {
+        $select.append('<option value="' + manualVal + '" selected>' + manualVal + '</option>');
+        $select.val(manualVal);
+      }
+    }
     $poInput.prop('readonly', true);
     $amountInput.prop('readonly', false);
     $icon.removeClass('fa-list').addClass('fa-pencil-alt');
-    onRowInvoiceChange($select[0]);
   }
 }
 
@@ -954,6 +1072,7 @@ function onRowInvoiceChange(sel) {
     $row.find('.v_inv_po').val('');
     $row.find('.v_inv_amount').val('');
     $row.find('.v_inv_tax').val('0');
+    $row.find('.v_inv_gross').val('0');
     calcVoucherInvoicesTotal();
     return;
   }
@@ -962,15 +1081,23 @@ function onRowInvoiceChange(sel) {
   var po = $opt.data('po') || '';
   
   $row.find('.v_inv_po').val(po);
-  // Do not auto-load amounts: user enters manually
-  $row.find('.v_inv_amount').val('');
   if (!$row.find('.v_inv_tax_percent').val()) {
     $row.find('.v_inv_tax_percent').val('5.5');
   }
-  $row.find('.v_inv_tax').val('0');
+  
+  var currentAmt = cleanNumber($row.find('.v_inv_amount').val());
+  if (currentAmt > 0) {
+    var pctVal = parseFloat($row.find('.v_inv_tax_percent').val()) || 0;
+    var tax = calculateWHT(currentAmt, pctVal);
+    $row.find('.v_inv_tax').val(tax > 0 ? formatNumberWithCommas(tax) : '0');
+    updateRowGross($row);
+  } else {
+    $row.find('.v_inv_tax').val('0');
+    $row.find('.v_inv_gross').val('0');
+    $row.find('.v_inv_amount').focus();
+  }
   
   calcVoucherInvoicesTotal();
-  $row.find('.v_inv_amount').focus();
 }
 
 function removeInvoiceRow(btn) {
@@ -985,6 +1112,7 @@ function removeInvoiceRow(btn) {
     $row.find('.v_inv_amount').val('');
     $row.find('.v_inv_tax_percent').val('5.5');
     $row.find('.v_inv_tax').val('0');
+    $row.find('.v_inv_gross').val('0');
   }
   calcVoucherInvoicesTotal();
 }
@@ -1048,16 +1176,20 @@ function onSingleCreditBlur(input) {
 function calcVoucherInvoicesTotal() {
   var sumTotal = 0;
   var sumTax = 0;
+  var sumGross = 0;
   var hasActiveInvoices = false;
   
   $('.v_inv_row').each(function() {
     var invId = $(this).find('input[name="invoice_id[]"]').val() || $(this).find('select[name="invoice_id[]"]').val();
     var totalAmt = cleanNumber($(this).find('.v_inv_amount').val());
     var taxAmt = cleanNumber($(this).find('.v_inv_tax').val());
+    var grossAmt = totalAmt + taxAmt;
+    $(this).find('.v_inv_gross').val(grossAmt > 0 ? formatNumberWithCommas(grossAmt) : '0');
     
     if (invId) {
       sumTotal += totalAmt;
       sumTax += taxAmt;
+      sumGross += grossAmt;
       if (totalAmt > 0) {
         hasActiveInvoices = true;
       }
@@ -1066,6 +1198,7 @@ function calcVoucherInvoicesTotal() {
   
   $('#v_inv_total_sum').val(formatNumberWithCommas(sumTotal));
   $('#v_inv_tax_sum').val(formatNumberWithCommas(sumTax));
+  $('#v_inv_gross_sum').val(formatNumberWithCommas(sumGross));
   
   if (hasActiveInvoices) {
     var finalAmount = sumTotal;

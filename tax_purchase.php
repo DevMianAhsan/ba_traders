@@ -569,6 +569,10 @@ if (!empty($tax_purchase['supplier_id'])) {
                 <input type="text" name="invoice_no" id="invoice_no" readonly class="inv-input font-weight-bold text-danger" style="width: 120px;" required value="<?=$next_invoice_no?>">
               </div>
               <div class="meta-field">
+                <span class="lbl">FBR Inv No. :</span>
+                <input type="text" name="fbr_invoice_no" id="fbr_invoice_no" inputmode="numeric" class="inv-input font-weight-bold text-primary" style="width: 250px;" placeholder="Enter FBR Invoice Number" value="<?=htmlspecialchars($tax_purchase['fbr_invoice_no'] ?? '', ENT_QUOTES, 'UTF-8')?>">
+              </div>
+              <div class="meta-field">
                 <span class="lbl">Date :</span>
                 <input type="date" name="invoice_date" id="invoice_date" class="inv-input" style="width: 140px;" required value="<?=@$tax_purchase['invoice_date'] ?: date('Y-m-d')?>">
               </div>

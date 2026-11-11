@@ -488,7 +488,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                       $c=0;
                       while ($customer=mysqli_fetch_assoc($getCustomer)):
                       $c++;
-                         $from_balance=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='".$customer['customer_id']."'"));
+                         $cust_blnc = getcustomerBlance($dbc, $customer['customer_id']);
                           
                        ?>
                         <div class="list-group-item">
@@ -501,11 +501,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                               <div class="my-0 text-muted small"><?=$customer['customer_phone']?>, <?=$customer['customer_email']?></div>
                             </div>
                             <div class="col-auto">
-                              <strong><?php if (!empty($from_balance['from_balance'])) {
-                            echo number_format($from_balance['from_balance']);
-                          }else{
-                            echo 0;
-                          } ?></strong>
+                              <strong><?=number_format($cust_blnc)?></strong>
                              
                             </div>
                           </div>

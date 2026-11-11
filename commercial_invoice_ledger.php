@@ -633,11 +633,15 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   <tr>
                     <td colspan="11"></td>
                     <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Closing Balance</td>
-                    <?php if ($running_bal <= 0): ?>
-                      <td colspan="2" class="h4 text-danger font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
-                    <?php else: ?>
-                      <td colspan="2" class="h4 text-success font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($running_bal)?></td>
-                    <?php endif; ?>
+                    <?php
+                      $closing_type = '';
+                      if ($running_bal < 0) {
+                        $closing_type = ' dr';
+                      } elseif ($running_bal > 0) {
+                        $closing_type = ' cr';
+                      }
+                    ?>
+                    <td colspan="2" class="h4 font-weight-bold mb-0 <?=$running_bal > 0 ? 'text-danger' : 'text-success'?>" style="vertical-align: middle;"><?=number_format(abs($running_bal)) . $closing_type?></td>
                   </tr>
                 </tfoot>
               </table>

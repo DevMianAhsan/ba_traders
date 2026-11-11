@@ -99,9 +99,9 @@ if (isset($_REQUEST['export']) && $_REQUEST['export'] === 'csv') {
 
     while ($r = mysqli_fetch_assoc($csv_q)) {
         $sr++;
-        $g = floatval(str_replace(',', '', $r['invoice_amount'] ?? 0));
+        $n = floatval(str_replace(',', '', $r['invoice_amount'] ?? 0));
         $w = floatval(str_replace(',', '', $r['tax_amount'] ?? 0));
-        $n = $g - $w;
+        $g = $n + $w;
         $sum_gross += $g;
         $sum_wht += $w;
         $sum_net += $n;
@@ -172,9 +172,9 @@ $distinct_vouchers = [];
 
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
-        $g_amt = floatval(str_replace(',', '', $row['invoice_amount'] ?? 0));
+        $n_amt = floatval(str_replace(',', '', $row['invoice_amount'] ?? 0));
         $w_amt = floatval(str_replace(',', '', $row['tax_amount'] ?? 0));
-        $n_amt = $g_amt - $w_amt;
+        $g_amt = $n_amt + $w_amt;
         $t_pct = floatval(str_replace(',', '', $row['tax_percent'] ?? 0));
 
         $total_gross += $g_amt;
@@ -239,9 +239,9 @@ if (!empty($customer_id)) {
 $ann_sql = "SELECT 
     DATE_FORMAT(COALESCE(NULLIF(v.voucher_date, ''), v.timestamp), '%m') AS m_num,
     COUNT(vi.id) AS inv_count,
-    SUM(CAST(REPLACE(COALESCE(vi.invoice_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_gross,
+    SUM(CAST(REPLACE(COALESCE(vi.invoice_amount, '0'), ',', '') AS DECIMAL(15,2)) + CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_gross,
     SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_wht,
-    SUM(CAST(REPLACE(COALESCE(vi.invoice_amount, '0'), ',', '') AS DECIMAL(15,2)) - CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_net
+    SUM(CAST(REPLACE(COALESCE(vi.invoice_amount, '0'), ',', '') AS DECIMAL(15,2))) AS sum_net
   FROM voucher_invoices vi
   JOIN vouchers v ON vi.voucher_id = v.voucher_id
   LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id)
@@ -876,9 +876,9 @@ if ($q_ann) {
                     foreach ($transactions as $t):
                       $t_sr++;
                       $v_date = !empty($t['voucher_date']) ? date('d-M-Y', strtotime($t['voucher_date'])) : date('d-M-Y', strtotime($t['timestamp']));
-                      $g = floatval(str_replace(',', '', $t['invoice_amount'] ?? 0));
+                      $n = floatval(str_replace(',', '', $t['invoice_amount'] ?? 0));
                       $w = floatval(str_replace(',', '', $t['tax_amount'] ?? 0));
-                      $n = $g - $w;
+                      $g = $n + $w;
                       $p = floatval(str_replace(',', '', $t['tax_percent'] ?? 0));
                   ?>
                     <tr>
