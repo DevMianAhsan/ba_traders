@@ -294,14 +294,8 @@ if($_REQUEST['type'] == 'dc'){
        $saleorder = !empty($order['party_po']) ? fetchRecord($dbc, "purchase_order", "po_partypo", $order['party_po']) : null;
     }
 
-    $tax_percent = 0;
-    if (!empty($order['discount']) && floatval($order['discount']) > 0) {
-        $tax_percent = floatval($order['discount']);
-    } elseif (!empty($saleorder['discount']) && floatval($saleorder['discount']) > 0) {
-        $tax_percent = floatval($saleorder['discount']);
-    }
-
-    $freight = !empty($order['freight']) ? floatval($order['freight']) : (!empty($saleorder['freight']) ? floatval($saleorder['freight']) : 0);
+    $tax_percent = !empty($order['discount']) && floatval($order['discount']) > 0 ? floatval($order['discount']) : 0;
+    $freight = !empty($order['freight']) && floatval($order['freight']) > 0 ? floatval($order['freight']) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -542,13 +536,8 @@ if($_REQUEST['type'] == 'dc'){
       </table>
     </div>
     <?php
-    if (floatval($tax_percent) > 0 || floatval($freight) > 0):
-      if (!empty($order['grand_total']) && floatval($order['grand_total']) > 0) {
-          $total_value = floatval($order['grand_total']);
-      } else {
-          $tax_amount = ($grandtotal * $tax_percent) / 100;
-          $total_value = $grandtotal + $tax_amount + $freight;
-      }
+    $tax_amount = ($grandtotal * $tax_percent) / 100;
+    $total_value = !empty($order['grand_total']) && floatval($order['grand_total']) > 0 ? floatval($order['grand_total']) : ($grandtotal + $tax_amount + $freight);
     ?>
     <div class="total-text">
       <div class="" style="text-align: right; padding-right: 10px;">
@@ -588,7 +577,6 @@ if($_REQUEST['type'] == 'dc'){
         </h4>
       </div>
     </div>
-    <?php endif; ?>
     <div class="sign-sec">
       <h4>Approved By</h4>
     </div>
