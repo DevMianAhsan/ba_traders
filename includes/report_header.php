@@ -49,12 +49,18 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
     padding: 10px 0 15px 0;
     margin-bottom: 15px;
     border-bottom: 2px solid #222;
+    text-align: center !important;
+  }
+  .unified-report-header .comp-logo-wrap {
+    text-align: center !important;
+    margin: 0 auto 6px auto;
   }
   .unified-report-header .comp-logo-img {
     max-height: 80px;
     width: auto;
     object-fit: contain;
     display: inline-block;
+    margin: 0 auto;
   }
   .unified-report-header .comp-address-line {
     font-size: 15px;
@@ -62,6 +68,7 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
     color: #0b2265;
     line-height: 1.4;
     margin-top: 4px;
+    text-align: center !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   .unified-report-header .comp-phone-line {
@@ -69,10 +76,12 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
     font-weight: 700;
     color: #0b2265;
     margin-top: 2px;
+    text-align: center !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   .unified-report-header .report-title-strip {
     margin: 8px 0;
+    text-align: center !important;
   }
   .unified-report-header .report-title-text {
     font-size: 17px;
@@ -84,16 +93,19 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
     border-bottom: 2px solid #222;
     padding: 3px 20px;
     display: inline-block;
+    text-align: center !important;
   }
   .unified-report-header .report-customer-meta {
     margin-top: 8px;
     font-size: 14px;
     line-height: 1.5;
+    text-align: center !important;
   }
   .unified-report-header .cust-name-row {
     font-size: 15px;
     font-weight: 700;
     color: #111;
+    text-align: center !important;
   }
   .unified-report-header .cust-name-val {
     font-size: 16px;
@@ -106,6 +118,7 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
     font-weight: 600;
     color: #222;
     margin-top: 2px;
+    text-align: center !important;
   }
   .unified-report-header .cust-duration-row,
   .unified-report-header .report-duration-meta {
@@ -113,6 +126,7 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
     font-weight: 700;
     color: #111;
     margin-top: 2px;
+    text-align: center !important;
   }
 
   @page {
@@ -363,7 +377,7 @@ $duration_str = !empty($report_duration) ? $report_duration : (!empty($date_scop
       <div class="cust-name-row">
         <span>Customer Name:</span>
         <span class="cust-name-val"><?=htmlspecialchars($cust_name)?></span>
-        <?php if (!empty($cust_phone)): ?>
+        <?php if (!empty($cust_phone) && trim($cust_phone) !== '.' && trim($cust_phone) !== '-'): ?>
           <span style="font-size: 13px; font-weight: 600; color: #333;">(Phone: <?=htmlspecialchars($cust_phone)?>)</span>
         <?php endif; ?>
         <?php if (!empty($cust_ntn)): ?>

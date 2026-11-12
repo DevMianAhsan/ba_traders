@@ -115,7 +115,7 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
   <meta charset="utf-8">
   <title>WHT Report - <?=htmlspecialchars($month_name_full)?> <?=$selected_year?> - <?=htmlspecialchars($comp_name)?></title>
   <link rel="icon" href="img/logo/<?=$get_company['logo']?>" type="image/gif" sizes="16x16">
-  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/app-light.css">
   <link rel="stylesheet" href="css/fontawesome.min.css">
   <link rel="stylesheet" href="css/feather.css">
   <style>
@@ -135,53 +135,143 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
       border: 1px solid #dee2e6;
       box-shadow: 0 4px 15px rgba(0,0,0,0.06);
     }
-    .company-name {
-      color: #930027;
-      font-weight: 800;
-      font-size: 26px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin-bottom: 2px;
+    .unified-report-header,
+    .unified-report-header * {
+      text-align: center !important;
     }
-    .report-title-badge {
-      background: #930027;
-      color: #fff;
-      padding: 6px 14px;
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      display: inline-block;
-      margin-top: 5px;
+    .unified-report-header .comp-logo-img {
+      margin: 0 auto !important;
+      display: inline-block !important;
     }
+
+    /* Screen Action Bar */
+    .print-actions-bar {
+      margin: 15px auto 20px auto;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .btn-group-custom {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 6px;
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      text-decoration: none !important;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      outline: none;
+    }
+    .btn-action:focus {
+      outline: none;
+    }
+    .btn-print {
+      background-color: #930027;
+      border-color: #7a0020;
+      color: #ffffff !important;
+    }
+    .btn-print:hover {
+      background-color: #70001d;
+      border-color: #550016;
+      color: #ffffff !important;
+    }
+    .btn-back {
+      background-color: #2b3035;
+      border-color: #1e2225;
+      color: #ffffff !important;
+    }
+    .btn-back:hover {
+      background-color: #1a1e21;
+      border-color: #111315;
+      color: #ffffff !important;
+    }
+    .btn-export {
+      background-color: #1e7e34;
+      border-color: #19692c;
+      color: #ffffff !important;
+    }
+    .btn-export:hover {
+      background-color: #155724;
+      border-color: #10421b;
+      color: #ffffff !important;
+    }
+    .btn-close-page {
+      background-color: #6c757d;
+      border-color: #5a6268;
+      color: #ffffff !important;
+    }
+    .btn-close-page:hover {
+      background-color: #5a6268;
+      border-color: #464d52;
+      color: #ffffff !important;
+    }
+
+    /* Executive KPI Strip */
     .summary-box {
       background: #f8f9fa;
       border: 1px solid #dee2e6;
       border-radius: 6px;
-      padding: 12px 18px;
-      margin-bottom: 15px;
+      padding: 12px 10px;
+      margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .summary-grid {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin: 0;
+      padding: 0;
     }
     .summary-kpi {
+      flex: 1 1 25%;
+      width: 25%;
       text-align: center;
-      padding: 6px 10px;
-      border-right: 1px solid #e1e4e8;
+      padding: 6px 12px;
+      border-right: 1px solid #dee2e6;
+      box-sizing: border-box;
     }
     .summary-kpi:last-child {
       border-right: none;
     }
     .summary-kpi .kpi-label {
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 700;
       color: #6c757d;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      margin-bottom: 4px;
     }
     .summary-kpi .kpi-num {
       font-size: 18px;
       font-weight: 800;
       line-height: 1.2;
-      margin-top: 2px;
     }
+    .text-danger { color: #dc3545 !important; }
+    .text-primary { color: #007bff !important; }
+    .text-success { color: #28a745 !important; }
+    .text-dark { color: #212529 !important; }
+
     .print-table {
       width: 100%;
       border-collapse: collapse;
@@ -215,16 +305,6 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .btn-admin {
-      background-color: #930027;
-      color: #ffffff;
-      border: none;
-      font-weight: 700;
-    }
-    .btn-admin:hover {
-      background-color: #75001f;
-      color: #ffffff;
-    }
 
     @page {
       size: auto;
@@ -247,13 +327,9 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
         width: 100%;
         box-sizing: border-box !important;
       }
-      .row {
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-      }
-      .row > [class*="col"] {
-        padding-left: 4px !important;
-        padding-right: 4px !important;
+      .unified-report-header,
+      .unified-report-header * {
+        text-align: center !important;
       }
       .d-print-none {
         display: none !important;
@@ -267,11 +343,33 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
         border: 1px solid #000 !important;
       }
       .summary-box {
-        border: 1px solid #000 !important;
+        border: 1.5px solid #000 !important;
         background: #fff !important;
+        padding: 8px 0 !important;
+        margin-bottom: 15px !important;
+        page-break-inside: avoid !important;
+      }
+      .summary-grid {
+        display: flex !important;
+        flex-direction: row !important;
+        width: 100% !important;
       }
       .summary-kpi {
-        border-right: 1px solid #999;
+        flex: 1 1 25% !important;
+        width: 25% !important;
+        border-right: 1px solid #999 !important;
+        text-align: center !important;
+        padding: 4px 6px !important;
+      }
+      .summary-kpi:last-child {
+        border-right: none !important;
+      }
+      .summary-kpi .kpi-label {
+        font-size: 10px !important;
+        color: #333 !important;
+      }
+      .summary-kpi .kpi-num {
+        font-size: 16px !important;
       }
     }
   </style>
@@ -279,18 +377,18 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
 <body>
 
   <!-- Screen Action Bar (Hidden on Print) -->
-  <div class="d-print-none mb-3 text-center">
-    <div class="btn-group shadow-sm">
-      <button onclick="window.print();" class="btn btn-admin px-4 font-weight-bold">
+  <div class="d-print-none print-actions-bar">
+    <div class="btn-group-custom">
+      <button type="button" onclick="window.print();" class="btn-action btn-print">
         <i class="fe fe-printer mr-1"></i> Print / Save as PDF
       </button>
-      <a href="wht_report.php?month_year=<?=$selected_ym?><?=!empty($customer_id) ? '&customer_id=' . $customer_id : ''?>" class="btn btn-dark">
+      <a href="wht_report.php?month_year=<?=$selected_ym?><?=!empty($customer_id) ? '&customer_id=' . $customer_id : ''?>" class="btn-action btn-back">
         <i class="fe fe-arrow-left mr-1"></i> Back to Interactive Report
       </a>
-      <a href="wht_report.php?month_year=<?=$selected_ym?><?=!empty($customer_id) ? '&customer_id=' . $customer_id : ''?>&export=csv" class="btn btn-success">
+      <a href="wht_report.php?month_year=<?=$selected_ym?><?=!empty($customer_id) ? '&customer_id=' . $customer_id : ''?>&export=csv" class="btn-action btn-export">
         <i class="fe fe-download mr-1"></i> Export CSV
       </a>
-      <button onclick="window.close();" class="btn btn-secondary">
+      <button type="button" onclick="window.close();" class="btn-action btn-close-page">
         <i class="fe fe-x mr-1"></i> Close
       </button>
     </div>
@@ -308,20 +406,20 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
 
     <!-- Executive Summary KPI Strip -->
     <div class="summary-box">
-      <div class="row">
-        <div class="col-3 summary-kpi">
+      <div class="summary-grid">
+        <div class="summary-kpi">
           <div class="kpi-label">Total WHT Deducted</div>
           <div class="kpi-num text-danger">Rs. <?=number_format($total_wht, 2)?></div>
         </div>
-        <div class="col-3 summary-kpi">
+        <div class="summary-kpi">
           <div class="kpi-label">Gross Invoiced Settled</div>
           <div class="kpi-num text-primary">Rs. <?=number_format($total_gross, 2)?></div>
         </div>
-        <div class="col-3 summary-kpi">
+        <div class="summary-kpi">
           <div class="kpi-label">Net Received (After WHT)</div>
           <div class="kpi-num text-success">Rs. <?=number_format($total_net, 2)?></div>
         </div>
-        <div class="col-3 summary-kpi">
+        <div class="summary-kpi">
           <div class="kpi-label">Effective WHT Rate</div>
           <div class="kpi-num text-dark"><?=number_format($effective_wht_rate, 2)?>%</div>
         </div>
@@ -447,27 +545,6 @@ $effective_wht_rate = ($total_gross > 0) ? (($total_wht / $total_gross) * 100) :
         </tfoot>
       <?php endif; ?>
     </table>
-
-    <!-- Signature Block -->
-    <div style="margin-top: 60px; padding-top: 20px;">
-      <div class="row text-center">
-        <div class="col-4">
-          <div style="border-top: 1px solid #000; margin: 0 30px; padding-top: 6px; font-weight: 700;">
-            Prepared By
-          </div>
-        </div>
-        <div class="col-4">
-          <div style="border-top: 1px solid #000; margin: 0 30px; padding-top: 6px; font-weight: 700;">
-            Verified / Checked By
-          </div>
-        </div>
-        <div class="col-4">
-          <div style="border-top: 1px solid #000; margin: 0 30px; padding-top: 6px; font-weight: 700;">
-            Authorized Signature
-          </div>
-        </div>
-      </div>
-    </div>
 
   </div>
 
