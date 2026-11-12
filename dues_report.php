@@ -6,15 +6,29 @@ include_once 'includes/head.php';
 // Filter parameters
 $from_date = isset($_REQUEST['from_date']) ? trim($_REQUEST['from_date']) : '';
 $to_date = isset($_REQUEST['to_date']) ? trim($_REQUEST['to_date']) : '';
-$filter_status = isset($_REQUEST['filter_status']) ? trim($_REQUEST['filter_status']) : 'pending_only';
 $active_tab = isset($_REQUEST['tab']) ? trim($_REQUEST['tab']) : 'all';
 $account_id = isset($_REQUEST['account_id']) ? trim($_REQUEST['account_id']) : '';
 
 // Optional single customer/supplier selection
 $selected_account = null;
+$account_type = '';
 if (!empty($account_id)) {
     $selected_account = fetchRecord($dbc, 'customers', 'customer_id', $account_id);
+    if (!empty($selected_account)) {
+        $account_type = $selected_account['customer_type'] ?? 'customer';
+    }
 }
+
+// When a single account is specifically selected, default filter_status to 'all' so it is not hidden if cleared
+if (!empty($selected_account) && !isset($_GET['filter_status'])) {
+    $filter_status = 'all';
+} else {
+    $filter_status = isset($_REQUEST['filter_status']) ? trim($_REQUEST['filter_status']) : 'pending_only';
+}
+
+$is_customer_view = (!empty($selected_account) && $account_type == 'customer');
+$is_supplier_view = (!empty($selected_account) && $account_type == 'supplier');
+$is_both_view     = empty($selected_account);
 
 // Date scope label
 $date_scope_label = "Overall (All Time)";
@@ -42,100 +56,127 @@ $report_duration = $date_scope_label;
 $customers_data = [];
 $total_customer_invoiced = 0;
 $total_customer_received = 0;
+$total_customer_wht = 0;
 $total_customer_pending_due = 0;
 $total_customer_advance = 0;
 $count_customers_with_due = 0;
 $count_customers_cleared = 0;
 
-$cust_sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'customer'";
-if (!empty($selected_account)) {
-    if (($selected_account['customer_type'] ?? '') == 'customer') {
+if (!$is_supplier_view) {
+    $cust_sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'customer'";
+    if (!empty($selected_account)) {
         $cust_sql .= " AND customer_id = '$account_id'";
-    } else {
-        $cust_sql .= " AND 1 = 0"; // Exclude customers if a supplier was specifically selected
     }
-}
-$cust_sql .= " ORDER BY customer_name ASC";
-$q_cust = mysqli_query($dbc, $cust_sql);
+    $cust_sql .= " ORDER BY customer_name ASC";
+    $q_cust = mysqli_query($dbc, $cust_sql);
 
-while ($c = mysqli_fetch_assoc($q_cust)) {
-    $cid = $c['customer_id'];
-    
-    if (!empty($from_date) || !empty($to_date)) {
-        // Opening balance prior to from_date
-        $opening = 0;
-        if (!empty($from_date)) {
-            $q_op = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS op_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS op_dr FROM transactions WHERE customer_id = '$cid' AND transaction_date < '$from_date'");
-            $r_op = mysqli_fetch_assoc($q_op);
-            $opening = floatval($r_op['op_cr'] ?? 0) - floatval($r_op['op_dr'] ?? 0);
+    while ($c = mysqli_fetch_assoc($q_cust)) {
+        $cid = $c['customer_id'];
+        
+        if (!empty($from_date) || !empty($to_date)) {
+            // Opening balance prior to from_date (including prior WHT tax deductions)
+            $opening = 0;
+            if (!empty($from_date)) {
+                $q_op = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS op_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS op_dr FROM transactions WHERE customer_id = '$cid' AND transaction_date < '$from_date'");
+                $r_op = mysqli_fetch_assoc($q_op);
+                $q_op_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS op_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$cid' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$cid') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$cid') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$cid')) AND v.voucher_date < '$from_date'");
+                $r_op_wht = mysqli_fetch_assoc($q_op_wht);
+                $op_wht = floatval($r_op_wht['op_wht'] ?? 0);
+                $opening = floatval($r_op['op_cr'] ?? 0) - (floatval($r_op['op_dr'] ?? 0) + $op_wht);
+            }
+            
+            // Date range condition
+            $date_cond = "";
+            $v_date_cond = "";
+            if (!empty($from_date) && !empty($to_date)) {
+                $date_cond = " AND transaction_date BETWEEN '$from_date' AND '$to_date'";
+                $v_date_cond = " AND v.voucher_date BETWEEN '$from_date' AND '$to_date'";
+            } elseif (!empty($from_date)) {
+                $date_cond = " AND transaction_date >= '$from_date'";
+                $v_date_cond = " AND v.voucher_date >= '$from_date'";
+            } elseif (!empty($to_date)) {
+                $date_cond = " AND transaction_date <= '$to_date'";
+                $v_date_cond = " AND v.voucher_date <= '$to_date'";
+            }
+            
+            $q_period = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS p_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS p_dr FROM transactions WHERE customer_id = '$cid' $date_cond");
+            $r_period = mysqli_fetch_assoc($q_period);
+            $invoiced = floatval($r_period['p_cr'] ?? 0);
+            $received = floatval($r_period['p_dr'] ?? 0);
+
+            $q_period_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS p_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$cid' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$cid') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$cid') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$cid')) $v_date_cond");
+            $r_period_wht = mysqli_fetch_assoc($q_period_wht);
+            $wht = floatval($r_period_wht['p_wht'] ?? 0);
+
+            $net_due = $opening + $invoiced - ($received + $wht);
+        } else {
+            $opening = 0;
+            $q_all = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS tot_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS tot_dr FROM transactions WHERE customer_id = '$cid'");
+            $r_all = mysqli_fetch_assoc($q_all);
+            $invoiced = floatval($r_all['tot_cr'] ?? 0);
+            $received = floatval($r_all['tot_dr'] ?? 0);
+
+            $q_all_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS tot_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$cid' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$cid') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$cid') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$cid'))");
+            $r_all_wht = mysqli_fetch_assoc($q_all_wht);
+            $wht = floatval($r_all_wht['tot_wht'] ?? 0);
+
+            $net_due = $invoiced - ($received + $wht);
         }
         
-        // Date range condition
-        $date_cond = "";
-        if (!empty($from_date) && !empty($to_date)) {
-            $date_cond = " AND transaction_date BETWEEN '$from_date' AND '$to_date'";
-        } elseif (!empty($from_date)) {
-            $date_cond = " AND transaction_date >= '$from_date'";
-        } elseif (!empty($to_date)) {
-            $date_cond = " AND transaction_date <= '$to_date'";
+        // Also check recent open invoices count for this customer
+        $q_inv_cnt = mysqli_query($dbc, "SELECT COUNT(*) as inv_cnt FROM tax_sales WHERE customer_id = '$cid'");
+        $r_inv_cnt = mysqli_fetch_assoc($q_inv_cnt);
+        $invoices_count = intval($r_inv_cnt['inv_cnt'] ?? 0);
+        
+        // If due amount is less than 1 Rs (or fractional cents/rounding up to 1.5 Rs), take it as 0
+        if (abs($net_due) <= 1.5) {
+            $net_due = 0.0;
         }
         
-        $q_period = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS p_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS p_dr FROM transactions WHERE customer_id = '$cid' $date_cond");
-        $r_period = mysqli_fetch_assoc($q_period);
-        $invoiced = floatval($r_period['p_cr'] ?? 0);
-        $received = floatval($r_period['p_dr'] ?? 0);
-        $net_due = $opening + $invoiced - $received;
-    } else {
-        $opening = 0;
-        $q_all = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS tot_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS tot_dr FROM transactions WHERE customer_id = '$cid'");
-        $r_all = mysqli_fetch_assoc($q_all);
-        $invoiced = floatval($r_all['tot_cr'] ?? 0);
-        $received = floatval($r_all['tot_dr'] ?? 0);
-        $net_due = $invoiced - $received;
+        $is_due = ($net_due >= 1.0);
+        $is_advance = ($net_due <= -1.0);
+        $is_cleared = ($net_due == 0.0);
+        
+        // Filtering: If a specific account was selected, always show that account!
+        // Only apply pending_only / cleared_only filter when browsing all accounts
+        if (empty($selected_account)) {
+            if ($filter_status == 'pending_only' && !$is_due) {
+                continue;
+            } elseif ($filter_status == 'cleared_only' && !$is_cleared) {
+                continue;
+            }
+        }
+        
+        // Accumulate totals ONLY for records that are included!
+        if ($is_due) {
+            $total_customer_pending_due += $net_due;
+            $count_customers_with_due++;
+        } elseif ($is_advance) {
+            $total_customer_advance += abs($net_due);
+        } else {
+            $count_customers_cleared++;
+        }
+        
+        $total_customer_invoiced += $invoiced;
+        $total_customer_received += $received;
+        $total_customer_wht += $wht;
+        
+        $customers_data[] = [
+            'customer_id' => $cid,
+            'customer_name' => $c['customer_name'],
+            'customer_phone' => $c['customer_phone'] ?? '',
+            'customer_strn' => $c['customer_strn'] ?? '',
+            'customer_ntn' => $c['customer_ntn'] ?? '',
+            'customer_address' => $c['customer_address'] ?? '',
+            'opening' => $opening,
+            'invoiced' => $invoiced,
+            'received' => $received,
+            'wht' => $wht,
+            'net_due' => $net_due,
+            'invoices_count' => $invoices_count,
+            'status' => $is_due ? 'due' : ($is_advance ? 'advance' : 'cleared')
+        ];
     }
-    
-    // Also check recent open invoices count for this customer
-    $q_inv_cnt = mysqli_query($dbc, "SELECT COUNT(*) as inv_cnt FROM tax_sales WHERE customer_id = '$cid'");
-    $r_inv_cnt = mysqli_fetch_assoc($q_inv_cnt);
-    $invoices_count = intval($r_inv_cnt['inv_cnt'] ?? 0);
-    
-    $is_due = ($net_due > 0.01);
-    $is_advance = ($net_due < -0.01);
-    $is_cleared = (!$is_due && !$is_advance);
-    
-    if ($is_due) {
-        $total_customer_pending_due += $net_due;
-        $count_customers_with_due++;
-    } elseif ($is_advance) {
-        $total_customer_advance += abs($net_due);
-    } else {
-        $count_customers_cleared++;
-    }
-    
-    $total_customer_invoiced += $invoiced;
-    $total_customer_received += $received;
-    
-    // Filtering
-    if ($filter_status == 'pending_only' && !$is_due) {
-        continue;
-    } elseif ($filter_status == 'cleared_only' && !$is_cleared) {
-        continue;
-    }
-    
-    $customers_data[] = [
-        'customer_id' => $cid,
-        'customer_name' => $c['customer_name'],
-        'customer_phone' => $c['customer_phone'] ?? '',
-        'customer_strn' => $c['customer_strn'] ?? '',
-        'customer_ntn' => $c['customer_ntn'] ?? '',
-        'customer_address' => $c['customer_address'] ?? '',
-        'opening' => $opening,
-        'invoiced' => $invoiced,
-        'received' => $received,
-        'net_due' => $net_due,
-        'invoices_count' => $invoices_count,
-        'status' => $is_due ? 'due' : ($is_advance ? 'advance' : 'cleared')
-    ];
 }
 
 // -------------------------------------------------------------
@@ -149,104 +190,112 @@ $total_supplier_advance = 0;
 $count_suppliers_with_pending = 0;
 $count_suppliers_cleared = 0;
 
-$supp_sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'supplier'";
-if (!empty($selected_account)) {
-    if (($selected_account['customer_type'] ?? '') == 'supplier') {
+if (!$is_customer_view) {
+    $supp_sql = "SELECT * FROM customers WHERE customer_status = 1 AND customer_type = 'supplier'";
+    if (!empty($selected_account)) {
         $supp_sql .= " AND customer_id = '$account_id'";
-    } else {
-        $supp_sql .= " AND 1 = 0"; // Exclude suppliers if a customer was specifically selected
     }
-}
-$supp_sql .= " ORDER BY customer_name ASC";
-$q_supp = mysqli_query($dbc, $supp_sql);
+    $supp_sql .= " ORDER BY customer_name ASC";
+    $q_supp = mysqli_query($dbc, $supp_sql);
 
-while ($s = mysqli_fetch_assoc($q_supp)) {
-    $sid = $s['customer_id'];
-    
-    if (!empty($from_date) || !empty($to_date)) {
-        $opening = 0;
-        if (!empty($from_date)) {
-            $q_op = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS op_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS op_cr FROM transactions WHERE customer_id = '$sid' AND transaction_date < '$from_date'");
-            $r_op = mysqli_fetch_assoc($q_op);
-            $opening = floatval($r_op['op_dr'] ?? 0) - floatval($r_op['op_cr'] ?? 0);
+    while ($s = mysqli_fetch_assoc($q_supp)) {
+        $sid = $s['customer_id'];
+        
+        if (!empty($from_date) || !empty($to_date)) {
+            $opening = 0;
+            if (!empty($from_date)) {
+                $q_op = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS op_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS op_cr FROM transactions WHERE customer_id = '$sid' AND transaction_date < '$from_date'");
+                $r_op = mysqli_fetch_assoc($q_op);
+                $opening = floatval($r_op['op_dr'] ?? 0) - floatval($r_op['op_cr'] ?? 0);
+            }
+            
+            $date_cond = "";
+            if (!empty($from_date) && !empty($to_date)) {
+                $date_cond = " AND transaction_date BETWEEN '$from_date' AND '$to_date'";
+            } elseif (!empty($from_date)) {
+                $date_cond = " AND transaction_date >= '$from_date'";
+            } elseif (!empty($to_date)) {
+                $date_cond = " AND transaction_date <= '$to_date'";
+            }
+            
+            $q_period = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS p_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS p_cr FROM transactions WHERE customer_id = '$sid' $date_cond");
+            $r_period = mysqli_fetch_assoc($q_period);
+            $purchases = floatval($r_period['p_dr'] ?? 0);
+            $paid = floatval($r_period['p_cr'] ?? 0);
+            $net_pending = $opening + $purchases - $paid;
+        } else {
+            $opening = 0;
+            $q_all = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS tot_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS tot_cr FROM transactions WHERE customer_id = '$sid'");
+            $r_all = mysqli_fetch_assoc($q_all);
+            $purchases = floatval($r_all['tot_dr'] ?? 0);
+            $paid = floatval($r_all['tot_cr'] ?? 0);
+            $net_pending = $purchases - $paid;
         }
         
-        $date_cond = "";
-        if (!empty($from_date) && !empty($to_date)) {
-            $date_cond = " AND transaction_date BETWEEN '$from_date' AND '$to_date'";
-        } elseif (!empty($from_date)) {
-            $date_cond = " AND transaction_date >= '$from_date'";
-        } elseif (!empty($to_date)) {
-            $date_cond = " AND transaction_date <= '$to_date'";
+        // Also check tax purchases count
+        $q_tp_cnt = mysqli_query($dbc, "SELECT COUNT(*) as tp_cnt FROM tax_purchases WHERE supplier_id = '$sid'");
+        $r_tp_cnt = mysqli_fetch_assoc($q_tp_cnt);
+        $purchases_count = intval($r_tp_cnt['tp_cnt'] ?? 0);
+        
+        // If pending amount is less than 1 Rs (or fractional cents/rounding up to 1.5 Rs), take it as 0
+        if (abs($net_pending) <= 1.5) {
+            $net_pending = 0.0;
         }
         
-        $q_period = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS p_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS p_cr FROM transactions WHERE customer_id = '$sid' $date_cond");
-        $r_period = mysqli_fetch_assoc($q_period);
-        $purchases = floatval($r_period['p_dr'] ?? 0);
-        $paid = floatval($r_period['p_cr'] ?? 0);
-        $net_pending = $opening + $purchases - $paid;
-    } else {
-        $opening = 0;
-        $q_all = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS tot_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS tot_cr FROM transactions WHERE customer_id = '$sid'");
-        $r_all = mysqli_fetch_assoc($q_all);
-        $purchases = floatval($r_all['tot_dr'] ?? 0);
-        $paid = floatval($r_all['tot_cr'] ?? 0);
-        $net_pending = $purchases - $paid;
+        $is_pending = ($net_pending >= 1.0);
+        $is_advance = ($net_pending <= -1.0);
+        $is_cleared = ($net_pending == 0.0);
+        
+        // Filtering: If a specific account was selected, always show that account!
+        // Only apply pending_only / cleared_only filter when browsing all accounts
+        if (empty($selected_account)) {
+            if ($filter_status == 'pending_only' && !$is_pending) {
+                continue;
+            } elseif ($filter_status == 'cleared_only' && !$is_cleared) {
+                continue;
+            }
+        }
+        
+        // Accumulate totals ONLY for records that are included!
+        if ($is_pending) {
+            $total_supplier_pending_pay += $net_pending;
+            $count_suppliers_with_pending++;
+        } elseif ($is_advance) {
+            $total_supplier_advance += abs($net_pending);
+        } else {
+            $count_suppliers_cleared++;
+        }
+        
+        $total_supplier_purchases += $purchases;
+        $total_supplier_paid += $paid;
+        
+        $suppliers_data[] = [
+            'supplier_id' => $sid,
+            'supplier_name' => $s['customer_name'],
+            'supplier_phone' => $s['customer_phone'] ?? '',
+            'supplier_strn' => $s['customer_strn'] ?? '',
+            'supplier_ntn' => $s['customer_ntn'] ?? '',
+            'supplier_address' => $s['customer_address'] ?? '',
+            'opening' => $opening,
+            'purchases' => $purchases,
+            'paid' => $paid,
+            'net_pending' => $net_pending,
+            'purchases_count' => $purchases_count,
+            'status' => $is_pending ? 'pending' : ($is_advance ? 'advance' : 'cleared')
+        ];
     }
-    
-    // Also check tax purchases count
-    $q_tp_cnt = mysqli_query($dbc, "SELECT COUNT(*) as tp_cnt FROM tax_purchases WHERE supplier_id = '$sid'");
-    $r_tp_cnt = mysqli_fetch_assoc($q_tp_cnt);
-    $purchases_count = intval($r_tp_cnt['tp_cnt'] ?? 0);
-    
-    $is_pending = ($net_pending > 0.01);
-    $is_advance = ($net_pending < -0.01);
-    $is_cleared = (!$is_pending && !$is_advance);
-    
-    if ($is_pending) {
-        $total_supplier_pending_pay += $net_pending;
-        $count_suppliers_with_pending++;
-    } elseif ($is_advance) {
-        $total_supplier_advance += abs($net_pending);
-    } else {
-        $count_suppliers_cleared++;
-    }
-    
-    $total_supplier_purchases += $purchases;
-    $total_supplier_paid += $paid;
-    
-    if ($filter_status == 'pending_only' && !$is_pending) {
-        continue;
-    } elseif ($filter_status == 'cleared_only' && !$is_cleared) {
-        continue;
-    }
-    
-    $suppliers_data[] = [
-        'supplier_id' => $sid,
-        'supplier_name' => $s['customer_name'],
-        'supplier_phone' => $s['customer_phone'] ?? '',
-        'supplier_strn' => $s['customer_strn'] ?? '',
-        'supplier_ntn' => $s['customer_ntn'] ?? '',
-        'supplier_address' => $s['customer_address'] ?? '',
-        'opening' => $opening,
-        'purchases' => $purchases,
-        'paid' => $paid,
-        'net_pending' => $net_pending,
-        'purchases_count' => $purchases_count,
-        'status' => $is_pending ? 'pending' : ($is_advance ? 'advance' : 'cleared')
-    ];
 }
 
 // Net Position (Receivables − Payables)
 $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay;
 ?>
 <style type="text/css">
-  /* Generous Margins: Top, Left, Right */
+  /* Optimized Page Padding & Table Width */
   main.main-content {
-    padding-top: 35px !important;
-    padding-left: 45px !important;
-    padding-right: 45px !important;
-    padding-bottom: 50px !important;
+    padding-top: 25px !important;
+    padding-left: 25px !important;
+    padding-right: 25px !important;
+    padding-bottom: 40px !important;
   }
   @media (max-width: 992px) {
     main.main-content {
@@ -254,6 +303,13 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
       padding-left: 15px !important;
       padding-right: 15px !important;
     }
+  }
+
+  .table-custom-header thead th {
+    white-space: nowrap !important;
+  }
+  .table-custom-header tbody td {
+    vertical-align: middle !important;
   }
 
   /* Remove Bottom Line under Header */
@@ -570,8 +626,217 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
           </div>
         </div>
 
-        <!-- 4 KPI Summary Cards -->
+        <!-- KPI Summary Cards -->
         <div class="row mb-4">
+        <?php if ($is_customer_view): ?>
+          <!-- Customer Specific KPI Cards -->
+          <!-- Card 1: Customer Total Invoiced -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid #007bff !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label text-primary">
+                      <i class="fe fe-file-text mr-1"></i> Total Invoiced
+                    </div>
+                    <div class="stat-value text-primary">
+                      Rs. <?=number_format($total_customer_invoiced)?>
+                    </div>
+                    <div class="stat-meta">
+                      Total sales invoiced to account
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-file-text fe-32 text-primary" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Customer Total Received -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid #28a745 !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label text-success">
+                      <i class="fe fe-check-circle mr-1"></i> Total Received
+                    </div>
+                    <div class="stat-value text-success">
+                      Rs. <?=number_format($total_customer_received)?>
+                    </div>
+                    <div class="stat-meta">
+                      Cheque &amp; cash payments received
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-check-circle fe-32 text-success" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Customer WHT Deducted -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid #fd7e14 !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label text-warning">
+                      <i class="fe fe-percent mr-1"></i> WHT Deducted
+                    </div>
+                    <div class="stat-value text-warning">
+                      Rs. <?=number_format($total_customer_wht)?>
+                    </div>
+                    <div class="stat-meta">
+                      Income tax withheld at source
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-percent fe-32 text-warning" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Customer Pending Due / Status -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid <?=$total_customer_pending_due > 0 ? '#dc3545' : '#28a745'?> !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label <?=$total_customer_pending_due > 0 ? 'text-danger' : 'text-success'?>">
+                      <i class="fe fe-dollar-sign mr-1"></i> Net Pending Due
+                    </div>
+                    <div class="stat-value <?=$total_customer_pending_due > 0 ? 'text-danger' : 'text-success'?>">
+                      Rs. <?=number_format($total_customer_pending_due)?>
+                    </div>
+                    <div class="stat-meta">
+                      <?php if ($total_customer_pending_due > 0): ?>
+                        <span class="badge badge-danger">Pending Due</span>
+                      <?php elseif ($total_customer_advance > 0): ?>
+                        <span class="badge badge-info">Advance Balance</span>
+                      <?php else: ?>
+                        <span class="badge badge-success">Cleared (0 Due)</span>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-dollar-sign fe-32 <?=$total_customer_pending_due > 0 ? 'text-danger' : 'text-success'?>" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        <?php elseif ($is_supplier_view): ?>
+          <!-- Supplier Specific KPI Cards -->
+          <!-- Card 1: Supplier Total Purchases -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid #343a40 !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label text-dark">
+                      <i class="fe fe-shopping-cart mr-1"></i> Total Purchases
+                    </div>
+                    <div class="stat-value text-dark">
+                      Rs. <?=number_format($total_supplier_purchases)?>
+                    </div>
+                    <div class="stat-meta">
+                      Total purchased from supplier
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-shopping-cart fe-32 text-dark" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Supplier Total Paid -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid #28a745 !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label text-success">
+                      <i class="fe fe-check-circle mr-1"></i> Total Paid
+                    </div>
+                    <div class="stat-value text-success">
+                      Rs. <?=number_format($total_supplier_paid)?>
+                    </div>
+                    <div class="stat-meta">
+                      Total payments made to supplier
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-check-circle fe-32 text-success" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Supplier Pending to Pay -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid <?=$total_supplier_pending_pay > 0 ? '#dc3545' : '#28a745'?> !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label <?=$total_supplier_pending_pay > 0 ? 'text-danger' : 'text-success'?>">
+                      <i class="fe fe-arrow-up-right mr-1"></i> Pending to Pay
+                    </div>
+                    <div class="stat-value <?=$total_supplier_pending_pay > 0 ? 'text-danger' : 'text-success'?>">
+                      Rs. <?=number_format($total_supplier_pending_pay)?>
+                    </div>
+                    <div class="stat-meta">
+                      <?php if ($total_supplier_pending_pay > 0): ?>
+                        <span class="badge badge-danger">Payable Due</span>
+                      <?php elseif ($total_supplier_advance > 0): ?>
+                        <span class="badge badge-info">Advance Paid</span>
+                      <?php else: ?>
+                        <span class="badge badge-success">Cleared (0 Due)</span>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-truck fe-32 <?=$total_supplier_pending_pay > 0 ? 'text-danger' : 'text-success'?>" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Supplier Profile -->
+          <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card summary-card h-100" style="border-left: 5px solid #17a2b8 !important;">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col mr-2">
+                    <div class="stat-label text-info">
+                      <i class="fe fe-user mr-1"></i> Supplier Profile
+                    </div>
+                    <div class="stat-value text-info font-weight-bold" style="font-size: 18px; line-height: 1.3;">
+                      <?=htmlspecialchars($selected_account['customer_name'] ?? '')?>
+                    </div>
+                    <div class="stat-meta">
+                      NTN/STRN: <?=$selected_account['customer_ntn'] ?: ($selected_account['customer_strn'] ?: '-')?>
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <span class="fe fe-info fe-32 text-info" style="opacity: 0.35;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        <?php else: ?>
           <!-- Card 1: Customer Dues -->
           <div class="col-xl-3 col-md-6 mb-3">
             <div class="card summary-card border-left-success h-100" style="border-left: 5px solid #28a745 !important;">
@@ -585,7 +850,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                       Rs. <?=number_format($total_customer_pending_due)?>
                     </div>
                     <div class="stat-meta">
-                      <strong><?=$count_customers_with_due?></strong> customer(s) with pending balance
+                      <strong><?=$count_customers_with_due?></strong> customer(s) &bull; WHT: <strong>Rs. <?=number_format($total_customer_wht)?></strong>
                     </div>
                   </div>
                   <div class="col-auto">
@@ -671,8 +936,10 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
               </div>
             </div>
           </div>
+        <?php endif; ?>
         </div>
 
+        <?php if ($is_both_view): ?>
         <!-- Section Navigation Pills (d-print-none) -->
         <div class="d-print-none mb-3">
           <ul class="nav nav-pills" id="reportTabs" role="tablist">
@@ -700,37 +967,45 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
             </li>
           </ul>
         </div>
+        <?php endif; ?>
 
         <!-- Tab Contents Wrapper -->
         <div class="tab-content" id="reportTabContent">
 
-          <!-- TAB 1: ALL (Both Stacked) -->
+          <!-- TAB 1: ALL (Both Stacked or Single Party) -->
           <div class="tab-pane fade show active" id="tab-all" role="tabpanel">
 
+            <?php if (!$is_supplier_view): ?>
             <!-- SECTION 1: CUSTOMERS DUE TABLE -->
             <div class="card shadow-sm mb-4">
               <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
                 <h5 class="mb-0 text-white font-weight-bold">
                   <i class="fe fe-users mr-2 text-success"></i> Customer Pending Dues (Receivables)
                 </h5>
-                <span class="badge badge-light font-weight-bold px-2 py-1">
-                  Total Due: Rs. <?=number_format($total_customer_pending_due)?>
-                </span>
+                <div>
+                  <span class="badge badge-warning font-weight-bold px-2 py-1 mr-1">
+                    WHT Deducted: Rs. <?=number_format($total_customer_wht)?>
+                  </span>
+                  <span class="badge badge-light font-weight-bold px-2 py-1">
+                    Total Due: Rs. <?=number_format($total_customer_pending_due)?>
+                  </span>
+                </div>
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
                   <table class="table table-bordered table-striped table-hover table-custom-header mb-0" id="customersTable">
                     <thead>
                       <tr class="text-center">
-                        <th style="width: 50px;">Sr #</th>
+                        <th style="width: 45px;">Sr #</th>
                         <th style="text-align: left;">Customer Name</th>
-                        <th style="width: 130px;">Phone / Contact</th>
-                        <th style="width: 130px;">STRN / NTN</th>
-                        <th style="width: 130px;" class="text-right">Total Invoiced (Rs)</th>
-                        <th style="width: 130px;" class="text-right">Total Received (Rs)</th>
-                        <th style="width: 150px;" class="text-right">Pending Due (Rs)</th>
+                        <th style="width: 120px;">Phone / Contact</th>
+                        <th style="width: 120px;">STRN / NTN</th>
+                        <th style="width: 120px;" class="text-right">Total Invoiced (Rs)</th>
+                        <th style="width: 120px;" class="text-right">Total Received (Rs)</th>
+                        <th style="width: 120px;" class="text-right">WHT Deducted (Rs)</th>
+                        <th style="width: 135px;" class="text-right">Pending Due (Rs)</th>
                         <th style="width: 110px;" class="text-center">Status</th>
-                        <th style="width: 140px;" class="text-center d-print-none">Actions</th>
+                        <th style="width: 165px;" class="text-center d-print-none">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -766,17 +1041,20 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                           <td class="text-right font-weight-bold text-success">
                             <?=number_format($row['received'])?>
                           </td>
+                          <td class="text-right font-weight-bold text-warning">
+                            <?=$row['wht'] > 0 ? number_format($row['wht']) : '<span class="text-muted">-</span>'?>
+                          </td>
                           <td class="text-right font-weight-bold" style="font-size: 15px;">
-                            <?php if ($row['net_due'] > 0.01): ?>
+                            <?php if ($row['net_due'] > 2.0): ?>
                               <span class="text-danger font-weight-bold">
                                 <?=number_format($row['net_due'])?>
                               </span>
-                            <?php elseif ($row['net_due'] < -0.01): ?>
+                            <?php elseif ($row['net_due'] < -2.0): ?>
                               <span class="text-info font-weight-bold" title="Advance balance paid by customer">
                                 (<?=number_format(abs($row['net_due']))?>) <small>Adv</small>
                               </span>
                             <?php else: ?>
-                              <span class="text-muted">0</span>
+                              <span class="badge badge-cleared"><i class="fe fe-check mr-1"></i>0 (Cleared)</span>
                             <?php endif; ?>
                           </td>
                           <td class="text-center">
@@ -796,6 +1074,11 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                               <a href="print_balance.php?customer=<?=$row['customer_id']?>" target="_blank" class="btn btn-outline-secondary" title="Print Balance Slip">
                                 <i class="fe fe-printer"></i> Slip
                               </a>
+                              <?php if ($row['wht'] > 0): ?>
+                                <a href="wht_report.php?customer_id=<?=$row['customer_id']?>" target="_blank" class="btn btn-outline-warning" title="View Monthly WHT Report">
+                                  <i class="fe fe-percent"></i> WHT
+                                </a>
+                              <?php endif; ?>
                             </div>
                           </td>
                         </tr>
@@ -804,7 +1087,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                       else:
                       ?>
                         <tr>
-                          <td colspan="9" class="text-center py-4 text-muted">
+                          <td colspan="10" class="text-center py-4 text-muted">
                             <i class="fe fe-check-circle fe-24 d-block mb-2 text-success"></i>
                             <strong>No customer dues found matching the criteria.</strong>
                           </td>
@@ -816,6 +1099,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                         <th colspan="4" class="text-right font-weight-bold">Total Customer Receivables:</th>
                         <th class="text-right font-weight-bold text-secondary"><?=number_format($total_customer_invoiced)?></th>
                         <th class="text-right font-weight-bold text-success"><?=number_format($total_customer_received)?></th>
+                        <th class="text-right font-weight-bold text-warning"><?=number_format($total_customer_wht)?></th>
                         <th class="text-right font-weight-bold text-danger h6 mb-0">
                           Rs. <?=number_format($total_customer_pending_due)?>
                         </th>
@@ -826,7 +1110,9 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                 </div>
               </div>
             </div>
+            <?php endif; ?>
 
+            <?php if (!$is_customer_view): ?>
             <!-- SECTION 2: SUPPLIERS PENDING TO PAY TABLE -->
             <div class="card shadow-sm mb-4">
               <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
@@ -946,7 +1232,9 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                 </div>
               </div>
             </div>
+            <?php endif; ?>
 
+            <?php if ($is_both_view): ?>
             <!-- SECTION 3: GRAND TOTAL SUMMARY BOX AT LAST -->
             <div class="final-summary-card p-4 mb-4">
               <div class="row align-items-center">
@@ -1024,20 +1312,25 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
               </div>
 
             </div>
+            <?php endif; ?>
 
           </div> <!-- /tab-all -->
 
+          <?php if ($is_both_view): ?>
           <!-- TAB 2: CUSTOMERS ONLY -->
           <div class="tab-pane fade" id="tab-customers" role="tabpanel">
             <div class="card shadow-sm mb-4">
               <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-white font-weight-bold"><i class="fe fe-users mr-2 text-success"></i> Customer Receivables</h5>
-                <span class="badge badge-success px-2 py-1">Total Due: Rs. <?=number_format($total_customer_pending_due)?></span>
+                <div>
+                  <span class="badge badge-warning font-weight-bold px-2 py-1 mr-1">WHT: Rs. <?=number_format($total_customer_wht)?></span>
+                  <span class="badge badge-success px-2 py-1">Total Due: Rs. <?=number_format($total_customer_pending_due)?></span>
+                </div>
               </div>
               <div class="card-body p-0">
                 <div class="p-3">
                   <div class="alert alert-info py-2 mb-3">
-                    <strong>Total Pending from Customers:</strong> Rs. <?=number_format($total_customer_pending_due)?> across <strong><?=$count_customers_with_due?></strong> customer account(s).
+                    <strong>Total Pending from Customers:</strong> Rs. <?=number_format($total_customer_pending_due)?> across <strong><?=$count_customers_with_due?></strong> customer account(s). Total WHT Deducted: <strong>Rs. <?=number_format($total_customer_wht)?></strong>.
                   </div>
                 </div>
                 <!-- Re-use customers table view in tab -->
@@ -1051,6 +1344,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                         <th>STRN / NTN</th>
                         <th class="text-right">Total Invoiced</th>
                         <th class="text-right">Total Received</th>
+                        <th class="text-right">WHT Deducted</th>
                         <th class="text-right">Pending Due (Rs)</th>
                         <th>Status</th>
                         <th class="d-print-none">Action</th>
@@ -1065,13 +1359,14 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                           <td class="text-center"><?=$row['customer_strn'] ?: ($row['customer_ntn'] ?: '-')?></td>
                           <td class="text-right"><?=number_format($row['invoiced'])?></td>
                           <td class="text-right"><?=number_format($row['received'])?></td>
+                          <td class="text-right font-weight-bold text-warning"><?=$row['wht'] > 0 ? number_format($row['wht']) : '-'?></td>
                           <td class="text-right font-weight-bold" style="font-size: 15px;">
-                            <?php if ($row['net_due'] > 0.01): ?>
+                            <?php if ($row['net_due'] > 2.0): ?>
                               <span class="text-danger font-weight-bold"><?=number_format($row['net_due'])?></span>
-                            <?php elseif ($row['net_due'] < -0.01): ?>
+                            <?php elseif ($row['net_due'] < -2.0): ?>
                               <span class="text-info font-weight-bold">(<?=number_format(abs($row['net_due']))?>) <small>Adv</small></span>
                             <?php else: ?>
-                              <span class="text-muted font-weight-normal">0</span>
+                              <span class="badge badge-cleared"><i class="fe fe-check mr-1"></i>0 (Cleared)</span>
                             <?php endif; ?>
                           </td>
                           <td class="text-center">
@@ -1086,12 +1381,25 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                           <td class="text-center d-print-none">
                             <a href="reports.php?customer_id=<?=$row['customer_id']?>&genealledger=1" target="_blank" class="btn btn-sm btn-outline-primary">Ledger</a>
                             <a href="print_balance.php?customer=<?=$row['customer_id']?>" target="_blank" class="btn btn-sm btn-outline-secondary">Slip</a>
+                            <?php if ($row['wht'] > 0): ?>
+                              <a href="wht_report.php?customer_id=<?=$row['customer_id']?>" target="_blank" class="btn btn-sm btn-outline-warning">WHT</a>
+                            <?php endif; ?>
                           </td>
                         </tr>
                       <?php endforeach; else: ?>
-                        <tr><td colspan="9" class="text-center py-3 text-muted">No customer records found matching filter.</td></tr>
+                        <tr><td colspan="10" class="text-center py-3 text-muted">No customer records found matching filter.</td></tr>
                       <?php endif; ?>
                     </tbody>
+                    <tfoot>
+                      <tr class="bg-light font-weight-bold">
+                        <td colspan="4" class="text-right">Total:</td>
+                        <td class="text-right text-secondary"><?=number_format($total_customer_invoiced)?></td>
+                        <td class="text-right text-success"><?=number_format($total_customer_received)?></td>
+                        <td class="text-right text-warning"><?=number_format($total_customer_wht)?></td>
+                        <td class="text-right text-danger">Rs. <?=number_format($total_customer_pending_due)?></td>
+                        <td colspan="2" class="d-print-none"></td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>
@@ -1183,6 +1491,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                         <th class="text-center">Count of Accounts</th>
                         <th class="text-right">Total Billed / Purchased</th>
                         <th class="text-right">Total Settled / Paid</th>
+                        <th class="text-right">WHT Deducted (Rs)</th>
                         <th class="text-right">Total Pending Balance (Rs)</th>
                       </tr>
                     </thead>
@@ -1194,6 +1503,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                         <td class="text-center font-weight-bold"><?=$count_customers_with_due?> Accounts</td>
                         <td class="text-right"><?=number_format($total_customer_invoiced)?></td>
                         <td class="text-right"><?=number_format($total_customer_received)?></td>
+                        <td class="text-right font-weight-bold text-warning"><?=number_format($total_customer_wht)?></td>
                         <td class="text-right font-weight-bold text-success h5 mb-0">
                           Rs. <?=number_format($total_customer_pending_due)?>
                         </td>
@@ -1205,12 +1515,13 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
                         <td class="text-center font-weight-bold"><?=$count_suppliers_with_pending?> Accounts</td>
                         <td class="text-right"><?=number_format($total_supplier_purchases)?></td>
                         <td class="text-right"><?=number_format($total_supplier_paid)?></td>
+                        <td class="text-right text-muted">-</td>
                         <td class="text-right font-weight-bold text-danger h5 mb-0">
                           Rs. <?=number_format($total_supplier_pending_pay)?>
                         </td>
                       </tr>
                       <tr class="table-warning font-weight-bold h5">
-                        <td colspan="4" class="text-right font-weight-bold">
+                        <td colspan="5" class="text-right font-weight-bold">
                           Net Working Balance (Receivables − Payables):
                         </td>
                         <td class="text-right font-weight-bold <?=$net_working_balance >= 0 ? 'text-primary' : 'text-danger'?>">
@@ -1223,6 +1534,7 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
               </div>
             </div>
           </div> <!-- /tab-summary -->
+          <?php endif; ?>
 
         </div> <!-- /tab-content -->
 
@@ -1236,14 +1548,26 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
     $(document).ready(function() {
       // Initialize DataTables if available
       if ($.fn.DataTable) {
-        ['#customersTable', '#suppliersTable', '#customersOnlyTable', '#suppliersOnlyTable'].forEach(function(tblId) {
+        <?php if (!$is_supplier_view): ?>
+        ['#customersTable', '#customersOnlyTable'].forEach(function(tblId) {
           if ($(tblId + ' tbody tr').length > 1 && !$(tblId + ' tbody tr td[colspan]').length) {
             $(tblId).DataTable({
               pageLength: 25,
-              order: [[6, 'desc']] // Order by Pending Due/Pay descending
+              order: [[7, 'desc']] // Order by Pending Due descending (col index 7)
             });
           }
         });
+        <?php endif; ?>
+        <?php if (!$is_customer_view): ?>
+        ['#suppliersTable', '#suppliersOnlyTable'].forEach(function(tblId) {
+          if ($(tblId + ' tbody tr').length > 1 && !$(tblId + ' tbody tr td[colspan]').length) {
+            $(tblId).DataTable({
+              pageLength: 25,
+              order: [[6, 'desc']] // Order by Pending Pay descending (col index 6)
+            });
+          }
+        });
+        <?php endif; ?>
       }
     });
 
@@ -1275,8 +1599,9 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
       csv.push(["Scope: <?=addslashes($date_scope_label)?>"]);
       csv.push([]);
 
+      <?php if (!$is_supplier_view): ?>
       csv.push(["--- 1. CUSTOMERS PENDING DUE (RECEIVABLES) ---"]);
-      csv.push(["Sr#", "Customer Name", "Phone", "STRN", "NTN", "Total Invoiced", "Total Received", "Pending Due (Rs)", "Status"]);
+      csv.push(["Sr#", "Customer Name", "Phone", "STRN", "NTN", "Total Invoiced", "Total Received", "WHT Deducted (Rs)", "Pending Due (Rs)", "Status"]);
       <?php foreach ($customers_data as $idx => $r): ?>
         csv.push([
           "<?=$idx + 1?>",
@@ -1286,13 +1611,16 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
           "<?=addslashes($r['customer_ntn'])?>",
           "<?=$r['invoiced']?>",
           "<?=$r['received']?>",
+          "<?=$r['wht']?>",
           "<?=$r['net_due']?>",
           "<?=$r['status']?>"
         ]);
       <?php endforeach; ?>
-      csv.push(["SUBTOTAL CUSTOMERS PENDING DUE", "", "", "", "", "<?=$total_customer_invoiced?>", "<?=$total_customer_received?>", "<?=$total_customer_pending_due?>", ""]);
+      csv.push(["SUBTOTAL CUSTOMERS PENDING DUE", "", "", "", "", "<?=$total_customer_invoiced?>", "<?=$total_customer_received?>", "<?=$total_customer_wht?>", "<?=$total_customer_pending_due?>", ""]);
       csv.push([]);
+      <?php endif; ?>
 
+      <?php if (!$is_customer_view): ?>
       csv.push(["--- 2. SUPPLIERS PENDING PAYABLES ---"]);
       csv.push(["Sr#", "Supplier Name", "Phone", "STRN", "NTN", "Total Purchases", "Total Paid", "Pending to Pay (Rs)", "Status"]);
       <?php foreach ($suppliers_data as $idx => $r): ?>
@@ -1310,11 +1638,17 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
       <?php endforeach; ?>
       csv.push(["SUBTOTAL SUPPLIERS PENDING PAYABLE", "", "", "", "", "<?=$total_supplier_purchases?>", "<?=$total_supplier_paid?>", "<?=$total_supplier_pending_pay?>", ""]);
       csv.push([]);
+      <?php endif; ?>
 
+      <?php if ($is_both_view): ?>
       csv.push(["--- 3. GRAND TOTAL SUMMARY ---"]);
+      csv.push(["Total Invoiced to Customers", "<?=$total_customer_invoiced?>"]);
+      csv.push(["Total Received from Customers", "<?=$total_customer_received?>"]);
+      csv.push(["Total WHT Deducted by Customers", "<?=$total_customer_wht?>"]);
       csv.push(["Total Pending Receiving from Customers", "<?=$total_customer_pending_due?>"]);
       csv.push(["Total Pending Paying to Suppliers", "<?=$total_supplier_pending_pay?>"]);
       csv.push(["Net Working Position (Receivables - Payables)", "<?=$net_working_balance?>"]);
+      <?php endif; ?>
 
       var csvContent = "data:text/csv;charset=utf-8," + csv.map(e => e.map(cell => '"' + ('' + cell).replace(/"/g, '""') + '"').join(",")).join("\n");
       var encodedUri = encodeURI(csvContent);

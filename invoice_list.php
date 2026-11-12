@@ -12,7 +12,8 @@
             <div class="row">
               <div class="col-12 mx-auto h4">
                 <b class="text-center card-text">Commercial Invoice List</b>
-                <a href="commercial_invoice_ledger.php" class="btn btn-admin float-right btn-sm ml-2"><i class="fe fe-book-open"></i> Commercial Invoice Ledger</a>
+                <a href="total_commercial_invoice_ledger.php" class="btn btn-info float-right btn-sm ml-2"><i class="fe fe-layers"></i> Total Invoice Ledger</a>
+                <a href="commercial_invoice_ledger.php" class="btn btn-admin float-right btn-sm ml-2"><i class="fe fe-book-open"></i> DC Commercial Ledger</a>
                 <a href="invoice.php" class="btn btn-admin2 float-right btn-sm"><i class="fe fe-plus"></i> New Invoice</a>
               </div>
             </div>

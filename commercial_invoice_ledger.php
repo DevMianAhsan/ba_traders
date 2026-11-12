@@ -98,11 +98,12 @@ $to_date = $_REQUEST['to_date'] ?? '';
             <div class="row align-items-center">
               <div class="col-sm-6">
                 <h4 class="mb-0 font-weight-bold text-white">Commercial Invoice Ledger</h4>
-                <small class="text-muted">Customer statement for Commercial Invoices & Voucher Payments</small>
+                <small class="text-white-50">Customer statement for Delivery Challans & Voucher Payments</small>
               </div>
               <div class="col-sm-6 text-right">
-                <a href="invoice.php" class="btn btn-sm btn-admin ml-1"><i class="fe fe-plus"></i> New Commercial Inv</a>
-                <a href="invoice_list.php" class="btn btn-sm btn-outline-secondary text-white ml-1"><i class="fe fe-list"></i> Inv List</a>
+                <a href="total_commercial_invoice_ledger.php" class="btn btn-sm btn-info ml-1"><i class="fe fe-layers"></i> Total Commercial Inv Ledger</a>
+                <a href="credit_sale.php?credit_type=30days" class="btn btn-sm btn-admin ml-1"><i class="fe fe-plus"></i> New DC</a>
+                <a href="credit_orders.php" class="btn btn-sm btn-outline-secondary text-white ml-1"><i class="fe fe-list"></i> DC List</a>
               </div>
             </div>
           </div>
@@ -165,10 +166,16 @@ $to_date = $_REQUEST['to_date'] ?? '';
               }
 
               if (!empty($from_date)) {
-                // Invoices prior to from_date
-                $q_pre_inv = mysqli_query($dbc, "SELECT SUM(CAST(grand_total AS DECIMAL(15,2))) AS pre_credit FROM invoices WHERE customer_id = '$customer' AND invoice_date < '$from_date'");
-                $r_pre_inv = mysqli_fetch_assoc($q_pre_inv);
-                $pre_credit = floatval($r_pre_inv['pre_credit'] ?? 0);
+                // Delivery Challan / Credit Sales prior to from_date
+                $q_pre_ord = mysqli_query($dbc, "
+                  SELECT SUM(CAST(grand_total AS DECIMAL(15,2))) AS pre_credit 
+                  FROM orders 
+                  WHERE customer_account = '$customer' 
+                    AND payment_type = 'credit_sale' 
+                    AND COALESCE(NULLIF(order_date, '0000-00-00'), DATE(timestamp)) < '$from_date'
+                ");
+                $r_pre_ord = mysqli_fetch_assoc($q_pre_ord);
+                $pre_credit = floatval($r_pre_ord['pre_credit'] ?? 0);
 
                 // Vouchers prior to from_date
                 $pre_debit = 0;
@@ -177,7 +184,9 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   FROM vouchers v
                   LEFT JOIN voucher_invoices vi ON v.voucher_id = vi.voucher_id
                   WHERE (v.customer_id1 = '$customer' 
-                     OR vi.invoice_id IN (SELECT invoice_id FROM invoices WHERE customer_id = '$customer'))
+                     OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$customer')
+                     OR vi.invoice_id IN (SELECT invoice_id FROM invoices WHERE customer_id = '$customer')
+                     OR vi.party_po IN (SELECT DISTINCT party_po FROM orders WHERE customer_account = '$customer' AND party_po != ''))
                     AND v.voucher_date < '$from_date'
                 ");
                 while ($pv = mysqli_fetch_assoc($q_pre_v)) {
@@ -196,94 +205,89 @@ $to_date = $_REQUEST['to_date'] ?? '';
                 $opening_balance = $pre_credit - $pre_debit;
               }
 
-              // 2. Fetch Invoices in period
-              $inv_where = "customer_id = '$customer'";
+              // 2. Fetch Delivery Challan (Credit Sales from credit_sale.php) in period
+              $ord_where = "customer_account = '$customer' AND payment_type = 'credit_sale'";
               if (!empty($from_date) && !empty($to_date)) {
-                $inv_where .= " AND invoice_date BETWEEN '$from_date' AND '$to_date'";
+                $ord_where .= " AND COALESCE(NULLIF(order_date, '0000-00-00'), DATE(timestamp)) BETWEEN '$from_date' AND '$to_date'";
               } elseif (!empty($from_date)) {
-                $inv_where .= " AND invoice_date >= '$from_date'";
+                $ord_where .= " AND COALESCE(NULLIF(order_date, '0000-00-00'), DATE(timestamp)) >= '$from_date'";
               } elseif (!empty($to_date)) {
-                $inv_where .= " AND invoice_date <= '$to_date'";
+                $ord_where .= " AND COALESCE(NULLIF(order_date, '0000-00-00'), DATE(timestamp)) <= '$to_date'";
               }
 
-              $q_invoices = mysqli_query($dbc, "SELECT * FROM invoices WHERE $inv_where ORDER BY invoice_date ASC, invoice_id ASC");
+              $q_orders = mysqli_query($dbc, "SELECT * FROM orders WHERE $ord_where ORDER BY COALESCE(NULLIF(order_date, '0000-00-00'), DATE(timestamp)) ASC, order_id ASC");
               $entries = [];
 
-              while ($inv = mysqli_fetch_assoc($q_invoices)) {
+              while ($ord = mysqli_fetch_assoc($q_orders)) {
+                $ord_id = $ord['order_id'];
+                $ord_date = (!empty($ord['order_date']) && $ord['order_date'] != '0000-00-00') ? $ord['order_date'] : date('Y-m-d', strtotime($ord['timestamp']));
                 $items = [];
-                $inv_total_qty = 0;
+                $ord_total_qty = 0;
                 $prod_names = [];
-                $inv_pos = [];
-                $inv_rates = [];
-                if (!empty($inv['party_po'])) {
-                  $inv_pos[] = trim($inv['party_po']);
-                }
+                $ord_rates = [];
 
-                $invDetails = json_decode($inv['invoice_details'], true);
-                if (!empty($invDetails['data']) && is_array($invDetails['data'])) {
-                  foreach ($invDetails['data'] as $d) {
-                    if (!empty($d['party_po'])) {
-                      $inv_pos[] = trim($d['party_po']);
+                $q_items = mysqli_query($dbc, "SELECT oi.*, p.product_name, p.product_code, p.product_unit 
+                  FROM order_item oi 
+                  LEFT JOIN product p ON oi.product_id = p.product_id 
+                  WHERE oi.order_id = '$ord_id'");
+
+                if ($q_items) {
+                  while ($it = mysqli_fetch_assoc($q_items)) {
+                    $item_qty = floatval($it['quantity']);
+                    $item_rate = floatval($it['rate']);
+                    $ord_total_qty += $item_qty;
+                    if ($item_rate > 0) {
+                      $ord_rates[] = number_format($item_rate, 2);
                     }
-                    if (!empty($d['dc_no'])) {
-                      $dc_no = intval($d['dc_no']);
-                      $q_items = mysqli_query($dbc, "SELECT oi.*, p.product_name, p.product_code, p.product_unit 
-                        FROM order_item oi 
-                        LEFT JOIN product p ON oi.product_id = p.product_id 
-                        WHERE oi.order_id = '$dc_no'");
-                      if ($q_items) {
-                        while ($it = mysqli_fetch_assoc($q_items)) {
-                          $item_qty = floatval($it['quantity']);
-                          $item_rate = floatval($it['rate']);
-                          $inv_total_qty += $item_qty;
-                          if ($item_rate > 0) {
-                            $inv_rates[] = number_format($item_rate, 2);
-                          }
-                          $pname = !empty($it['product_name']) ? trim($it['product_name']) : ('Product #' . $it['product_id']);
-                          if (!empty($pname) && !in_array($pname, $prod_names)) {
-                            $prod_names[] = $pname;
-                          }
-                          $items[] = [
-                            'dc_no' => $dc_no,
-                            'party_po' => $d['party_po'] ?? $inv['party_po'],
-                            'product_name' => $pname,
-                            'product_code' => $it['product_code'] ?? '',
-                            'product_unit' => $it['product_unit'] ?? '',
-                            'quantity' => $item_qty,
-                            'rate' => $item_rate,
-                            'total' => floatval($it['total'] ?? ($item_qty * $item_rate))
-                          ];
-                        }
-                      }
+                    $pname = !empty($it['product_name']) ? trim($it['product_name']) : ('Product #' . $it['product_id']);
+                    if (!empty($pname) && !in_array($pname, $prod_names)) {
+                      $prod_names[] = $pname;
                     }
+                    $items[] = [
+                      'dc_no' => $ord_id,
+                      'party_po' => $ord['party_po'],
+                      'product_name' => $pname,
+                      'product_code' => $it['product_code'] ?? '',
+                      'product_unit' => $it['product_unit'] ?? '',
+                      'quantity' => $item_qty,
+                      'rate' => $item_rate,
+                      'total' => floatval($it['total'] ?? ($item_qty * $item_rate))
+                    ];
                   }
                 }
 
-                $inv_total_amt = floatval($inv['total_amount']);
-                $inv_disc = floatval($inv['discount']);
-                $inv_tax_amt = ($inv_total_amt * ($inv_disc / 100));
-                $po_display = implode(', ', array_unique(array_filter($inv_pos)));
-                $inv_rate_display = !empty($inv_rates) ? implode(', ', array_unique($inv_rates)) : '-';
+                $ord_total_amt = floatval($ord['total_amount']);
+                $ord_tax_pct = floatval($ord['discount']);
+                $ord_tax_amt = ($ord_total_amt * ($ord_tax_pct / 100));
+                $ord_freight = floatval($ord['freight']);
+                $ord_grand_total = floatval($ord['grand_total']);
+                if ($ord_grand_total <= 0) {
+                  $ord_grand_total = $ord_total_amt + $ord_tax_amt + $ord_freight;
+                }
+
+                $rate_display = !empty($ord_rates) ? implode(', ', array_unique($ord_rates)) : '-';
 
                 $entries[] = [
                   'type' => 'invoice',
-                  'date' => $inv['invoice_date'],
-                  'sort_time' => strtotime($inv['invoice_date'] . ' 00:00:00'),
-                  'id' => $inv['invoice_id'],
+                  'date' => $ord_date,
+                  'sort_time' => strtotime($ord_date . ' 00:00:00'),
+                  'id' => $ord_id,
+                  'ref_label' => 'DC #' . $ord_id,
                   'fbr_no' => '',
-                  'party_po' => $po_display,
-                  'days' => $inv['credit_sale_type'],
+                  'party_po' => $ord['party_po'],
+                  'days' => $ord['credit_sale_type'],
                   'items' => $items,
                   'prod_names' => $prod_names,
-                  'total_qty' => $inv_total_qty,
-                  'rate_display' => $inv_rate_display,
-                  'total_amount' => $inv_total_amt,
-                  'discount' => $inv_disc,
-                  'tax_amount' => $inv_tax_amt,
-                  'freight' => floatval($inv['freight']),
-                  'grand_total' => floatval($inv['grand_total']),
-                  'narration' => $inv['order_narration'],
-                  'credit' => floatval($inv['grand_total']),
+                  'total_qty' => $ord_total_qty,
+                  'rate_display' => $rate_display,
+                  'total_amount' => $ord_total_amt,
+                  'discount' => $ord_tax_pct,
+                  'tax_amount' => $ord_tax_amt,
+                  'freight' => $ord_freight,
+                  'grand_total' => $ord_grand_total,
+                  'vehicle_no' => $ord['vehicle_no'] ?? '',
+                  'narration' => $ord['order_narration'] ?? '',
+                  'credit' => $ord_grand_total,
                   'debit' => 0,
                   'wht_percent' => 0,
                   'wht_amount' => 0,
@@ -296,7 +300,9 @@ $to_date = $_REQUEST['to_date'] ?? '';
                 FROM vouchers v
                 LEFT JOIN voucher_invoices vi ON v.voucher_id = vi.voucher_id
                 WHERE (v.customer_id1 = '$customer' 
-                   OR vi.invoice_id IN (SELECT invoice_id FROM invoices WHERE customer_id = '$customer'))
+                   OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$customer')
+                   OR vi.invoice_id IN (SELECT invoice_id FROM invoices WHERE customer_id = '$customer')
+                   OR vi.party_po IN (SELECT DISTINCT party_po FROM orders WHERE customer_account = '$customer' AND party_po != ''))
               ";
               if (!empty($from_date) && !empty($to_date)) {
                 $v_sql .= " AND v.voucher_date BETWEEN '$from_date' AND '$to_date'";
@@ -352,6 +358,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   'date' => $v['voucher_date'],
                   'sort_time' => strtotime($v['voucher_date'] . ' 12:00:00'),
                   'id' => $v['voucher_id'],
+                  'ref_label' => 'VOU #' . $v['voucher_id'],
                   'fbr_no' => $v_fbr_display,
                   'party_po' => $v_po_display,
                   'days' => '',
@@ -374,7 +381,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                 ];
               }
 
-              // 4. Sort entries chronologically: same date shows invoice first, then voucher
+              // 4. Sort entries chronologically: same date shows DC/Invoice first, then voucher
               usort($entries, function($a, $b) {
                 if ($a['date'] != $b['date']) {
                   return strcmp($a['date'], $b['date']);
@@ -476,9 +483,9 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <!-- Ref # (Clean text, NO edit or print buttons) -->
                     <td class="text-center">
                       <?php if ($e['type'] == 'invoice'): ?>
-                        <strong class="text-primary font-weight-bold">INV #<?=$e['id']?></strong>
+                        <strong class="text-primary font-weight-bold"><?=$e['ref_label'] ?? ('DC #'.$e['id'])?></strong>
                       <?php else: ?>
-                        <strong class="text-success font-weight-bold">VOU #<?=$e['id']?></strong>
+                        <strong class="text-success font-weight-bold"><?=$e['ref_label'] ?? ('VOU #'.$e['id'])?></strong>
                       <?php endif; ?>
                     </td>
 
@@ -495,9 +502,12 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <!-- Description -->
                     <td>
                       <?php if ($e['type'] == 'invoice'): ?>
-                        <div class="item-title font-weight-bold"><?=!empty($e['prod_names']) ? htmlspecialchars(implode(', ', $e['prod_names'])) : 'Commercial Invoice #'.$e['id']?></div>
+                        <div class="item-title font-weight-bold"><?=!empty($e['prod_names']) ? htmlspecialchars(implode(', ', $e['prod_names'])) : 'Delivery Challan #'.$e['id']?></div>
                         <?php if (!empty($e['narration'])): ?>
                           <div class="text-muted mt-1" style="font-size: 11px;"><em><?=htmlspecialchars($e['narration'])?></em></div>
+                        <?php endif; ?>
+                        <?php if (!empty($e['vehicle_no'])): ?>
+                          <div class="text-muted" style="font-size: 11px;">Vehicle: <?=htmlspecialchars($e['vehicle_no'])?></div>
                         <?php endif; ?>
                         <?php if (!empty($e['freight']) && floatval($e['freight']) > 0): ?>
                           <div class="text-muted" style="font-size: 11px;">Freight: <?=number_format($e['freight'])?> RS</div>
@@ -592,24 +602,12 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   ?>
                   <tr>
                     <td colspan="15" class="text-center py-4 text-muted">
-                      <i class="fe fe-info fe-16 mr-1"></i> No Commercial Invoices or Vouchers found for this Customer Account in the selected period.
+                      <i class="fe fe-info fe-16 mr-1"></i> No Delivery Challans or Vouchers found for this Customer Account in the selected period.
                     </td>
                   </tr>
                   <?php endif; ?>
                 </tbody>
                 <tfoot>
-                  <!-- <tr style="background: #e9ecef; font-weight: 700; border-top: 2px solid #454d55;">
-                    <td colspan="6" class="text-right font-weight-bold" style="font-size: 13px;">Totals:</td>
-                    <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_qty > 0 ? number_format($tot_qty, 2) : '-' ?></td>
-                    <td class="text-center font-weight-bold" style="font-size: 13px;">-</td>
-                    <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_subtotal > 0 ? number_format($tot_subtotal) : '-' ?></td>
-                    <td class="text-center">-</td>
-                    <td class="text-right font-weight-bold" style="font-size: 13px;"><?= $tot_tax_amt > 0 ? number_format($tot_tax_amt) : '-' ?></td>
-                    <td class="text-center font-weight-bold text-danger" style="font-size: 13px;"><?= $tot_wht > 0 ? number_format($tot_wht) : '-' ?></td>
-                    <td class="text-right font-weight-bold text-primary" style="font-size: 14px;"><?= number_format($tot_debit) ?></td>
-                    <td class="text-right font-weight-bold text-success" style="font-size: 14px;"><?= number_format($tot_credit) ?></td>
-                    <td class="text-right font-weight-bold" style="font-size: 14px; color: <?= $running_bal > 0 ? '#dc3545' : '#28a745' ?>;"><?= number_format($running_bal) ?></td>
-                  </tr> -->
                   <tr>
                     <td colspan="11"></td>
                     <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Opening Balance</td>

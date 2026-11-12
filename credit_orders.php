@@ -12,6 +12,7 @@
                 <h4 class="card-text mb-0"><i class="fe fe-truck mr-2"></i><b>Delivery Challan List</b></h4>
               </div>
               <div class="card-action-wrap">
+                <a href="commercial_invoice_ledger.php" class="btn btn-admin2 btn-sm mr-2"><i class="fe fe-book-open"></i> Commercial Ledger</a>
                 <a href="credit_sale.php?credit_type=30days" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> New DC</a>
               </div>
             </div>
