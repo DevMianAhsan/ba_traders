@@ -35,14 +35,14 @@
                   </thead>
                   <tbody> 
                       <?php   
-                      $q = mysqli_query($dbc, "SELECT tp.*, c.customer_name AS supplier_name, c.customer_strn AS supplier_strn, c.customer_phone AS supplier_phone FROM tax_purchases tp LEFT JOIN customers c ON c.customer_id = tp.supplier_id ORDER BY tp.tax_purchase_id DESC LIMIT 500");
+                      $q = mysqli_query($dbc, "SELECT tp.*, c.customer_name AS supplier_name, c.customer_strn AS supplier_strn, c.customer_phone AS supplier_phone FROM tax_purchases tp LEFT JOIN customers c ON c.customer_id = tp.supplier_id ORDER BY tp.tax_purchase_id DESC");
                       $c = 0;
                       while ($row = mysqli_fetch_assoc($q)) { 
                         $c++;
                       ?>
                        <tr>
                           <!-- <td><?=$c?></td> -->
-                          <td>
+                          <td data-order="<?= (int)$row['tax_purchase_id'] ?>">
                             <strong><?=$row['invoice_no'] ?: $row['tax_purchase_id']?></strong>
                             <?php if (!empty($row['fbr_invoice_no'])): ?>
                               <br><small class="text-primary font-weight-bold" title="FBR Invoice Number">FBR: <?=htmlspecialchars($row['fbr_invoice_no'])?></small>

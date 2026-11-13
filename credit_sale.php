@@ -356,10 +356,31 @@ if (!empty($_REQUEST['edit_order_id'])) {
 </script>
 <?php
 }
-  
-
-
 ?>
+
+<?php if (!empty($_REQUEST['cust_id'])): ?>
+<script type="text/javascript">
+  $(document).ready(function() {
+    setTimeout(function() {
+      var custId = "<?=htmlspecialchars($_REQUEST['cust_id'])?>";
+      var poNo = "<?=htmlspecialchars($_REQUEST['po_no'] ?? '')?>";
+      var found = false;
+      $('#credit_order_client_name option').each(function() {
+        if (String($(this).data('id')) === String(custId)) {
+          $('#credit_order_client_name').val($(this).val()).trigger('change');
+          found = true;
+          return false;
+        }
+      });
+      if (found && poNo) {
+        setTimeout(function() {
+          $('#party_po').val(poNo).trigger('change');
+        }, 700);
+      }
+    }, 400);
+  });
+</script>
+<?php endif; ?>
 
 <div class="modal fade" id="myModal">
     <div class="modal-dialog modal-lg">

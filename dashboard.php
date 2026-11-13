@@ -759,6 +759,8 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                
         </div> <!-- .container-fluid -->
      
+        <?php include_once 'includes/pending_po_modal.php'; ?>
+
         <div class="modal fade modal-shortcut modal-slide" tabindex="-1" role="dialog" aria-labelledby="defaultModalLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">

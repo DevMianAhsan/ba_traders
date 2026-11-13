@@ -239,10 +239,11 @@ if (empty($get_company) && isset($dbc)) {
                 <i class="fe fe-grid fe-16"></i>
               </a>
             </li>
-            <li class="nav-item nav-notif">
-              <a class="nav-link text-muted my-2" href="./#" data-toggle="modal" data-target=".modal-notif">
+            <li class="nav-item nav-notif" style="position: relative;">
+              <a class="nav-link text-muted my-2" href="./#" data-toggle="modal" data-target=".modal-notif" title="Pending POs & Delivery Alerts">
                 <i class="fe fe-bell fe-16"></i>
-                <span class="dot dot-md bg-success"></span>
+                <span class="dot dot-md bg-warning" id="nav-po-dot"></span>
+                <span class="badge badge-pill badge-danger" id="nav-po-badge" style="display: none; position: absolute; top: 4px; right: 0; font-size: 10px; padding: 2px 5px; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></span>
               </a>
             </li>
             <li class="nav-item dropdown ml-lg-0">

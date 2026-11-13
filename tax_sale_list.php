@@ -37,7 +37,7 @@
                   </thead>
                   <tbody> 
                       <?php   
-                      $q = mysqli_query($dbc, "SELECT ts.*, c.customer_name, c.customer_phone, c.customer_strn FROM tax_sales ts LEFT JOIN customers c ON c.customer_id = ts.customer_id ORDER BY ts.tax_sale_id DESC LIMIT 500");
+                      $q = mysqli_query($dbc, "SELECT ts.*, c.customer_name, c.customer_phone, c.customer_strn FROM tax_sales ts LEFT JOIN customers c ON c.customer_id = ts.customer_id ORDER BY ts.tax_sale_id DESC");
                       $c = 0;
                       while ($r = mysqli_fetch_assoc($q)) { 
                         $c++;

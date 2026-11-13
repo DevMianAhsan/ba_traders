@@ -380,6 +380,207 @@ GROUP BY
 	exit;
 	}
 
+	/* GET PENDING POS FOR SIDE MODAL */
+	if (isset($_REQUEST['get_pending_pos_modal'])) {
+		header('Content-Type: application/json');
+
+		if (!function_exists('normalize_target_date_val')) {
+			function normalize_target_date_val($date_str) {
+				$date_str = trim((string)$date_str);
+				if (empty($date_str) || $date_str == '0000-00-00') return null;
+				if (preg_match('/^0+([1-9]\d)-(\d{2})-(\d{2})$/', $date_str, $m)) {
+					$date_str = '20' . $m[1] . '-' . $m[2] . '-' . $m[3];
+				} elseif (preg_match('/^260(\d{2})-(\d{2})-(\d{2})$/', $date_str, $m)) {
+					$date_str = '20' . $m[1] . '-' . $m[2] . '-' . $m[3];
+				}
+				$ts = strtotime($date_str);
+				return ($ts !== false && $ts > 0) ? date('Y-m-d', $ts) : null;
+			}
+		}
+
+		$today = date('Y-m-d');
+		$today_ts = strtotime($today);
+
+		$sql = "
+			SELECT 
+				p.po_id,
+				p.po_partypo,
+				p.po_customer,
+				p.po_customer_name,
+				p.po_date,
+				p.po_targetdate,
+				p.po_remarks,
+				c.customer_name,
+				poi.po_item_id,
+				poi.product_id,
+				prod.product_name,
+				poi.quantity AS ordered_qty,
+				SUM(COALESCE(oitem.quantity, 0)) AS delivered_qty
+			FROM purchase_order p
+			LEFT JOIN customers c ON c.customer_id = p.po_customer
+			INNER JOIN purchase_order_item poi ON p.po_id = poi.po_id
+			LEFT JOIN orders o ON p.po_partypo = o.party_po AND (o.customer_account = p.po_customer OR p.po_customer IS NULL OR p.po_customer = 0)
+			LEFT JOIN order_item oitem ON o.order_id = oitem.order_id AND poi.product_id = oitem.product_id
+			LEFT JOIN product prod ON prod.product_id = poi.product_id
+			GROUP BY p.po_id, poi.po_item_id, poi.product_id, prod.product_name, poi.quantity
+			ORDER BY p.po_id DESC
+		";
+
+		$res = mysqli_query($dbc, $sql);
+		if (!$res) {
+			echo json_encode(['status' => 'error', 'message' => mysqli_error($dbc)]);
+			exit;
+		}
+
+		$pos_map = [];
+		while ($r = mysqli_fetch_assoc($res)) {
+			$pId = (int)$r['po_id'];
+			if (!isset($pos_map[$pId])) {
+				$norm_date = normalize_target_date_val($r['po_targetdate']);
+				$days_diff = null;
+				$status = 'nodate';
+				$status_label = 'No Target Date';
+				$badge_class = 'badge-secondary';
+				$days_text = 'No Date';
+
+				if ($norm_date) {
+					$target_ts = strtotime($norm_date);
+					$days_diff = (int)round(($target_ts - $today_ts) / 86400);
+
+					if ($days_diff < 0) {
+						$status = 'overdue';
+						$status_label = 'DATE OVER';
+						$days_text = abs($days_diff) . ' days ago';
+						$badge_class = 'badge-danger';
+					} elseif ($days_diff === 0) {
+						$status = 'today';
+						$status_label = 'DUE TODAY';
+						$days_text = 'Today (' . date('d/m/Y', $target_ts) . ')';
+						$badge_class = 'badge-warning text-dark font-weight-bold';
+					} elseif ($days_diff <= 3) {
+						$status = 'soon';
+						$status_label = 'DUE SOON';
+						$days_text = 'Due in ' . $days_diff . ($days_diff == 1 ? ' day' : ' days');
+						$badge_class = 'badge-info';
+					} elseif ($days_diff <= 7) {
+						$status = 'soon';
+						$status_label = 'THIS WEEK';
+						$days_text = 'Due in ' . $days_diff . ' days';
+						$badge_class = 'badge-primary';
+					} else {
+						$status = 'upcoming';
+						$status_label = 'UPCOMING';
+						$days_text = 'In ' . $days_diff . ' days';
+						$badge_class = 'badge-light border';
+					}
+				}
+
+				$cust_name = !empty($r['customer_name']) ? $r['customer_name'] : (!empty($r['po_customer_name']) ? $r['po_customer_name'] : 'Customer #' . $r['po_customer']);
+				$formatted_po_date = (!empty($r['po_date']) && $r['po_date'] != '0000-00-00') ? date('d/m/Y', strtotime($r['po_date'])) : 'N/A';
+
+				$pos_map[$pId] = [
+					'po_id' => $pId,
+					'party_po' => (string)$r['po_partypo'],
+					'customer_id' => $r['po_customer'],
+					'customer_name' => $cust_name,
+					'po_date' => $r['po_date'],
+					'formatted_po_date' => $formatted_po_date,
+					'raw_targetdate' => $r['po_targetdate'],
+					'target_date' => $norm_date,
+					'formatted_target_date' => $norm_date ? date('d/m/Y', strtotime($norm_date)) : 'N/A',
+					'days_diff' => $days_diff,
+					'status' => $status,
+					'status_label' => $status_label,
+					'days_text' => $days_text,
+					'badge_class' => $badge_class,
+					'remarks' => $r['po_remarks'] ?? '',
+					'total_ordered' => 0,
+					'total_delivered' => 0,
+					'total_remaining' => 0,
+					'items' => [],
+					'has_pending' => false
+				];
+			}
+
+			$ord = (float)$r['ordered_qty'];
+			$del = (float)$r['delivered_qty'];
+			$rem = max(0, $ord - $del);
+
+			$pos_map[$pId]['items'][] = [
+				'product_id' => (int)$r['product_id'],
+				'product_name' => !empty($r['product_name']) ? $r['product_name'] : 'Product #' . $r['product_id'],
+				'ordered_qty' => $ord,
+				'delivered_qty' => $del,
+				'remaining_qty' => $rem,
+				'is_completed' => ($rem <= 0)
+			];
+			$pos_map[$pId]['total_ordered'] += $ord;
+			$pos_map[$pId]['total_delivered'] += $del;
+			$pos_map[$pId]['total_remaining'] += $rem;
+			if ($rem > 0) {
+				$pos_map[$pId]['has_pending'] = true;
+			}
+		}
+
+		// Filter pending POs (must have pending items and total remaining > 0)
+		$pending_pos = array_values(array_filter($pos_map, function($p) {
+			return $p['has_pending'] && $p['total_remaining'] > 0;
+		}));
+
+		// Calculate delivery percent for each PO
+		foreach ($pending_pos as &$p) {
+			$p['delivery_percent'] = ($p['total_ordered'] > 0) 
+				? round(($p['total_delivered'] / $p['total_ordered']) * 100, 1) 
+				: 0;
+		}
+		unset($p);
+
+		// Default sort:
+		// 1. Due Today (0 days) on top!
+		// 2. Date Over (days_diff < 0), closest to today first (-1, -5, -28...)
+		// 3. Upcoming (days_diff > 0), closest to today first (+1, +6, +8...)
+		// 4. No date
+		usort($pending_pos, function($a, $b) {
+			$getGroup = function($p) {
+				if ($p['status'] === 'today') return 1;
+				if ($p['status'] === 'overdue') return 2;
+				if ($p['days_diff'] !== null && $p['days_diff'] > 0) return 3;
+				return 4;
+			};
+			$ga = $getGroup($a);
+			$gb = $getGroup($b);
+			if ($ga !== $gb) return $ga - $gb;
+			if ($ga === 1) return $b['po_id'] - $a['po_id'];
+			if ($ga === 2) return $b['days_diff'] - $a['days_diff'];
+			if ($ga === 3) return $a['days_diff'] - $b['days_diff'];
+			return $b['po_id'] - $a['po_id'];
+		});
+
+		// Count categories
+		$counts = [
+			'total' => count($pending_pos),
+			'today' => 0,
+			'overdue' => 0,
+			'soon' => 0,
+			'upcoming' => 0,
+			'nodate' => 0
+		];
+		foreach ($pending_pos as $p) {
+			if (isset($counts[$p['status']])) {
+				$counts[$p['status']]++;
+			}
+		}
+
+		echo json_encode([
+			'status' => 'success',
+			'today' => $today,
+			'today_formatted' => date('d/m/Y', $today_ts),
+			'counts' => $counts,
+			'pos' => $pending_pos
+		]);
+		exit;
+	}
+
 
 	if(isset($_REQUEST['get_party_po'])){
 		$customer_id = !empty($_REQUEST['customer_id']) ? mysqli_real_escape_string($dbc, $_REQUEST['customer_id']) : '';

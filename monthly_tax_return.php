@@ -195,6 +195,11 @@ $tot_pur_val = 0; $tot_sal_val = 0;
 $tot_pur_gst = 0; $tot_sal_gst = 0;
 $tot_pur_inv = 0; $tot_sal_inv = 0;
 
+$tot_table_kg = 0;
+$tot_table_taxable = 0;
+$tot_table_gst = 0;
+$tot_table_inv = 0;
+
 foreach ($detailed_transactions as $k => $item) {
     if ($item['transaction_type'] === 'Purchase') {
         $run_stock += floatval($item['kg']);
@@ -210,6 +215,11 @@ foreach ($detailed_transactions as $k => $item) {
         $tot_sal_inv += floatval($item['invoice_total']);
     }
     $detailed_transactions[$k]['running_stock'] = $run_stock;
+
+    $tot_table_kg += floatval($item['kg']);
+    $tot_table_taxable += floatval($item['taxable_value']);
+    $tot_table_gst += floatval($item['gst_amount']);
+    $tot_table_inv += floatval($item['invoice_total']);
 }
 
 // Net Total = Purchase - Sale
@@ -312,6 +322,7 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
       border-top: 2px solid #ffc107 !important;
       border-bottom: 2px solid #ffc107 !important;
     }
+    .custom-report-table tfoot th,
     .custom-report-table tfoot td {
       font-size: 13px;
       font-weight: 800;
@@ -423,7 +434,8 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
       }
 
       .custom-report-table tbody td, 
-      .custom-report-table tfoot td {
+      .custom-report-table tfoot td,
+      .custom-report-table tfoot th {
         border: 1px solid #000 !important;
         font-size: 9.5px !important;
         padding: 4px 5px !important;
@@ -1078,8 +1090,22 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
                   </td>
                 </tr>
                 <?php endforeach; ?>
+                <?php endif; ?>
               </tbody>
-              <?php endif; ?>
+              <tfoot class="bg-light font-weight-bold">
+                <tr>
+                  <th colspan="8" class="text-right font-weight-bold text-uppercase" style="font-size: 13px;">Total:</th>
+                  <th class="text-right font-weight-bold text-dark" id="foot_total_kg" style="font-size: 13px;"><?=number_format($tot_table_kg, 2)?></th>
+                  <th></th>
+                  <th class="text-right font-weight-bold text-dark" id="foot_total_taxable" style="font-size: 13px;"><?=number_format($tot_table_taxable, 2)?></th>
+                  <th></th>
+                  <th class="text-right font-weight-bold text-danger" id="foot_total_gst" style="font-size: 13px;"><?=number_format($tot_table_gst, 2)?></th>
+                  <th class="text-right font-weight-bold text-success" id="foot_total_inv" style="font-size: 13px;"><?=number_format($tot_table_inv, 2)?></th>
+                  <th></th>
+                  <th></th>
+                  <th class="d-print-none"></th>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -1164,6 +1190,15 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
         }
       });
 
+      // Add Total Row to CSV if present
+      const footKg = $('#foot_total_kg').text().replace(/,/g, '').trim();
+      const footTaxable = $('#foot_total_taxable').text().replace(/,/g, '').trim();
+      const footGst = $('#foot_total_gst').text().replace(/,/g, '').trim();
+      const footInv = $('#foot_total_inv').text().replace(/,/g, '').trim();
+      if (footKg || footTaxable || footGst || footInv) {
+        rows.push(['', '', '', '', '', '', 'Total', footKg, '', footTaxable, '', footGst, footInv, '', '']);
+      }
+
       let csvContent = "data:text/csv;charset=utf-8," 
         + rows.map(e => e.map(item => `"${(item + '').replace(/"/g, '""')}"`).join(",")).join("\n");
 
@@ -1176,16 +1211,108 @@ $net_inv = $tot_pur_inv - $tot_sal_inv;
       document.body.removeChild(link);
     }
 
+    function updateTotalsFromVisibleRows() {
+      var numVal = function (val) {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+          var clean = val.replace(/<[^>]*>/g, '').replace(/,/g, '').trim();
+          return parseFloat(clean) || 0;
+        }
+        return 0;
+      };
+
+      var formatNum = function (num) {
+        return (num || 0).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      };
+
+      var totalKg = 0;
+      var totalTaxable = 0;
+      var totalGst = 0;
+      var totalInv = 0;
+      var counted = false;
+
+      // Primary: Use DataTables data of currently displayed page/search records
+      if ($.fn.DataTable && $.fn.DataTable.isDataTable('#transactionsTable')) {
+        var dt = $('#transactionsTable').DataTable();
+        var currentRows = dt.rows({ search: 'applied', page: 'current' }).data();
+        if (currentRows && currentRows.length > 0) {
+          for (var i = 0; i < currentRows.length; i++) {
+            var r = currentRows[i];
+            if (r && r.length >= 14) {
+              totalKg += numVal(r[8]);
+              totalTaxable += numVal(r[10]);
+              totalGst += numVal(r[12]);
+              totalInv += numVal(r[13]);
+            }
+          }
+          counted = true;
+        }
+      }
+
+      // Secondary / DOM fallback: loop through currently displayed tr elements
+      if (!counted) {
+        $('#transactionsTable tbody tr').each(function () {
+          var $tds = $(this).find('td');
+          if ($tds.length >= 14 && !$(this).find('td[colspan]').length) {
+            totalKg += numVal($tds.eq(8).text());
+            totalTaxable += numVal($tds.eq(10).text());
+            totalGst += numVal($tds.eq(12).text());
+            totalInv += numVal($tds.eq(13).text());
+          }
+        });
+      }
+
+      $('#foot_total_kg').text(formatNum(totalKg));
+      $('#foot_total_taxable').text(formatNum(totalTaxable));
+      $('#foot_total_gst').text(formatNum(totalGst));
+      $('#foot_total_inv').text(formatNum(totalInv));
+    }
+
     $(document).ready(function() {
       if ($.fn.DataTable.isDataTable('#transactionsTable')) {
         $('#transactionsTable').DataTable().destroy();
       }
+
       $('#transactionsTable').DataTable({
         pageLength: 50,
         ordering: false,
-        responsive: true
+        responsive: true,
+        drawCallback: function () {
+          updateTotalsFromVisibleRows();
+        }
       });
+
+      // Recalculate on any draw, search, order or page change
+      $('#transactionsTable').on('draw.dt search.dt order.dt page.dt', function () {
+        updateTotalsFromVisibleRows();
+      });
+
+      // Recalculate immediately when user types or clears the search input
+      $(document).on('keyup change input search', '.dataTables_filter input', function () {
+        setTimeout(updateTotalsFromVisibleRows, 30);
+      });
+
+      // Initial execution
+      updateTotalsFromVisibleRows();
     });
+
+    window.onbeforeprint = function() {
+      if ($.fn.DataTable && $.fn.DataTable.isDataTable('#transactionsTable')) {
+        var dt = $('#transactionsTable').DataTable();
+        $('#transactionsTable').data('old-page-len', dt.page.len());
+        dt.page.len(-1).draw();
+      }
+    };
+    window.onafterprint = function() {
+      if ($.fn.DataTable && $.fn.DataTable.isDataTable('#transactionsTable')) {
+        var dt = $('#transactionsTable').DataTable();
+        var oldLen = $('#transactionsTable').data('old-page-len') || 50;
+        dt.page.len(oldLen).draw();
+      }
+    };
   </script>
 </body>
 </html>
