@@ -12,6 +12,9 @@
                 <h4 class="card-text mb-0"><i class="fe fe-shopping-bag mr-2"></i><b>Purchase Order List</b></h4>
               </div>
               <div class="card-action-wrap">
+                <a href="po_tax_report.php" class="btn btn-warning btn-sm text-dark font-weight-bold mr-2" title="Check Pending & Invoiced Sales Tax by PO">
+                  <i class="fe fe-file-text"></i> Pending Tax Invoices (PO Report)
+                </a>
                 <a href="purchase_order.php" class="btn btn-admin btn-sm"><i class="fe fe-plus"></i> Add PO</a>
               </div>
             </div>

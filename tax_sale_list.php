@@ -14,6 +14,7 @@
                 <b class="text-center card-text">Sales Tax Invoice List</b>
                 <a href="monthly_tax_return.php" class="btn btn-admin float-right btn-sm ml-2"><i class="fe fe-book-open"></i> Monthly Tax Return</a>
                 <a href="tax_sale_report.php" class="btn btn-admin float-right btn-sm ml-2"><i class="fe fe-file-text"></i> Payment & Due Report</a>
+                <a href="po_tax_report.php" class="btn btn-warning float-right btn-sm ml-2 text-dark font-weight-bold" title="Check Pending & Invoiced Sales Tax by PO"><i class="fe fe-alert-triangle"></i> Pending PO Tax Report</a>
                 <a href="tax_sale.php" class="btn btn-admin2 float-right btn-sm"><i class="fe fe-plus"></i> New Tax Invoice</a>
               </div>
             </div>

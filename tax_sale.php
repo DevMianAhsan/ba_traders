@@ -31,6 +31,17 @@ if (empty($tax_sale)) {
     $next_invoice_no = $tax_sale['invoice_no'];
 }
 
+// Support pre-selecting customer and PO via query params when creating a new invoice
+$req_customer_id = !empty($_REQUEST['customer_id']) ? intval($_REQUEST['customer_id']) : 0;
+$req_po_no = !empty($_REQUEST['po_no']) ? trim($_REQUEST['po_no']) : '';
+if (empty($tax_sale) && $req_customer_id > 0) {
+    $tax_sale = [
+        'customer_id' => $req_customer_id,
+        'po_no' => $req_po_no,
+        'invoice_no' => $next_invoice_no
+    ];
+}
+
 // Company Details (BA TRADERS from company table)
 $company_id = !empty($tax_sale['company_id']) ? intval($tax_sale['company_id']) : (!empty($get_company['id']) ? intval($get_company['id']) : 5);
 if ($company_id > 0) {
