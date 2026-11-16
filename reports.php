@@ -332,8 +332,8 @@ include 'includes/report_header.php';
               <th style="width: 5%; text-align: center;">Tax %</th>
               <th style="width: 6%; text-align: right;">Tax Amount (Rs)</th>
               <th style="width: 6%; text-align: center;">WHT Tax</th>
-              <th style="width: 6%; text-align: right;">Debit (Rs)</th>
               <th style="width: 6%; text-align: right;">Credit (Rs)</th>
+              <th style="width: 6%; text-align: right;">Debit (Rs)</th>
               <th style="width: 8%; text-align: right;">Balance (Rs)</th>
             </tr>
           </thead>
@@ -580,7 +580,7 @@ include 'includes/report_header.php';
                   $v_wht_pcts = [];
 
                   if (!empty($invoice_type2['voucher_id'])) {
-                      $q_vi = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '{$invoice_type2['voucher_id']}' ORDER BY vi.id ASC");
+                      $q_vi = mysqli_query($dbc, "SELECT vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount, MAX(ts.fbr_invoice_no) AS fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '{$invoice_type2['voucher_id']}' GROUP BY vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount ORDER BY vi.invoice_id ASC");
                       if ($q_vi && mysqli_num_rows($q_vi) > 0) {
                           while ($vi_row = mysqli_fetch_assoc($q_vi)) {
                               $v_inv_amt = floatval(str_replace(',', '', $vi_row['invoice_amount'] ?? 0));
@@ -747,7 +747,7 @@ include 'includes/report_header.php';
             </tr>
             <tr>
               <td colspan="12"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Debits</td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Credits</td>
               <td colspan="2" class="h4 text-info font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($total_debit)?></td>
             </tr>
             <tr>
@@ -757,7 +757,7 @@ include 'includes/report_header.php';
             </tr>
             <tr>
               <td colspan="12"></td>
-              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Credits</td>
+              <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Debits</td>
               <td colspan="2" class="h4 text-warning font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($total_credit)?></td>
             </tr>
             <tr>
@@ -766,9 +766,9 @@ include 'includes/report_header.php';
               <?php
                 $closing_type = '';
                 if ($running_bal < 0) {
-                  $closing_type = ' dr';
+                  $closing_type = ' CR';
                 } elseif ($running_bal > 0) {
-                  $closing_type = ' cr';
+                  $closing_type = ' DR';
                 }
               ?>
               <td colspan="2" class="h4 font-weight-bold mb-0 <?=$running_bal > 0 ? 'text-danger' : 'text-success'?>" style="vertical-align: middle;"><?=number_format(abs($running_bal)) . $closing_type?></td>
@@ -811,8 +811,8 @@ include 'includes/report_header.php';
               <th>Transfer From</th>
             <?php endif ?>
             <th>Remarks</th>
-            <th>Debit</th>
             <th>Credit</th>
+            <th>Debit</th>
             <th>Balance</th>
             <?php if (isset($_POST['fullledger'])): ?>
               <th>Remaining</th>
@@ -943,7 +943,7 @@ include 'includes/report_header.php';
               <?php else: ?>
                 <td colspan="2"></td>
               <?php endif; ?> 
-              <td colspan="3" align="right">Total Debits</td>
+              <td colspan="3" align="right">Total Credits</td>
               <td colspan="4" class='h3 text-info'><?=number_format((float)$total_debit)?></td>
             </tr>
             <tr>
@@ -952,7 +952,7 @@ include 'includes/report_header.php';
               <?php else: ?>
                 <td colspan="2"></td>
               <?php endif; ?> 
-              <td colspan="3" align="right">Total Credits</td>
+              <td colspan="3" align="right">Total Debits</td>
               <td colspan="4" class='h3 text-warning'><?=number_format((float)$total_credit)?></td>
             </tr>
             <tr>
@@ -965,9 +965,9 @@ include 'includes/report_header.php';
               <?php
                 $closing_type_legacy = '';
                 if ($temp < 0) {
-                  $closing_type_legacy = ' dr';
+                  $closing_type_legacy = ' CR';
                 } elseif ($temp > 0) {
-                  $closing_type_legacy = ' cr';
+                  $closing_type_legacy = ' DR';
                 }
               ?>
               <?php if ($temp<=0): ?>

@@ -184,11 +184,11 @@ if (!empty($_REQUEST['edit_order_id'])) {
                 <td class="table-bordered" id="getDiscount">
                   <div class="form-group row mb-0 align-items-center">
                     <div class="col-sm-4">
-                      <input onkeyup="getinvoiceTotal()" type="number" id="ordered_discount" class="form-control form-control-sm" value="<?=@isset($fetchOrder['discount']) ? $fetchOrder['discount'] : '0'?>" min="0" max="100" name="ordered_discount" >
+                      <input onkeyup="getinvoiceTotal()" type="number" id="ordered_discount" class="form-control form-control-sm" value="<?=empty($_REQUEST['edit_order_id']) ? '18' : (@isset($fetchOrder['discount']) ? $fetchOrder['discount'] : '0')?>" min="0" max="100" name="ordered_discount" >
                     </div>
                     <div class="col-sm-4">
                       <div class="custom-control custom-switch" >
-                        <input type="checkbox" class="custom-control-input" id="with_tax" <?=!empty($fetchOrder['discount']) && floatval($fetchOrder['discount']) > 0 ? "checked" : ""?>>
+                        <input type="checkbox" class="custom-control-input" id="with_tax" <?=empty($_REQUEST['edit_order_id']) || (!empty($fetchOrder['discount']) && floatval($fetchOrder['discount']) > 0) ? "checked" : ""?>>
                         <label class="custom-control-label" for="with_tax">With Tax</label>
                       </div>
                     </div>

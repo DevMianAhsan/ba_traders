@@ -316,7 +316,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
               $q_v = mysqli_query($dbc, $v_sql);
               while ($v = mysqli_fetch_assoc($q_v)) {
                 $v_id = $v['voucher_id'];
-                $q_vi = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '$v_id' ORDER BY vi.id ASC");
+                $q_vi = mysqli_query($dbc, "SELECT vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount, MAX(ts.fbr_invoice_no) AS fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '$v_id' GROUP BY vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount ORDER BY vi.invoice_id ASC");
                 
                 $sum_vi_amt = 0;
                 $sum_vi_wht = 0;
@@ -420,8 +420,8 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <th style="width: 5%; text-align: center;">Tax %</th>
                     <th style="width: 6%; text-align: right;">Tax Amount (Rs)</th>
                     <th style="width: 6%; text-align: center;">WHT Tax</th>
-                    <th style="width: 7%; text-align: right;">Debit (Rs)</th>
                     <th style="width: 7%; text-align: right;">Credit (Rs)</th>
+                    <th style="width: 7%; text-align: right;">Debit (Rs)</th>
                     <th style="width: 8%; text-align: right;">Balance (Rs)</th>
                   </tr>
                 </thead>
@@ -615,7 +615,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   </tr>
                   <tr>
                     <td colspan="11"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Debits</td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Credits</td>
                     <td colspan="2" class="h4 text-info font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_debit)?></td>
                   </tr>
                   <tr>
@@ -625,7 +625,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                   </tr>
                   <tr>
                     <td colspan="11"></td>
-                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Credits</td>
+                    <td colspan="2" align="right" class="font-weight-bold" style="font-size: 14px; vertical-align: middle;">Total Debits</td>
                     <td colspan="2" class="h4 text-warning font-weight-bold mb-0" style="vertical-align: middle;"><?=number_format($tot_credit)?></td>
                   </tr>
                   <tr>
@@ -634,9 +634,9 @@ $to_date = $_REQUEST['to_date'] ?? '';
                     <?php
                       $closing_type = '';
                       if ($running_bal < 0) {
-                        $closing_type = ' dr';
+                        $closing_type = ' CR';
                       } elseif ($running_bal > 0) {
-                        $closing_type = ' cr';
+                        $closing_type = ' DR';
                       }
                     ?>
                     <td colspan="2" class="h4 font-weight-bold mb-0 <?=$running_bal > 0 ? 'text-danger' : 'text-success'?>" style="vertical-align: middle;"><?=number_format(abs($running_bal)) . $closing_type?></td>

@@ -98,7 +98,7 @@ if (isset($_REQUEST['id'])) {
                       </div>
                       </div>
                       <div class="col-sm-2 text-right">
-                        Debit
+                        Credit
                       </div>
 
                       <div class="col-sm-4">
@@ -141,7 +141,7 @@ if (isset($_REQUEST['id'])) {
                         </div>
                       </div>
                       </div>
-                      <div class="col-sm-2 text-right">Credit
+                      <div class="col-sm-2 text-right">Debit
                       </div>
 
                       <div class="col-sm-4">
@@ -179,7 +179,7 @@ if (isset($_REQUEST['id'])) {
                             $existing_invoices = [];
                             if (isset($_REQUEST['id']) && !empty($voucher['voucher_id'])) {
                               $v_id = $voucher['voucher_id'];
-                              $q_v_inv = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no, COALESCE(c.customer_name, c2.customer_name) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '$v_id'");
+                              $q_v_inv = mysqli_query($dbc, "SELECT vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount, MAX(ts.fbr_invoice_no) AS fbr_invoice_no, MAX(COALESCE(c.customer_name, c2.customer_name)) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '$v_id' GROUP BY vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount");
                               while ($row_vi = mysqli_fetch_assoc($q_v_inv)) {
                                 $existing_invoices[] = $row_vi;
                               }
@@ -513,7 +513,7 @@ if (isset($_REQUEST['id'])) {
                       </div>
                       </div>
                       <div class="col-sm-2 text-right">
-                        Debit
+                        Credit
                       </div>
 
                       <div class="col-sm-4">
@@ -556,7 +556,7 @@ if (isset($_REQUEST['id'])) {
                         </div>
                       </div>
                       </div>
-                      <div class="col-sm-2 text-right">Credit
+                      <div class="col-sm-2 text-right">Debit
                       </div>
 
                       <div class="col-sm-4">
@@ -647,7 +647,7 @@ if (isset($_REQUEST['id'])) {
                       </div>
                     </div>
                     <div class="form-group row">
-                      <div class="col-sm-2 text-right">Debit</div>
+                      <div class="col-sm-2 text-right">Credit</div>
                       <div class="col-sm-4">
                         <div class="input-group">
                           <input type="text" oninput="onSingleDebitInput(this)" onblur="formatInputOnBlur(this); onSingleDebitBlur(this);" name="voucher_debit" id="voucher_sin_debit" class="form-control font-weight-bold" value="<?= $is_debit ? number_format(floatval($transactions['debit'])) : '' ?>" placeholder="0" <?= $is_credit ? 'readonly' : '' ?>>
@@ -657,7 +657,7 @@ if (isset($_REQUEST['id'])) {
                         </div>
                       </div>
 
-                      <div class="col-sm-2 text-right">Credit</div>
+                      <div class="col-sm-2 text-right">Debit</div>
                       <div class="col-sm-4">
                         <div class="input-group">
                           <input type="text" oninput="onSingleCreditInput(this)" onblur="formatInputOnBlur(this); onSingleCreditBlur(this);" value="<?= $is_credit ? number_format(floatval($transactions['credit'])) : '' ?>" id="voucher_sin_credit" name="voucher_credit" class="form-control font-weight-bold" placeholder="0" <?= $is_debit ? 'readonly' : '' ?>>
@@ -728,7 +728,7 @@ if (isset($_REQUEST['id'])) {
                           <td><?=$r['voucher_amount']?></td>
                           <td>
                             <?php
-                            $q_vi_list = mysqli_query($dbc, "SELECT vi.invoice_id, vi.invoice_amount, ts.fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '".$r['voucher_id']."'");
+                            $q_vi_list = mysqli_query($dbc, "SELECT vi.invoice_id, vi.invoice_amount, MAX(ts.fbr_invoice_no) AS fbr_invoice_no FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) WHERE vi.voucher_id = '".$r['voucher_id']."' GROUP BY vi.invoice_id, vi.invoice_amount");
                             $vi_badges = [];
                             while ($vi_row = mysqli_fetch_assoc($q_vi_list)) {
                               $badge_lbl = !empty($vi_row['fbr_invoice_no']) ? $vi_row['fbr_invoice_no'] : ('#' . $vi_row['invoice_id']);

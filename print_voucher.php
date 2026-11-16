@@ -4,7 +4,7 @@
   $customer_id2=fetchRecord($dbc,"customers","customer_id",$vouchers['customer_id2']);
 
 $voucher_invoices_list = [];
-$q_vi_check = mysqli_query($dbc, "SELECT vi.*, ts.fbr_invoice_no, COALESCE(c.customer_name, c2.customer_name) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '".$vouchers['voucher_id']."'");
+$q_vi_check = mysqli_query($dbc, "SELECT vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount, MAX(ts.fbr_invoice_no) AS fbr_invoice_no, MAX(COALESCE(c.customer_name, c2.customer_name)) AS customer_name FROM voucher_invoices vi LEFT JOIN tax_sales ts ON (vi.invoice_id = ts.invoice_no OR vi.invoice_id = ts.tax_sale_id OR vi.invoice_id = ts.fbr_invoice_no) LEFT JOIN customers c ON ts.customer_id = c.customer_id LEFT JOIN vouchers v ON vi.voucher_id = v.voucher_id LEFT JOIN customers c2 ON v.customer_id1 = c2.customer_id WHERE vi.voucher_id = '".$vouchers['voucher_id']."' GROUP BY vi.invoice_id, vi.voucher_id, vi.invoice_amount, vi.party_po, vi.tax_percent, vi.tax_amount");
 while ($vi_row = mysqli_fetch_assoc($q_vi_check)) {
     $voucher_invoices_list[] = $vi_row;
 }
