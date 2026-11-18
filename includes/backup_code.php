@@ -38,25 +38,24 @@ if (isset($_REQUEST['action']) AND $_REQUEST['action']=="backup") {
 
 
 
-    $settings = explode('|', file_get_contents("settings.txt"));
+    $settings_file = file_exists(__DIR__ . '/../settings.txt') ? __DIR__ . '/../settings.txt' : 'settings.txt';
+    $settings = file_exists($settings_file) ? explode('|', trim(file_get_contents($settings_file))) : [];
 
-    define("DB_HOST", $settings[0]);
+    // Fallback to active app connection credentials if settings.txt is missing/empty
+    $db_host = !empty($settings[0]) ? $settings[0] : ($localhost ?? 'localhost');
+    $db_user = isset($settings[1]) && $settings[1] !== '' ? $settings[1] : ($username ?? 'root');
+    $db_pass = isset($settings[2]) ? $settings[2] : ($password ?? '');
+    $db_name = !empty($settings[3]) ? $settings[3] : ($dbname ?? 'chairman');
+    $db_dir  = !empty($settings[4]) ? $settings[4] : 'backup';
 
-    define("DB_USER", $settings[1]);
-
-    define("DB_PASSWORD", $settings[2]);
-
-    define("DB_NAME",$settings[3]);
-
-    define("BACKUP_DIR", $settings[4]); // Comment this line to use same script's directory ('.')
-
-    define("TABLES", '*'); // Full backup
-
-    //define("TABLES", 'table1, table2, table3'); // Partial backup
-
-    define("CHARSET", 'utf8');
-
-    define("GZIP_BACKUP_FILE", false);  // Set to false if you want plain SQL backup files (not gzipped)
+    if (!defined("DB_HOST")) define("DB_HOST", $db_host);
+    if (!defined("DB_USER")) define("DB_USER", $db_user);
+    if (!defined("DB_PASSWORD")) define("DB_PASSWORD", $db_pass);
+    if (!defined("DB_NAME")) define("DB_NAME", $db_name);
+    if (!defined("BACKUP_DIR")) define("BACKUP_DIR", $db_dir);
+    if (!defined("TABLES")) define("TABLES", '*'); // Full backup
+    if (!defined("CHARSET")) define("CHARSET", 'utf8');
+    if (!defined("GZIP_BACKUP_FILE")) define("GZIP_BACKUP_FILE", false);
 
 
 
@@ -276,11 +275,9 @@ if (isset($_REQUEST['action']) AND $_REQUEST['action']=="backup") {
 
 
 
-                // $sql = 'CREATE DATABASE IF NOT EXISTS `'.$this->dbName."`;\n\n";
-
-                // $sql .= 'USE `'.$this->dbName."`;\n\n";
-
-                $sql="\n";
+                $sql = "SET FOREIGN_KEY_CHECKS=0;\n\n";
+                $this->saveFile($sql);
+                $sql = "";
 
                 /**
 
@@ -397,8 +394,10 @@ if (isset($_REQUEST['action']) AND $_REQUEST['action']=="backup") {
 
 
                     $this->obfPrint(" OK");
-
                 }
+
+                $final_fk = "SET FOREIGN_KEY_CHECKS=1;\n";
+                $this->saveFile($final_fk);
 
 
 
@@ -414,7 +413,10 @@ if (isset($_REQUEST['action']) AND $_REQUEST['action']=="backup") {
 
                 }
                 ?>
-                 <a href='<?=substr($this->obfPrint( $this->backupDir.'/'.$this->backupFile),0,-3)?>' class="">Download DB</a>
+                 <br>
+                 <a href='<?=$this->backupDir . '/' . $this->backupFile?>' download class="btn btn-primary btn-sm my-2">
+                     <i class="fe fe-download"></i> Download Database File (<?=$this->backupFile?>)
+                 </a>
 <?php
             } catch (Exception $e) {
 
@@ -721,17 +723,13 @@ if (isset($_REQUEST['action']) AND $_REQUEST['action']=="backup") {
 <?php 
 
     if (isset($_REQUEST['update_settings'])) {
-
-        # code...
-
-        $data = $_REQUEST['server']."|".$_REQUEST['user']."|".$_REQUEST['password']."|".$_REQUEST['database']."|".$_REQUEST['directory']."|";
-
-        if(file_put_contents("settings.txt", $data)){
-
-            echo "<div class='alert alert-success'>Saved Succesfully</div>";
-
+        $data = trim($_REQUEST['server'] ?? 'localhost') . "|" . trim($_REQUEST['user'] ?? 'root') . "|" . trim($_REQUEST['password'] ?? '') . "|" . trim($_REQUEST['database'] ?? 'chairman') . "|" . trim($_REQUEST['directory'] ?? 'backup') . "|";
+        $settings_file = file_exists(__DIR__ . '/../settings.txt') ? __DIR__ . '/../settings.txt' : 'settings.txt';
+        if (file_put_contents($settings_file, $data)) {
+            echo "<div class='alert alert-success'>Settings saved successfully!</div>";
+        } else {
+            echo "<div class='alert alert-danger'>Failed to save settings. Please check write permissions for settings.txt.</div>";
         }
-
     }
 
  ?>
@@ -768,21 +766,22 @@ if (!empty($_REQUEST['backupfile']) AND $_REQUEST['action']=="restore") {
 
          */
 
-        $settings = explode('|', file_get_contents("settings.txt"));
+        $settings_file = file_exists(__DIR__ . '/../settings.txt') ? __DIR__ . '/../settings.txt' : 'settings.txt';
+        $settings = file_exists($settings_file) ? explode('|', trim(file_get_contents($settings_file))) : [];
 
-            define("DB_HOST", $settings[0]);
+        $db_host = !empty($settings[0]) ? $settings[0] : ($localhost ?? 'localhost');
+        $db_user = isset($settings[1]) && $settings[1] !== '' ? $settings[1] : ($username ?? 'root');
+        $db_pass = isset($settings[2]) ? $settings[2] : ($password ?? '');
+        $db_name = !empty($settings[3]) ? $settings[3] : ($dbname ?? 'chairman');
+        $db_dir  = !empty($settings[4]) ? $settings[4] : 'backup';
 
-            define("DB_USER", $settings[1]);
-
-            define("DB_PASSWORD", $settings[2]);
-
-            define("DB_NAME",$settings[3]);
-
-            define("BACKUP_DIR", $settings[4]); // Comment this line to use same script's directory ('.')
-
-        define("BACKUP_FILE", $_REQUEST['backupfile']); // Script will autodetect if backup file is gzipped based on .gz extension
-
-        define("CHARSET", 'utf8');
+        if (!defined("DB_HOST")) define("DB_HOST", $db_host);
+        if (!defined("DB_USER")) define("DB_USER", $db_user);
+        if (!defined("DB_PASSWORD")) define("DB_PASSWORD", $db_pass);
+        if (!defined("DB_NAME")) define("DB_NAME", $db_name);
+        if (!defined("BACKUP_DIR")) define("BACKUP_DIR", $db_dir);
+        if (!defined("BACKUP_FILE")) define("BACKUP_FILE", basename($_REQUEST['backupfile']));
+        if (!defined("CHARSET")) define("CHARSET", 'utf8');
 
 
 
@@ -1277,11 +1276,11 @@ if (!empty($_REQUEST['backupfile']) AND $_REQUEST['action']=="restore") {
         $restoreDatabase->obfPrint("Restoration result: ".$result, 1);
 
         if ($result=='OK' OR $result =="KO") {
-
-            # code...
-
-            redirect('index.php?nav='.$_REQUEST['nav'],2000);
-
+            if (!empty($_REQUEST['nav'])) {
+                redirect('index.php?nav='.$_REQUEST['nav'], 2000);
+            } else {
+                redirect('backup.php', 2500);
+            }
         }
 
        

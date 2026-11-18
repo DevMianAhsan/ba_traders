@@ -1,115 +1,96 @@
 <?php
-
 /**
-* Updated: Mohammad M. AlBanna
-* Website: MBanna.info
-*/
+ * Direct Database Backup & Download Utility
+ */
 
+$settings_file = __DIR__ . '/settings.txt';
+$settings = file_exists($settings_file) ? explode('|', trim(file_get_contents($settings_file))) : [];
 
-//MySQL server and database
-$dbhost = 'localhost';
-$dbuser = 'samziymw_techo_polly';
-$dbpass = 'samziymw_techo_polly';
-$dbname = 'samziymw_techo_polly';
+if (file_exists(__DIR__ . '/php_action/db_connect.php')) {
+    @include_once __DIR__ . '/php_action/db_connect.php';
+}
+
+$dbhost = !empty($settings[0]) ? $settings[0] : ($localhost ?? 'localhost');
+$dbuser = isset($settings[1]) && $settings[1] !== '' ? $settings[1] : ($username ?? 'root');
+$dbpass = isset($settings[2]) ? $settings[2] : ($password ?? '');
+$dbname = !empty($settings[3]) ? $settings[3] : ($dbname ?? 'chairman');
+$backup_dir = !empty($settings[4]) ? rtrim($settings[4], '/\\') : 'backup';
 $tables = '*';
 
-//Call the core function
-backup_tables($dbhost, $dbuser, $dbpass, $dbname, $tables);
+// Call the core function
+backup_tables($dbhost, $dbuser, $dbpass, $dbname, $backup_dir, $tables);
 
-//Core function
-function backup_tables($host, $user, $pass, $dbname, $tables = '*') {
-    $link = mysqli_connect($host,$user,$pass, $dbname);
+// Core function
+function backup_tables($host, $user, $pass, $dbname, $backup_dir = 'backup', $tables = '*') {
+    $link = mysqli_connect($host, $user, $pass, $dbname);
 
-    // Check connection
-    if (mysqli_connect_errno())
-    {
+    if (mysqli_connect_errno()) {
         echo "Failed to connect to MySQL: " . mysqli_connect_error();
         exit;
     }
 
     mysqli_query($link, "SET NAMES 'utf8'");
 
-    //get all of the tables
-    if($tables == '*')
-    {
+    if ($tables == '*') {
         $tables = array();
         $result = mysqli_query($link, 'SHOW TABLES');
-        while($row = mysqli_fetch_row($result))
-        {
+        while ($row = mysqli_fetch_row($result)) {
             $tables[] = $row[0];
         }
-    }
-    else
-    {
-        $tables = is_array($tables) ? $tables : explode(',',$tables);
+    } else {
+        $tables = is_array($tables) ? $tables : explode(',', $tables);
     }
 
-    $return = '';
-    //cycle through
-    foreach($tables as $table)
-    {
-        $result = mysqli_query($link, 'SELECT * FROM '.$table);
+    $return = "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+    foreach ($tables as $table) {
+        $result = mysqli_query($link, 'SELECT * FROM `' . $table . '`');
         $num_fields = mysqli_num_fields($result);
-        $num_rows = mysqli_num_rows($result);
 
-        $return.= 'DROP TABLE IF EXISTS '.$table.';';
-        $row2 = mysqli_fetch_row(mysqli_query($link, 'SHOW CREATE TABLE '.$table));
-        $return.= "\n\n".$row2[1].";\n\n";
-        $counter = 1;
+        $return .= 'DROP TABLE IF EXISTS `' . $table . '`;';
+        $row2 = mysqli_fetch_row(mysqli_query($link, 'SHOW CREATE TABLE `' . $table . '`'));
+        $return .= "\n\n" . $row2[1] . ";\n\n";
 
-        //Over tables
-        for ($i = 0; $i < $num_fields; $i++) 
-        {   //Over rows
-            while($row = mysqli_fetch_row($result))
-            {   
-                if($counter == 1){
-                    $return.= 'INSERT INTO '.$table.' VALUES(';
-                } else{
-                    $return.= '(';
+        while ($row = mysqli_fetch_row($result)) {
+            $return .= 'INSERT INTO `' . $table . '` VALUES(';
+            for ($j = 0; $j < $num_fields; $j++) {
+                if (isset($row[$j])) {
+                    $val = mysqli_real_escape_string($link, $row[$j]);
+                    $return .= "'" . $val . "'";
+                } else {
+                    $return .= 'NULL';
                 }
-
-                //Over fields
-                for($j=0; $j<$num_fields; $j++) 
-                {
-                    $row[$j] = addslashes($row[$j]);
-                    $row[$j] = str_replace("\n","\\n",$row[$j]);
-                    if (isset($row[$j])) { $return.= '"'.$row[$j].'"' ; } else { $return.= '""'; }
-                    if ($j<($num_fields-1)) { $return.= ','; }
+                if ($j < ($num_fields - 1)) {
+                    $return .= ',';
                 }
-
-                if($num_rows == $counter){
-                    $return.= ");\n";
-                } else{
-                    $return.= "),\n";
-                }
-                ++$counter;
             }
+            $return .= ");\n";
         }
-        $return.="\n\n\n";
+        $return .= "\n\n";
     }
 
-    //save file
-    $fileName = 'db-backup-'.time().'-'.(md5(implode(',',$tables))).'.sql';
-    $handle = fopen($fileName,'w+');
-    fwrite($handle,$return);
-    if(fclose($handle)){
-        
-         $f="$fileName";   
+    $return .= "SET FOREIGN_KEY_CHECKS=1;\n";
 
-       $file = ("myfolder/$f");
+    if (!is_dir($backup_dir)) {
+        @mkdir($backup_dir, 0777, true);
+    }
 
-       $filetype=filetype($file);
+    $fileName = 'db-backup-' . date('d-m-Y-H-i-s') . '-' . $dbname . '.sql';
+    $filePath = $backup_dir . '/' . $fileName;
 
-       $filename=basename($file);
-
-       header ("Content-Type: ".$filetype);
-
-       header ("Content-Length: ".filesize($file));
-
-       header ("Content-Disposition: attachment; filename=".$filename);
-
-       readfile($file);
-        echo "Done, the file name is: ".$fileName;
-        exit; 
+    if (file_put_contents($filePath, $return, LOCK_EX)) {
+        if (!headers_sent()) {
+            header('Content-Type: application/octet-stream');
+            header('Content-Length: ' . filesize($filePath));
+            header('Content-Disposition: attachment; filename="' . $fileName . '"');
+            readfile($filePath);
+            exit;
+        } else {
+            echo "Backup created successfully at: " . $filePath;
+            exit;
+        }
+    } else {
+        echo "Failed to save backup file to: " . $filePath;
+        exit;
     }
 }
