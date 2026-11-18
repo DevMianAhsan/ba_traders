@@ -101,6 +101,7 @@ $to_date = $_REQUEST['to_date'] ?? '';
                 <small class="text-white-50">Customer statement for Delivery Challans & Voucher Payments</small>
               </div>
               <div class="col-sm-6 text-right">
+                <a href="credit_dues_report.php?credit_type=30days" class="btn btn-sm btn-warning ml-1"><i class="fe fe-dollar-sign"></i> DC Dues Report</a>
                 <a href="total_commercial_invoice_ledger.php" class="btn btn-sm btn-info ml-1"><i class="fe fe-layers"></i> Total Commercial Inv Ledger</a>
                 <a href="credit_sale.php?credit_type=30days" class="btn btn-sm btn-admin ml-1"><i class="fe fe-plus"></i> New DC</a>
                 <a href="credit_orders.php" class="btn btn-sm btn-outline-secondary text-white ml-1"><i class="fe fe-list"></i> DC List</a>

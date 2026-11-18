@@ -155,19 +155,20 @@ if ($q_pos) {
         }
 
         // 5. Remaining (Bakaya) & Invoicing Status
+        // ±100 Rs rounding tolerance: treat as fully invoiced if difference is within 100 Rs
         $remaining = $po_amount - $inv_tot;
         if ($inv_tot <= 0) {
             $status = 'not_invoiced';
             $status_label = 'Not Invoiced';
             $badge_class = 'badge-danger';
             $kpi_count_not_invoiced++;
-        } elseif ($remaining > 0.01) {
+        } elseif ($remaining > 100) {
             $status = 'partially_invoiced';
             $pct = ($po_amount > 0) ? round(($inv_tot / $po_amount) * 100) : 0;
             $status_label = "Partial ($pct%)";
             $badge_class = 'badge-warning text-dark font-weight-bold';
             $kpi_count_partial++;
-        } elseif ($remaining < -0.01) {
+        } elseif ($remaining < -100) {
             $status = 'over_invoiced';
             $status_label = 'Over Invoiced';
             $badge_class = 'badge-info';
@@ -183,7 +184,7 @@ if ($q_pos) {
         $kpi_total_po_amount += $po_amount;
         $kpi_total_dc_amount += $dc_tot;
         $kpi_total_invoiced  += $inv_tot;
-        if ($remaining > 0) {
+        if ($remaining > 100) {
             $kpi_total_pending += $remaining;
         }
 

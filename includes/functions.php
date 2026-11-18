@@ -2259,10 +2259,11 @@ function getcustomerBlance($dbc,$id){
   $id = mysqli_real_escape_string($dbc, $id);
   $from_balance=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT SUM(credit-debit) AS from_balance FROM transactions WHERE customer_id='$id'"));
   $raw_bal = !empty($from_balance['from_balance']) ? floatval($from_balance['from_balance']) : 0;
-  $q_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS total_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.customer_id1 = '$id'");
+  $q_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS total_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$id' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$id') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$id') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$id'))");
   $r_wht = mysqli_fetch_assoc($q_wht);
   $total_wht = !empty($r_wht['total_wht']) ? floatval($r_wht['total_wht']) : 0;
-  return $raw_bal - $total_wht;
+  $net = $raw_bal - $total_wht;
+  return (abs($net) <= 50) ? 0 : $net;
 }
 function getIncome($dbc,$value=''){
    $salesGet = mysqli_query($dbc,"SELECT * FROM orders ".$value." ");

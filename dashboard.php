@@ -39,7 +39,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                       </div>
                     </div>
                     <div class="form-group">
-                      <button type="button" class="btn btn-sm"><span class="fe fe-refresh-ccw fe-16 text-muted"></span></button>
+                      <button type="button" onclick="location.reload()" class="btn btn-sm" title="Refresh Dashboard"><span class="fe fe-refresh-ccw fe-16 text-muted"></span></button>
                       <button type="button" class="btn btn-sm mr-2"><span class="fe fe-filter fe-16 text-muted"></span></button>
                     </div>
                   </form>
@@ -51,21 +51,21 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
               <div class="row">
                 
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow bg-primary text-white border-0">
+                  <div class="card shadow bg-primary text-white border-0" onclick="window.location.href='credit_orders.php'" style="cursor: pointer;" title="View Delivery Challans / Credit Sales">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-white">
-                            <i class="fe fe-16 fe-shopping-bag text-default mb-0"></i>
+                            <i class="fe fe-16 fe-trending-up text-default mb-0"></i>
                           </span>
                         </div>
                         <div class="col pr-0">
                           <p class="small text-white mb-0">Today Sales</p>
                           <span class="h3 mb-0 text-white">
                             <?php 
-                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM orders where order_date='$current_date' "))['total_sales'];
+                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM orders WHERE order_date='$current_date' AND (credit_sale_type='30days' OR payment_type='credit_sale') "))['total_sales'];
                              $total=isset($total_sales)?$total_sales:"0";
-                             echo number_format($total);
+                             echo '<small class="text-white-50" style="font-size: 15px;">Rs. </small>' . number_format($total);
                              ?>
                           </span>
                         <!--   <span class="small text-white">+5.5%</span> -->
@@ -75,7 +75,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='credit_sale.php?credit_type=30days#'" style="cursor: pointer;" title="New Delivery Challan / Credit Sale">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
@@ -84,10 +84,10 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                           </span>
                         </div>
                         <div class="col pr-0">
-                          <p class="small text-muted mb-0">Total Orders</p>
+                          <p class="small text-muted mb-0">Today Orders</p>
                           <span class="h3 mb-0">
                             <?php 
-                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM orders where order_date='$current_date' "))['total_orders'];
+                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM orders WHERE order_date='$current_date' AND (credit_sale_type='30days' OR payment_type='credit_sale') "))['total_orders'];
                              echo $total=isset($total_orders)?$total_orders:"0";
                              ?>
                           </span>
@@ -97,12 +97,12 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='credit_orders.php'" style="cursor: pointer;" title="View Delivery Challans / Credit Sales">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-dollar-sign text-white mb-0"></i>
+                            <i class="fe fe-16 fe-bar-chart-2 text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col">
@@ -112,9 +112,9 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                               <span class="h3 mr-2 mb-0">
                             <?php 
                              if($UserData['user_role'] == 'admin'){
-                              $total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM orders WHERE  order_date BETWEEN '$start_of_month' AND '$end_of_month' "))['total_sales'];
+                              $total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM orders WHERE (credit_sale_type='30days' OR payment_type='credit_sale')"))['total_sales'];
                               $total=isset($total_sales)?$total_sales:"0";
-                              echo number_format($total);
+                              echo '<small class="text-muted" style="font-size: 15px;">Rs. </small>' . number_format($total);
                             }else{
                               echo "0";
                             }
@@ -129,12 +129,12 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='credit_orders.php'" style="cursor: pointer;" title="View Delivery Challans / Credit Sales">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-activity text-white mb-0"></i>
+                            <i class="fe fe-16 fe-package text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col">
@@ -142,7 +142,7 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                           <span class="h3 mb-0">
                             <?php 
                              if($UserData['user_role'] == 'admin'){
-                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM orders WHERE order_date BETWEEN '$start_of_month' AND '$end_of_month'"))['total_orders'];
+                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM orders WHERE (credit_sale_type='30days' OR payment_type='credit_sale')"))['total_orders'];
                              echo $total=isset($total_orders)?$total_orders:"0";
                            }else{
                             echo "0";
@@ -161,20 +161,21 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                <div class="row">
                 
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow bg-primary text-white border-0">
+                  <div class="card shadow bg-primary text-white border-0" onclick="window.location.href='tax_purchase_list.php'" style="cursor: pointer;" title="View Tax Purchases">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-white">
-                            <i class="fe fe-16 fe-shopping-bag text-default mb-0"></i>
+                            <i class="fe fe-16 fe-truck text-default mb-0"></i>
                           </span>
                         </div>
                         <div class="col pr-0">
                           <p class="small text-white mb-0">Today Purchase</p>
                           <span class="h3 mb-0 text-white">
                             <?php 
-                              @$total_purchase=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM purchase where purchase_date='$current_date' "))['total_sales'];
-                             echo $total_purchase2=isset($total_purchase)?$total_purchase:"0";
+                              @$total_purchase=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(invoice_amount) as total_sales FROM tax_purchases where invoice_date='$current_date' "))['total_sales'];
+                             $total_purchase2=isset($total_purchase)?$total_purchase:"0";
+                             echo '<small class="text-white-50" style="font-size: 15px;">Rs. </small>' . number_format($total_purchase2);
                              ?>
                           </span>
                         <!--   <span class="small text-white">+5.5%</span> -->
@@ -184,19 +185,19 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='tax_purchase.php'" style="cursor: pointer;" title="Add New Tax Purchase">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-shopping-cart text-white mb-0"></i>
+                            <i class="fe fe-16 fe-file-text text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col pr-0">
-                          <p class="small text-muted mb-0">Total Purchases</p>
+                          <p class="small text-muted mb-0">Today Purchases</p>
                           <span class="h3 mb-0">
                             <?php 
-                              @$total_purchases=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM purchase where purchase_date='$current_date' "))['total_orders'];
+                              @$total_purchases=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM tax_purchases where invoice_date='$current_date' "))['total_orders'];
                               $total_purchases2=isset($total_purchases)?$total_purchases:"0";
                              echo number_format($total_purchases2); 
                              ?>
@@ -207,12 +208,12 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='tax_purchase_list.php'" style="cursor: pointer;" title="View Tax Purchases">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-dollar-sign text-white mb-0"></i>
+                            <i class="fe fe-16 fe-truck text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col">
@@ -222,14 +223,14 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                               <span class="h3 mr-2 mb-0">
                             <?php 
                             if($UserData['user_role'] == 'admin'){
-                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM purchase where purchase_date BETWEEN '$start_of_month' AND '$end_of_month'"))['total_sales'];
+                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(invoice_amount) as total_sales FROM tax_purchases"))['total_sales'];
                               $total=isset($total_sales)?$total_sales:"0";
-                             echo number_format($total);
-                           }else{
-                            echo "0";
-                           }
-                             ?>
-                           
+                              echo '<small class="text-muted" style="font-size: 15px;">Rs. </small>' . number_format($total);
+                            }else{
+                             echo "0";
+                            }
+                              ?>
+                            
                           </span>
                             </div>
                             
@@ -240,20 +241,20 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='tax_purchase_list.php'" style="cursor: pointer;" title="View Tax Purchases">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-activity text-white mb-0"></i>
+                            <i class="fe fe-16 fe-layers text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col">
-                          <p class="small text-muted mb-0">Total Purchase</p>
+                          <p class="small text-muted mb-0">Total Purchases</p>
                           <span class="h3 mb-0">
                             <?php 
                              if($UserData['user_role'] == 'admin'){
-                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM purchase WHERE purchase_date BETWEEN '$start_of_month' AND '$end_of_month' "))['total_orders'];
+                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM tax_purchases"))['total_orders'];
                              echo $total=isset($total_orders)?$total_orders:"0";
                            }else{
                             echo "0";
@@ -272,21 +273,34 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
   
                 
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow bg-primary text-white border-0">
+                  <div class="card shadow bg-primary text-white border-0" onclick="window.location.href='voucher.php?act=lists'" style="cursor: pointer;" title="View Received Vouchers / Payments">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-white">
-                            <i class="fe fe-16 fe-shopping-bag text-default mb-0"></i>
+                            <i class="fe fe-16 fe-check-circle text-default mb-0"></i>
                           </span>
                         </div>
                         <div class="col pr-0">
-                          <p class="small text-white mb-0">Today Cash Received</p>
+                          <p class="small text-white mb-0">Today Received (With WHT)</p>
                           <span class="h3 mb-0 text-white">
                             <?php 
-                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(paid) as total_sales FROM orders where order_date='$current_date' AND payment_type='cash_in_hand' "))['total_sales'];
-                            $total=isset($total_sales)?$total_sales:"0";
-                              echo number_format($total);
+                              // Customer vouchers today (cash/bank amount)
+                              $q_v_today = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(v.voucher_amount, ',', '') AS DECIMAL(15,2))) as v_amt FROM vouchers v JOIN customers c ON v.customer_id1 = c.customer_id WHERE v.voucher_date = '$current_date' AND c.customer_type = 'customer'"));
+                              $v_amt_today = floatval($q_v_today['v_amt'] ?? 0);
+
+                              // WHT deducted today
+                              $q_wht_today = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) as v_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.voucher_date = '$current_date' AND (v.customer_id1 IN (SELECT customer_id FROM customers WHERE customer_type = 'customer') OR vi.invoice_id IN (SELECT order_id FROM orders) OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales))"));
+                              $v_wht_today = floatval($q_wht_today['v_wht'] ?? 0);
+
+                              // Direct orders paid today (if any)
+                              $q_ord_today = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(paid) as ord_paid FROM orders WHERE order_date = '$current_date'"));
+                              $ord_paid_today = floatval($q_ord_today['ord_paid'] ?? 0);
+
+                              $today_received_without_wht = $ord_paid_today + $v_amt_today;
+                              $today_received_with_wht = $today_received_without_wht + $v_wht_today;
+
+                              echo '<small class="text-white-50" style="font-size: 15px;">Rs. </small>' . number_format($today_received_with_wht);
                              ?>
                           </span>
                         <!--   <span class="small text-white">+5.5%</span> -->
@@ -296,20 +310,19 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='voucher.php?act=lists'" style="cursor: pointer;" title="View Received Vouchers / Payments">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-shopping-cart text-white mb-0"></i>
+                            <i class="fe fe-16 fe-pocket text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col pr-0">
-                          <p class="small text-muted mb-0">Today Cash Received Order</p>
+                          <p class="small text-muted mb-0">Today Received (Without WHT)</p>
                           <span class="h3 mb-0">
                             <?php 
-                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM orders where order_date='$current_date' AND paid>0  AND payment_type='cash_in_hand'"))['total_orders'];
-                             echo $total=isset($total_orders)?$total_orders:"0";
+                              echo '<small class="text-muted" style="font-size: 15px;">Rs. </small>' . number_format($today_received_without_wht);
                              ?>
                           </span>
                         </div>
@@ -318,23 +331,27 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='dues_report.php'" style="cursor: pointer;" title="View Customer Receivables in Dues Report">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-dollar-sign text-white mb-0"></i>
+                            <i class="fe fe-16 fe-users text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col">
-                          <p class="small text-muted mb-0">Total Pending Amount</p>
+                          <p class="small text-muted mb-0">Total Receivable from Customers</p>
                           <div class="row align-items-center no-gutters">
                             <div class="col-12">
                               <span class="h3 mr-2 mb-0">
                             <?php 
-                              $total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(due) as total_sales FROM orders WHERE  order_date='$current_date' AND payment_type='cash_in_hand' "))['total_sales'];
-                             $total=isset($total_sales)?$total_sales:"0";
-                              echo number_format($total);
+                              $pending_dues_sum = 0;
+                              $q_all_custs = mysqli_query($dbc, "SELECT customer_id FROM customers WHERE customer_type = 'customer' AND customer_status = 1");
+                              while ($ac = mysqli_fetch_assoc($q_all_custs)) {
+                                $cb = getcustomerBlance($dbc, $ac['customer_id']);
+                                if ($cb >= 1.0) { $pending_dues_sum += $cb; }
+                              }
+                              echo '<small class="text-muted" style="font-size: 15px;">Rs. </small>' . number_format($pending_dues_sum);
                              ?>
                           </span>
                             </div>
@@ -345,22 +362,40 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
                   </div>
                 </div>
                 <div class="col-md-6 col-xl-3 mb-4">
-                  <div class="card shadow border-0">
+                  <div class="card shadow border-0" onclick="window.location.href='dues_report.php'" style="cursor: pointer;" title="View Supplier Pending Payables in Dues Report">
                     <div class="card-body">
                       <div class="row align-items-center">
                         <div class="col-3 text-center">
                           <span class="circle circle-sm bg-primary">
-                            <i class="fe fe-16 fe-activity text-white mb-0"></i>
+                            <i class="fe fe-16 fe-truck text-white mb-0"></i>
                           </span>
                         </div>
                         <div class="col">
-                          <p class="small text-muted mb-0">Pending Order's Amount</p>
-                          <span class="h3 mb-0">
-                            <?php 
-                              @$total_orders=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT count(*) as total_orders FROM orders WHERE order_date='$current_date' AND due>0  AND payment_type='cash_in_hand' "))['total_orders'];
-                             echo $total=isset($total_orders)?$total_orders:"0";
-                             ?>
-                          </span>
+                          <p class="small text-muted mb-0">Total Payable to Supplier</p>
+                          <div class="row align-items-center no-gutters">
+                            <div class="col-12">
+                              <span class="h3 mr-2 mb-0">
+                                <?php 
+                                  $supp_sql = "SELECT customer_id FROM customers WHERE customer_status = 1 AND customer_type = 'supplier'";
+                                  $q_supp = mysqli_query($dbc, $supp_sql);
+                                  $total_supplier_pending_pay = 0;
+                                  while ($s = mysqli_fetch_assoc($q_supp)) {
+                                    $sid = $s['customer_id'];
+                                    $q_all = mysqli_query($dbc, "SELECT SUM(CAST(debit AS DECIMAL(15,2))) AS tot_dr, SUM(CAST(credit AS DECIMAL(15,2))) AS tot_cr FROM transactions WHERE customer_id = '$sid'");
+                                    $r_all = mysqli_fetch_assoc($q_all);
+                                    $net_pending = floatval($r_all['tot_dr'] ?? 0) - floatval($r_all['tot_cr'] ?? 0);
+                                    if (abs($net_pending) <= 1.5) {
+                                      $net_pending = 0.0;
+                                    }
+                                    if ($net_pending >= 1.0) {
+                                      $total_supplier_pending_pay += $net_pending;
+                                    }
+                                  }
+                                  echo '<small class="text-muted" style="font-size: 15px;">Rs. </small>' . number_format($total_supplier_pending_pay);
+                                ?>
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -371,144 +406,135 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
 </div>
 <!-- row start-->
 
-<div class="row">
-                <div class="col-md-6">
-                  <div class="card shadow mb-4">
-                    <div class="card-header bg-primary ">
-                      <strong class="text-white">Accounts</strong>
+<div class="row align-items-stretch">
+                <div class="col-md-6 mb-4 d-flex">
+                  <div class="card shadow w-100 d-flex flex-column mb-0">
+                    <div class="card-header bg-primary d-flex justify-content-between align-items-center py-3">
+                      <strong class="text-white mb-0">Accounts</strong>
+                      <a class="small text-white font-weight-bold" href="reports.php?type=bank">Bank Ledger</a>
                     </div>
-                    <div class="card-body px-4">
-                      <div class="row border-bottom">
-                        <div class="col-4 text-center mb-3">
-                          <p class="mb-1 small text-muted">Revenue</p>
-                          <span class="h3">
-                              <?php
-                               if($UserData['user_role'] == 'admin'){
-                              ?>
-                            <?php 
-                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM orders where order_date='$current_date' "))['total_sales'];
-                             echo $total=isset($total_sales)?$total_sales:"0";
-                             ?>
-                             <?php
-                               }else{
-                                   echo "0";
-                               }
-                            ?>
-                             
-                          </span><br />
-                          <span class="small text-muted">+20%</span>
-                          <span class="fe fe-arrow-up text-success fe-12"></span>
-                        </div>
-                        <div class="col-4 text-center mb-3">
-                          <p class="mb-1 small text-muted">Income</p>
-                          <span class="h3">
-                              <?php
-                               if($UserData['user_role'] == 'admin'){
-                              ?>
-                            <?=getIncome($dbc,"where order_date='$current_date'")?>
-                            <?php
-                               }else{
-                                   echo "0";
-                               }
-                            ?>
-                          </span><br />
-                          <span class="small text-muted">+20%</span>
-                          <span class="fe fe-arrow-up text-success fe-12"></span>
-                        </div>
-                        <div class="col-4 text-center mb-3">
-                          <p class="mb-1 small text-muted">Expense</p>
-                          <span class="h3"><?=getexpense($dbc,"AND voucher_date='$current_date'")?></span><br />
-                          <span class="small text-muted">-2%</span>
-                          <span class="fe fe-arrow-down text-danger fe-12"></span>
-                        </div>
-                      </div>
-                      <table class="table table-bordered mt-3 mb-1 mx-n1 table-sm">
-                        <thead>
+                    <div class="card-body px-4 d-flex flex-column flex-fill">
+                      <table class="table table-hover table-striped mb-0">
+                        <thead class="bg-light">
                           <tr>
-                            <th class="">Type</th>
-                            <th class="text-right">Cash in Hand (no.)</th>
-                             <th class="text-right">Cash in Hand (pkr)</th>
-                            <th class="text-right">Credit (no.)</th>
-                              <th class="text-right">Credit (pkr)</th>
+                            <th class="py-2 text-uppercase text-muted font-weight-bold" style="font-size: 11px; letter-spacing: 0.5px;">
+                              Account Name
+                            </th>
+                            <th class="py-2 text-right text-uppercase text-muted font-weight-bold" style="font-size: 11px; letter-spacing: 0.5px;">
+                              Available Balance (Rs)
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           <?php 
-                            $cash_in_hand_sale = mysqli_fetch_array(mysqli_query($dbc,"SELECT count(*) as cash_in_hand,sum(grand_total) as cash_in_hand_amount FROM orders WHERE order_date = '$current_date' AND payment_type='cash_in_hand' "));
-                            $credit_sale = mysqli_fetch_array(mysqli_query($dbc,"SELECT count(*) as credit_sale,sum(grand_total) as credit_sale_amount FROM orders WHERE order_date = '$current_date' AND payment_type='credit_sale' "));
-
-                            $cash_in_hand_pur = mysqli_fetch_array(mysqli_query($dbc,"SELECT count(*) as cash_in_hand,sum(grand_total) as cash_in_hand_amount FROM purchase WHERE purchase_date = '$current_date' AND payment_type='sale_purchase' "));
-                            $credit_pur = mysqli_fetch_array(mysqli_query($dbc,"SELECT count(*) as credit_sale,sum(grand_total) as credit_sale_amount FROM purchase WHERE purchase_date = '$current_date' AND payment_type='credit_purchase' "));
-                           ?>
+                            $bank_accounts = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_type = 'bank' AND customer_status = 1 ORDER BY customer_id ASC");
+                            $total_available_all = 0;
+                            while ($b_acc = mysqli_fetch_assoc($bank_accounts)) {
+                              $b_id = $b_acc['customer_id'];
+                              $b_tx = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(credit-debit) as bal FROM transactions WHERE customer_id = '$b_id'"));
+                              $b_bal = !empty($b_tx['bal']) ? floatval($b_tx['bal']) : 0;
+                              $total_available_all += $b_bal;
+                              $is_cash = (stripos($b_acc['customer_name'], 'cash') !== false);
+                          ?>
                           <tr>
-                            <td>Orders</td>
-                            <td class="text-center"><?=@(int)$cash_in_hand_sale['cash_in_hand']?></td>
-                            <td class="text-center"><?=@(int)$cash_in_hand_sale['cash_in_hand_amount']?></td>
-                            <td class="text-center"><?=@(int)$credit_sale['credit_sale']?></td>
-                            <td class="text-center"><?=@(int)$credit_sale['credit_sale_amount']?></td>
-                          </tr>
-                          <tr>
-                            <td>Purchases</td>
-                            <td class="text-center"><?=@(int)$cash_in_hand_pur['cash_in_hand']?></td>
-                            <td class="text-center"><?=@(int)$cash_in_hand_pur['cash_in_hand_amount']?></td>
-                            <td class="text-center"><?=@(int)$credit_pur['credit_sale']?></td>
-                            <td class="text-center"><?=@(int)$credit_pur['credit_sale_amount']?></td>
-
-                          </tr>
-                          
-                        </tbody>
-                        <tfoot>
-                          <tr>
-                            <th >Cash in hand Account</th>
-                            <td style="font-size: 22px;text-align: right;" align="right" colspan="4">
-                              <?php
-                              $qwer= mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(credit-debit) as TotalCash FROM transactions WHERE customer_id = '2'"));
-                                echo number_format(@$qwer['TotalCash']);
-                              ?>
+                            <td class="py-2 font-weight-normal align-middle">
+                              <a href="reports.php?type=bank&customer_id=<?=$b_id?>" class="text-dark" title="View Ledger">
+                                <i class="fe <?=$is_cash ? 'fe-pocket text-success' : 'fe-credit-card text-primary'?> mr-2"></i> <?=htmlspecialchars(ucwords($b_acc['customer_name']))?>
+                              </a>
+                            </td>
+                            <td class="text-right font-weight-bold py-2 align-middle <?=($b_bal < 0 ? 'text-danger' : ($b_bal > 0 ? 'text-success' : 'text-dark'))?>" style="font-size: 14px;">
+                              <?=number_format($b_bal)?> <span class="small font-weight-normal text-muted">Rs</span>
                             </td>
                           </tr>
-                        </tfoot>
+                          <?php } ?>
+                        </tbody>
                       </table>
                     </div> <!-- .card-body -->
+                    <div class="card-footer bg-light py-2 px-3 border-top d-flex justify-content-between align-items-center mt-auto">
+                      <span class="small font-weight-bold text-muted text-uppercase" style="letter-spacing: 0.5px;">
+                        <i class="fe fe-pocket mr-1 text-success"></i> Total Available Amount
+                      </span>
+                      <strong class="<?=($total_available_all < 0 ? 'text-danger' : 'text-success')?> font-weight-bold" style="font-size: 15px;">
+                        <?=number_format($total_available_all)?> <span class="small font-weight-normal text-muted">Rs</span>
+                      </strong>
+                    </div>
                   </div> <!-- .card -->
                 </div> <!-- .col -->
-                <div class="col-md-6">
-                  <div class="card shadow mb-4">
-                    <div class="card-header bg-primary ">
-                      <strong class="card-title text-white">Balance</strong>
-                      <a class="float-right small text-white font-weight-bold" href="dues_report.php">View All Dues</a>
+                <div class="col-md-6 mb-4 d-flex">
+                  <div class="card shadow w-100 d-flex flex-column mb-0">
+                    <div class="card-header bg-primary d-flex justify-content-between align-items-center py-3">
+                      <strong class="text-white mb-0">Customer Pending Dues</strong>
+                      <a class="small text-white font-weight-bold" href="dues_report.php">View All Dues</a>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body px-4 d-flex flex-column flex-fill">
                       
-                      <div class="list-group list-group-flush my-n3">
+                      <div class="list-group list-group-flush my-n3 flex-fill">
                         <?php 
-                         $random = rand(1,3); 
-                      $getCustomer=get($dbc,"customers where customer_type='customer' AND customer_status=1 LIMIT 5 OFFSET $random ");
-                     // echo "SELECT * FROM customers where customer_type='customer' AND customer_status=1 LIMIT 5 OFFSET $random ";
-                      $c=0;
-                      while ($customer=mysqli_fetch_assoc($getCustomer)):
-                      $c++;
-                         $cust_blnc = getcustomerBlance($dbc, $customer['customer_id']);
-                          
-                       ?>
+                          $cust_query = mysqli_query($dbc, "SELECT * FROM customers WHERE customer_type = 'customer' AND customer_status = 1 ORDER BY customer_name ASC");
+                          $pending_customers = [];
+                          $total_pending_dues_card = 0;
+                          while ($cust = mysqli_fetch_assoc($cust_query)) {
+                            $bal = getcustomerBlance($dbc, $cust['customer_id']);
+                            if ($bal >= 1.0) {
+                              $cust['balance'] = $bal;
+                              $pending_customers[] = $cust;
+                              $total_pending_dues_card += $bal;
+                            }
+                          }
+                          // Sort by balance DESC (highest due first)
+                          usort($pending_customers, function($a, $b) {
+                            return $b['balance'] <=> $a['balance'];
+                          });
+
+                          if (empty($pending_customers)) {
+                        ?>
+                          <div class="list-group-item text-center py-4 text-muted">
+                            <i class="fe fe-check-circle text-success fe-24 mb-2 d-block"></i>
+                            No pending customer dues found.
+                          </div>
+                        <?php 
+                          } else {
+                            $c = 0;
+                            foreach ($pending_customers as $customer) {
+                              $c++;
+                        ?>
                         <div class="list-group-item">
                           <div class="row align-items-center">
-                            <div class="col-3 col-md-2">
-                              <h6><?=$c?></h6>
+                            <div class="col-2 col-md-1 text-center">
+                              <span class="badge badge-light font-weight-bold" style="font-size: 13px;"><?=$c?></span>
                             </div>
                             <div class="col">
-                              <strong><?=ucwords($customer['customer_name'])?></strong>
-                              <div class="my-0 text-muted small"><?=$customer['customer_phone']?>, <?=$customer['customer_email']?></div>
+                              <a href="reports.php?type=customer&customer_id=<?=$customer['customer_id']?>" class="text-dark font-weight-bold" title="View Customer Ledger">
+                                <?=htmlspecialchars(ucwords($customer['customer_name']))?>
+                              </a>
+                              <div class="my-0 text-muted small">
+                                <?php 
+                                  $contact_info = array_filter([$customer['customer_phone'], $customer['customer_email']]);
+                                  echo !empty($contact_info) ? htmlspecialchars(implode(', ', $contact_info)) : '-';
+                                ?>
+                              </div>
                             </div>
-                            <div class="col-auto">
-                              <strong><?=number_format($cust_blnc)?></strong>
-                             
+                            <div class="col-auto text-right">
+                              <span class="font-weight-bold text-danger" style="font-size: 14px;">
+                                <span class="small text-muted font-weight-normal">Rs. </span><?=number_format($customer['balance'])?>
+                              </span>
                             </div>
                           </div>
                         </div>
-                      <?php endwhile; ?>
+                        <?php 
+                            }
+                          } 
+                        ?>
                       </div> <!-- / .list-group -->
                     </div> <!-- / .card-body -->
+                    <div class="card-footer bg-light py-2 px-3 border-top d-flex justify-content-between align-items-center mt-auto">
+                      <span class="small font-weight-bold text-muted text-uppercase" style="letter-spacing: 0.5px;">
+                        <i class="fe fe-alert-circle mr-1 text-danger"></i> Total Customer Receivables
+                      </span>
+                      <strong class="text-danger font-weight-bold" style="font-size: 15px;">
+                        Rs. <?=number_format($total_pending_dues_card)?>
+                      </strong>
+                    </div>
                   </div> <!-- .card -->
                 </div> <!-- .col -->
  </div> <!-- .row -->
@@ -516,239 +542,136 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
 
 
     <!-- .row -->
-              <div class="row">
-                <div class="col-sm-6">
-                 <div class="card shadow">
-                    <div class="card-header bg-primary ">
-                      <strong class="card-title text-white">Cash Sale's Pending Orders</strong>
-                      <a class="float-right small text-muted" href="pending_bills.php?search_it=all">View all</a>
+              <div class="row align-items-stretch">
+                <div class="col-md-6 mb-4 d-flex">
+                 <div class="card shadow w-100 d-flex flex-column mb-0">
+                    <div class="card-header bg-primary d-flex justify-content-between align-items-center py-3">
+                      <strong class="card-title text-white mb-0">Pending Delivery Challans</strong>
+                      <a class="small text-white font-weight-bold" href="credit_orders.php">View all</a>
                     </div>
-                    <div class="card-body my-n2">
-                      <table class="table table-striped table-hover table-borderless">
-                        <thead>
-                    <tr>
-                        <th>Order No.</th>
-                        <th>Customer Details</th>
-                        <th>Order Date</th>
-                         <th>Piad Amount</th>
-                        <th>Remaining Amount</th>
-                    </tr>
-                  </thead>
-                        <tbody> 
-                      <?php   $q=mysqli_query($dbc,"SELECT * FROM orders WHERE payment_type='cash_in_hand' AND payment_status=0 ORDER BY order_id DESC LIMIT 5");
-                      $c=0;
-                        while ($row=mysqli_fetch_assoc($q)) { $c++;
-                       ?>
-                       <tr>
-                          <td><?=$row['order_id']?></td>
-                          <td><?=$row['client_name']?> (<?=$row['client_contact']?>)</td>
-                          <td><?=$row['order_date']?></td>
-                          <td><span class="badge badge-success"><?=$row['paid']?></span> </td>
-                          <td><span class="badge badge-danger"><?=$row['due']?></span> </td>
-                        </tr>
-                     <?php  } ?>
-                  </tbody>
-                      </table>
-                    </div>
-                  </div>
-                 <!-- .row -->
- <!-- Next row end  -->
-
-</div>
-  <div class="col-sm-6">
-                  <div class="card shadow">
-                    <div class="card-header bg-primary ">
-                      <strong class="card-title text-white">Today Payments</strong>
-                      <a class="float-right small text-muted" href="reports3.php?type=customer">View all</a>
-                    </div>
-                    <div class="card-body my-n2">
-                      <table class="table table-striped table-hover table-borderless">
+                    <div class="card-body px-3 py-2 flex-fill d-flex flex-column">
+                      <div class="table-responsive flex-fill">
+                        <table class="table table-striped table-hover table-borderless mb-0">
                           <thead>
-                            <th>Customer Name</th>
-                            <th>Order Date</th>
-                            <th>Payment Date</th>
-                            <th>Amount</th>
-                            <th>Remaining Days</th>
-
+                            <tr>
+                              <th>Order No.</th>
+                              <th>Customer Details</th>
+                              <th>Order Date</th>
+                              <th>Payment Date</th>
+                              <th>Amount</th>
+                              <th>Remaining Days</th>
+                            </tr>
                           </thead>
-                          <tbody>
-                            <?php
-                                  
-                                  
-                                  ?>
-                             
-                      <?php   $q=mysqli_query($dbc,"SELECT * FROM orders WHERE ( credit_sale_type='15days' OR credit_sale_type='30days')  AND payment_status=0 ORDER BY order_id DESC");
-                      $c=0;
-                        while (@$r=mysqli_fetch_assoc($q)) { $c++;
-                          $Date = date('Y-m-d');
-                          $now = strtotime($Date); // or your date as well
-
-                          if ($r['credit_sale_type']=="15days") {
-                            $next_date= date('Y-m-d', strtotime($r['order_date']. ' + 15 days'));
-                          }elseif($r['credit_sale_type']=="30days"){
-                            $next_date= date('Y-m-d', strtotime($r['order_date']. ' + 30 days'));
-
-                          }
-                          $your_date = strtotime($next_date);
-                          $datediff =$your_date- $now;
-                          $total_days= round($datediff / (60 * 60 * 24));
-                          if ($next_date==$Date):
-                       ?>
-                       <tr>
-                          <td><?=ucwords($r['client_name'])?> (<?=$r['client_contact']?>)</td>
-                          <td><?=$r['order_date']?></td>
-                           <td><?=$next_date?></td>
-                          <td><?=$r['due']?></td>
-                           <td>
-                             <?php if ($total_days<6): ?>
-                               <span class="badge badge-danger"><?=$total_days?></span>
-                             <?php else: ?> 
-                              <span class="badge badge-success"><?=$total_days?></span>
-                             
-                             <?php endif ?>
-                           </td>
-                       </tr>
-                     <?php  endif;
-                       } ?>
-                  
-                          </tbody>
-                        </table>
-                    </div>
-                  </div>
-                  </div>
-</div>
-                 <!-- .row --> 
-<!-- next row  --><br/>
-<div class="row">
-  <div class="col-md-6">
-                  <div class="card shadow eq-card mb-4">
-                    <div class="card-header bg-primary ">
-                      <strong class="card-title text-white">Sale Details</strong>
-                      <a class="float-right small text-white" href="analytics.php">View all</a>
-                    </div>
-                    <div class="card-body">
-                      <!-- <div class="card-title">
-                        <strong>Sale</strong>
-                        <a class="float-right small text-muted" href="analytics.php">View all</a>
-                      </div> -->
-                      <div class="row mt-b">
-                        <div class="col-6 text-center mb-3 border-right">
-                          <p class="text-muted mb-1">Today</p>
-                          <h6 class="mb-1">
+                          <tbody> 
                             <?php 
-                              @$total_sales=mysqli_fetch_assoc(mysqli_query($dbc,"SELECT sum(grand_total) as total_sales FROM orders where order_date='$current_date' "))['total_sales'];
-                             $total=isset($total_sales)?$total_sales:"0";
-                             echo number_format($total);
-                             ?>
-                          </h6>
-                          <p class="text-muted mb-2"></p>
-                        </div>
-                        <div class="col-6 text-center mb-3">
-                          <p class="text-muted mb-1">Yesterday</p>
-                          <h6 class="mb-1"><?=getOrders($dbc,"WHERE order_date='$yesterday_date'","grand_total")?></h6>
-                          <p class="text-muted"></p>
-                        </div>
-
-                        <div class="col-6 text-center border-right">
-                          <p class="text-muted mb-1">This Week</p>
-                          <h6 class="mb-1"><?=getOrders($dbc,"WHERE order_date BETWEEN '$start' AND '$end' ","grand_total")?></h6>
-                          <p class="text-muted mb-2"></p>
-                        </div>
-                        <div class="col-6 text-center">
-                          <p class="text-muted mb-1">Last Week</p>
-                          <h6 class="mb-1"><?=getOrders($dbc,"WHERE order_date BETWEEN '$start_week' AND '$end_week' ","grand_total")?></h6>
-                          <p class="text-muted"></p>
-                        </div>
-                      </div>
-                      <div class="chart-widget">
-                        <div id="columnChartWidget" width="300" height="200"></div>
-                      </div>
-                    </div> <!-- .card-body -->
-                  </div> <!-- .card -->
-  </div> <!-- .col -->
-
-
-
-               <div class="col-md-6">
-                  
-                  <div class="card shadow eq-card mb-4">
-                    <div class="card-header bg-primary ">
-                      <strong class="card-title text-white">Sale Details</strong>
-                      <a class="float-right small text-white" href="credit_orders.php">View all</a>
-                    </div>
-                    <div class="card-body">
-                     
-                      <div class="row mt-b">
-                        <table class="table">
-                          <thead>
-                            <th>Customer Name</th>
-                            <th>Order Date</th>
-                            <th>Payment Date</th>
-                            <th>Amount</th>
-                            <th>Remaining Days</th>
-
-                          </thead>
-                          <tbody>
-                            <?php
-                                  
-                                  
-                                  ?>
-                             
-                      <?php   $q=mysqli_query($dbc,"SELECT * FROM orders WHERE ( credit_sale_type='15days' OR credit_sale_type='30days'  ) AND payment_status=0 ORDER BY order_id DESC LIMIT 5");
-                      $c=0;
-                        while (@$r=mysqli_fetch_assoc($q)) { $c++;
-                          $Date = date('Y-m-d');
-                          $now = strtotime($Date); // or your date as well
-
-                          if ($r['credit_sale_type']=="15days") {
-                            $next_date= date('Y-m-d', strtotime($r['order_date']. ' + 15 days'));
-                          }elseif($r['credit_sale_type']=="30days"){
-                            $next_date= date('Y-m-d', strtotime($r['order_date']. ' + 30 days'));
-
-                          }
-                          
-                          
-                          $your_date = strtotime($next_date);
-                          $datediff =$your_date- $now;
-                          $total_days= round($datediff / (60 * 60 * 24));
-                     
-
-
-                       ?>
-                       <tr>
-                          
-                          <td><?=ucwords($r['client_name'])?> (<?=$r['client_contact']?>)</td>
-                          
-                          <td><?=$r['order_date']?></td>
-                           <td><?=$next_date?></td>
-                          <td><?=$r['due']?></td>
-                           <td>
-                             <?php if ($total_days<6): ?>
-                               <span class="badge badge-danger"><?=$total_days?></span>
-                             <?php else: ?> 
-                              <span class="badge badge-success"><?=$total_days?></span>
-                             
-                             <?php endif ?>
-                           </td>
-                
-                         
-                          
-                       </tr>
-                     <?php  } ?>
-                  
+                              $q = mysqli_query($dbc, "SELECT * FROM orders WHERE (credit_sale_type='30days' OR credit_sale_type='15days' OR payment_type='credit_sale' OR payment_type='cash_in_hand') AND payment_status=0 ORDER BY order_id DESC LIMIT 5");
+                              $c = 0;
+                              $now = strtotime(date('Y-m-d'));
+                              while ($row = mysqli_fetch_assoc($q)) { 
+                                $c++;
+                                if ($row['credit_sale_type'] == "15days") {
+                                  $next_date = date('Y-m-d', strtotime($row['order_date'] . ' + 15 days'));
+                                } else {
+                                  $next_date = date('Y-m-d', strtotime($row['order_date'] . ' + 30 days'));
+                                }
+                                $your_date = strtotime($next_date);
+                                $datediff = $your_date - $now;
+                                $total_days = round($datediff / (60 * 60 * 24));
+                            ?>
+                            <tr>
+                              <td><?=$row['order_id']?></td>
+                              <td><?=htmlspecialchars(ucwords($row['client_name']))?> (<?=htmlspecialchars($row['client_contact'])?>)</td>
+                              <td><?=$row['order_date']?></td>
+                              <td><?=$next_date?></td>
+                              <td><small class="text-muted">Rs. </small><?=number_format((float)$row['due'])?></td>
+                              <td>
+                                <?php if ($total_days < 6): ?>
+                                  <span class="badge badge-danger"><?=$total_days?></span>
+                                <?php else: ?> 
+                                  <span class="badge badge-success"><?=$total_days?></span>
+                                <?php endif; ?>
+                              </td>
+                            </tr>
+                            <?php } ?>
                           </tbody>
                         </table>
                       </div>
-                      <div class="chart-widget">
-                        <div id="columnChartWidget" width="300" height="200"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6 mb-4 d-flex">
+                  <div class="card shadow w-100 d-flex flex-column mb-0">
+                    <div class="card-header bg-primary d-flex justify-content-between align-items-center py-3">
+                      <strong class="card-title text-white mb-0">Sale Details</strong>
+                      <a class="small text-white font-weight-bold" href="analytics.php">View all</a>
+                    </div>
+                    <div class="card-body px-4 py-3 d-flex flex-column justify-content-between flex-fill">
+                      <?php 
+                        // Exact credit sales condition matching Row 1
+                        $credit_cond = "(credit_sale_type='30days' OR payment_type='credit_sale')";
+
+                        $q_today = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(grand_total) as s FROM orders WHERE order_date = '$current_date' AND $credit_cond"));
+                        $sale_today = floatval($q_today['s'] ?? 0);
+
+                        $q_yest = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(grand_total) as s FROM orders WHERE order_date = '$yesterday_date' AND $credit_cond"));
+                        $sale_yesterday = floatval($q_yest['s'] ?? 0);
+
+                        $q_this_week = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(grand_total) as s FROM orders WHERE order_date BETWEEN '$start' AND '$end' AND $credit_cond"));
+                        $sale_this_week = floatval($q_this_week['s'] ?? 0);
+
+                        $q_last_week = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT SUM(grand_total) as s FROM orders WHERE order_date BETWEEN '$start_week' AND '$end_week' AND $credit_cond"));
+                        $sale_last_week = floatval($q_last_week['s'] ?? 0);
+
+                        // Last 14 days credit sales data for responsive chart
+                        $chart_dates = [];
+                        $chart_sales = [];
+                        $chart_orders = [];
+                        for ($i = 13; $i >= 0; $i--) {
+                            $d = date('Y-m-d', strtotime("-$i days", strtotime($current_date)));
+                            $d_label = date('d M', strtotime($d));
+                            $q_d = mysqli_fetch_assoc(mysqli_query($dbc, "SELECT COUNT(*) as cnt, SUM(grand_total) as s FROM orders WHERE order_date = '$d' AND $credit_cond"));
+                            $chart_dates[] = $d_label;
+                            $chart_sales[] = floatval($q_d['s'] ?? 0);
+                            $chart_orders[] = intval($q_d['cnt'] ?? 0);
+                        }
+                      ?>
+                      <div class="row no-gutters border rounded mb-3 bg-light">
+                        <div class="col-6 text-center py-2 border-right border-bottom">
+                          <p class="text-muted mb-1 small text-uppercase font-weight-bold" style="font-size: 11px;">Today</p>
+                          <h6 class="mb-0 font-weight-bold" style="font-size: 15px;">
+                            <small class="text-muted">Rs. </small><?=number_format($sale_today)?>
+                          </h6>
+                        </div>
+                        <div class="col-6 text-center py-2 border-bottom">
+                          <p class="text-muted mb-1 small text-uppercase font-weight-bold" style="font-size: 11px;">Yesterday</p>
+                          <h6 class="mb-0 font-weight-bold" style="font-size: 15px;">
+                            <small class="text-muted">Rs. </small><?=number_format($sale_yesterday)?>
+                          </h6>
+                        </div>
+                        <div class="col-6 text-center py-2 border-right">
+                          <p class="text-muted mb-1 small text-uppercase font-weight-bold" style="font-size: 11px;">This Week</p>
+                          <h6 class="mb-0 font-weight-bold" style="font-size: 15px;">
+                            <small class="text-muted">Rs. </small><?=number_format($sale_this_week)?>
+                          </h6>
+                        </div>
+                        <div class="col-6 text-center py-2">
+                          <p class="text-muted mb-1 small text-uppercase font-weight-bold" style="font-size: 11px;">Last Week</p>
+                          <h6 class="mb-0 font-weight-bold" style="font-size: 15px;">
+                            <small class="text-muted">Rs. </small><?=number_format($sale_last_week)?>
+                          </h6>
+                        </div>
+                      </div>
+
+                      <div class="chart-widget flex-fill w-100" style="min-height: 200px;">
+                        <div id="salesTrendChart" style="width: 100%; min-height: 200px;"></div>
                       </div>
                     </div> <!-- .card-body -->
                   </div> <!-- .card -->
-                
-                </div> <!-- .col -->
-                
-  </div><!-- row -->
-               <!-- Next row end  -->
+                </div>
+              </div>
+                 <!-- .row --> 
+
 
 
                  
@@ -843,6 +766,122 @@ $end_of_month= date('Y-m-t', strtotime($current_date));
     <script src="js/jquery.sparkline.min.js"></script>
     <script src="js/apexcharts.min.js"></script>
     <script src="js/apexcharts.custom.js"></script>
+    <script>
+      (function() {
+        var el = document.querySelector("#salesTrendChart");
+        if (!el) return;
+
+        var categories = <?=json_encode($chart_dates ?? [])?>;
+        var salesData = <?=json_encode($chart_sales ?? [])?>;
+        var ordersData = <?=json_encode($chart_orders ?? [])?>;
+
+        var options = {
+          series: [{
+            name: 'Credit Sales',
+            data: salesData
+          }],
+          chart: {
+            type: 'bar',
+            height: 220,
+            toolbar: { show: false },
+            zoom: { enabled: false }
+          },
+          plotOptions: {
+            bar: {
+              horizontal: false,
+              columnWidth: '55%',
+              borderRadius: 4,
+              endingShape: 'rounded'
+            }
+          },
+          colors: ['#930027'],
+          dataLabels: {
+            enabled: false
+          },
+          stroke: {
+            show: true,
+            width: 1,
+            colors: ['transparent']
+          },
+          xaxis: {
+            categories: categories,
+            labels: {
+              show: true,
+              rotate: -45,
+              rotateAlways: false,
+              hideOverlappingLabels: true,
+              style: {
+                colors: '#6c757d',
+                fontSize: '11px',
+                fontFamily: 'inherit'
+              }
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false }
+          },
+          yaxis: {
+            labels: {
+              show: true,
+              style: {
+                colors: '#6c757d',
+                fontSize: '11px',
+                fontFamily: 'inherit'
+              },
+              formatter: function(val) {
+                if (val >= 1000000) {
+                  return (val / 1000000).toFixed(1) + 'M';
+                } else if (val >= 1000) {
+                  return (val / 1000).toFixed(0) + 'K';
+                }
+                return val;
+              }
+            }
+          },
+          grid: {
+            borderColor: '#f1f1f1',
+            strokeDashArray: 3,
+            padding: {
+              top: 0,
+              right: 10,
+              bottom: 0,
+              left: 10
+            }
+          },
+          tooltip: {
+            theme: 'light',
+            custom: function(opts) {
+              var idx = opts.dataPointIndex;
+              var date = categories[idx] || '';
+              var amount = salesData[idx] || 0;
+              var ordersCount = ordersData[idx] || 0;
+              return '<div class="p-2 border rounded bg-white shadow-sm" style="font-size: 12px; line-height: 1.4;">' +
+                     '<strong>' + date + '</strong><br/>' +
+                     '<span class="font-weight-bold" style="color: #930027;">Rs. ' + Number(amount).toLocaleString() + '</span><br/>' +
+                     '<span class="text-muted">' + ordersCount + ' Order' + (ordersCount === 1 ? '' : 's') + '</span>' +
+                     '</div>';
+            }
+          },
+          responsive: [{
+            breakpoint: 576,
+            options: {
+              chart: { height: 180 },
+              plotOptions: {
+                bar: { columnWidth: '70%' }
+              },
+              xaxis: {
+                labels: {
+                  rotate: -45,
+                  style: { fontSize: '9px' }
+                }
+              }
+            }
+          }]
+        };
+
+        var chart = new ApexCharts(el, options);
+        chart.render();
+      })();
+    </script>
     <script src='js/jquery.mask.min.js'></script>
     <script src='js/select2.min.js'></script>
     <script src='js/jquery.steps.min.js'></script>

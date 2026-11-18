@@ -114,9 +114,9 @@
                             <?php endif; ?>
                           </td>
                           <td>
-                            <?php if ($due_diff > 0.01): ?>
+                            <?php if ($due_diff > 100): ?>
                               <span class="text-danger font-weight-bold"><?=number_format($due_diff)?></span>
-                            <?php elseif ($due_diff < -0.01): ?>
+                            <?php elseif ($due_diff < -100): ?>
                               <span class="badge badge-info font-weight-bold" title="Paid Rs <?=number_format($paid_amount)?> + WHT Rs <?=number_format($wht_amount)?> exceeds Invoice Total Rs <?=number_format($grand_total)?>">Overpaid (+<?=number_format(abs($due_diff))?>)</span>
                             <?php else: ?>
                               <span class="badge badge-success font-weight-bold">Paid</span>

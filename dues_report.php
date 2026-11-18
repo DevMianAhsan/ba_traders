@@ -79,7 +79,7 @@ if (!$is_supplier_view) {
             if (!empty($from_date)) {
                 $q_op = mysqli_query($dbc, "SELECT SUM(CAST(credit AS DECIMAL(15,2))) AS op_cr, SUM(CAST(debit AS DECIMAL(15,2))) AS op_dr FROM transactions WHERE customer_id = '$cid' AND transaction_date < '$from_date'");
                 $r_op = mysqli_fetch_assoc($q_op);
-                $q_op_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS op_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$cid' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$cid') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$cid') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$cid')) AND v.voucher_date < '$from_date'");
+                $q_op_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS op_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.customer_id1 = '$cid' AND v.voucher_date < '$from_date'");
                 $r_op_wht = mysqli_fetch_assoc($q_op_wht);
                 $op_wht = floatval($r_op_wht['op_wht'] ?? 0);
                 $opening = floatval($r_op['op_cr'] ?? 0) - (floatval($r_op['op_dr'] ?? 0) + $op_wht);
@@ -104,7 +104,7 @@ if (!$is_supplier_view) {
             $invoiced = floatval($r_period['p_cr'] ?? 0);
             $received = floatval($r_period['p_dr'] ?? 0);
 
-            $q_period_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS p_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$cid' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$cid') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$cid') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$cid')) $v_date_cond");
+            $q_period_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS p_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.customer_id1 = '$cid' $v_date_cond");
             $r_period_wht = mysqli_fetch_assoc($q_period_wht);
             $wht = floatval($r_period_wht['p_wht'] ?? 0);
 
@@ -116,7 +116,7 @@ if (!$is_supplier_view) {
             $invoiced = floatval($r_all['tot_cr'] ?? 0);
             $received = floatval($r_all['tot_dr'] ?? 0);
 
-            $q_all_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS tot_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE (v.customer_id1 = '$cid' OR vi.invoice_id IN (SELECT order_id FROM orders WHERE customer_account = '$cid') OR vi.invoice_id IN (SELECT invoice_no FROM tax_sales WHERE customer_id = '$cid') OR vi.invoice_id IN (SELECT fbr_invoice_no FROM tax_sales WHERE customer_id = '$cid'))");
+            $q_all_wht = mysqli_query($dbc, "SELECT SUM(CAST(REPLACE(COALESCE(vi.tax_amount, '0'), ',', '') AS DECIMAL(15,2))) AS tot_wht FROM voucher_invoices vi JOIN vouchers v ON vi.voucher_id = v.voucher_id WHERE v.customer_id1 = '$cid'");
             $r_all_wht = mysqli_fetch_assoc($q_all_wht);
             $wht = floatval($r_all_wht['tot_wht'] ?? 0);
 
@@ -128,8 +128,8 @@ if (!$is_supplier_view) {
         $r_inv_cnt = mysqli_fetch_assoc($q_inv_cnt);
         $invoices_count = intval($r_inv_cnt['inv_cnt'] ?? 0);
         
-        // If due amount is less than 1 Rs (or fractional cents/rounding up to 1.5 Rs), take it as 0
-        if (abs($net_due) <= 1.5) {
+        // If difference is within ±100 Rs, treat as fully cleared (rounding tolerance)
+        if (abs($net_due) <= 100) {
             $net_due = 0.0;
         }
         
@@ -556,6 +556,9 @@ $net_working_balance = $total_customer_pending_due - $total_supplier_pending_pay
             </span>
           </div>
           <div>
+            <a href="credit_dues_report.php?credit_type=30days" class="btn btn-outline-success font-weight-bold shadow-sm mr-1">
+              <i class="fe fe-truck mr-1"></i> Credit Sale (DC) Dues Report
+            </a>
             <a href="tax_sale_report.php" class="btn btn-outline-primary font-weight-bold shadow-sm mr-1">
               <i class="fe fe-file-text mr-1"></i> Tax Invoice Payment Report
             </a>

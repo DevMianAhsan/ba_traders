@@ -145,13 +145,15 @@ if ($q_invoices) {
         $left_amt = 0;
         $overpaid_amt = 0;
 
-        if ($diff < -0.01) {
+        // If difference is within ±100 Rs, treat as fully paid (rounding tolerance)
+        if (abs($diff) <= 100) {
+            $left_amt = 0;
+            $overpaid_amt = 0;
+            $status = 'paid';
+        } elseif ($diff < 0) {
             $left_amt = 0;
             $overpaid_amt = abs($diff);
             $status = 'overpaid';
-        } elseif ($diff <= 0.01) {
-            $left_amt = 0;
-            $status = 'paid';
         } elseif ($total_settled > 0) {
             $left_amt = $diff;
             $status = 'partial';
